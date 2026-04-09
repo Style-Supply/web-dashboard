@@ -9,6 +9,9 @@ const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope' });
 export const metadata: Metadata = {
   title: 'StyleSupply Dashboard',
   description: 'Product management dashboard',
+  icons: {
+    icon: '/icon/Frame-white.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }): React.ReactElement {

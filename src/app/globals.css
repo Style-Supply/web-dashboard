@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #7A021D;
+  --color-primary-hover: #8B1A35;
+  --color-ink: #2C0505;
+  --color-ink-light: #25080A;
+  --color-bg: #F7F5F3;
+  --color-cream: #FDF8F4;
+  --color-warm-gray: #F2F2F2;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+html, body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out;
+}

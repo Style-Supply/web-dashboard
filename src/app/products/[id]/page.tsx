@@ -6,6 +6,7 @@ import type { Product, ProductImage } from '@/types/product';
 import { deleteProduct, getProduct } from '@/lib/api';
 import { useProductFormState } from '@/hooks/useProductFormState';
 import { useToast } from '@/components/ui/Toast';
+import { useProducts } from '@/context/ProductsContext';
 import ProductForm from '@/components/product-form/ProductForm';
 import PreviewPane from '@/components/preview/PreviewPane';
 import Button from '@/components/ui/Button';
@@ -18,6 +19,7 @@ export default function EditProductPage({
   const { id } = use(params);
   const router = useRouter();
   const { showToast } = useToast();
+  const { invalidate } = useProducts();
   const form = useProductFormState();
   const { set } = form;
   const [images, setImages] = useState<ProductImage[]>([]);
@@ -60,6 +62,7 @@ export default function EditProductPage({
     setDeleting(true);
     try {
       await deleteProduct(id);
+      invalidate();
       showToast('success', 'Product deleted successfully');
       router.push('/products');
     } catch (e) {

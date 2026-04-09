@@ -9,10 +9,12 @@ import CsvDropzone from '@/components/batch/CsvDropzone';
 import BatchPreviewTable from '@/components/batch/BatchPreviewTable';
 import BatchResultsTable from '@/components/batch/BatchResultsTable';
 import Button from '@/components/ui/Button';
+import { useProducts } from '@/context/ProductsContext';
 
 type Step = 'drop' | 'preview' | 'results';
 
 export default function BatchPage(): React.ReactElement {
+  const { invalidate } = useProducts();
   const [step, setStep] = useState<Step>('drop');
   const [products, setProducts] = useState<BatchProductPayload[]>([]);
   const [errors, setErrors] = useState<GroupingError[]>([]);
@@ -32,6 +34,7 @@ export default function BatchPage(): React.ReactElement {
     try {
       const res = await batchImport(products);
       setResults(res);
+      invalidate();
       setStep('results');
     } finally {
       setImporting(false);
@@ -47,6 +50,7 @@ export default function BatchPage(): React.ReactElement {
       const replacement = res[0];
       if (replacement) {
         setResults((prev) => prev.map((r) => (r.index === index ? { ...replacement, index } : r)));
+        invalidate();
       }
     } finally {
       setRetryingIndex(null);

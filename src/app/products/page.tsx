@@ -1,9 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import type { Product, ProductListQuery } from '@/types/product';
+import { useState } from 'react';
 import {
-  listProducts,
   bulkDelete,
   bulkStatus,
   duplicateProduct,
@@ -11,6 +9,7 @@ import {
   updateProduct,
 } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useProducts } from '@/context/ProductsContext';
 import ProductFilters from '@/components/list/ProductFilters';
 import ProductTable from '@/components/list/ProductTable';
 import BulkActionBar from '@/components/list/BulkActionBar';
@@ -22,40 +21,26 @@ type BusyAction = 'publishing' | 'unpublishing' | 'duplicating' | 'deleting' | n
 
 export default function ProductsPage(): React.ReactElement {
   const { showToast } = useToast();
-  const [query, setQuery] = useState<ProductListQuery>({ limit: PAGE_SIZE, offset: 0, sort: '-created_at' });
-  const [products, setProducts] = useState<Product[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const { products, total, query, loading, error, setQuery, refresh } = useProducts();
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState<false | 'delete' | 'draft' | 'published'>(false);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await listProducts(query);
-      setProducts(res.products);
-      setTotal(res.total);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  }, [query]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  async function handleRefresh(): Promise<void> {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+    showToast('success', 'List refreshed');
+  }
 
   async function handleDuplicate(id: string): Promise<void> {
     setRowBusy(id);
     setBusyAction('duplicating');
     try {
       await duplicateProduct(id, true);
-      await load();
+      await refresh();
       showToast('success', 'Product duplicated successfully');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to duplicate product');
@@ -71,7 +56,7 @@ export default function ProductsPage(): React.ReactElement {
     setBusyAction('deleting');
     try {
       await deleteProduct(id);
-      await load();
+      await refresh();
       showToast('success', 'Product deleted successfully');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to delete product');
@@ -86,7 +71,7 @@ export default function ProductsPage(): React.ReactElement {
     setBusyAction('publishing');
     try {
       await updateProduct(id, { status: 'published' });
-      await load();
+      await refresh();
       showToast('success', 'Product published successfully');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to publish product');
@@ -101,7 +86,7 @@ export default function ProductsPage(): React.ReactElement {
     setBusyAction('unpublishing');
     try {
       await updateProduct(id, { status: 'draft' });
-      await load();
+      await refresh();
       showToast('success', 'Product converted to draft');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to convert to draft');
@@ -118,7 +103,7 @@ export default function ProductsPage(): React.ReactElement {
       const count = selection.size;
       await bulkDelete(Array.from(selection));
       setSelection(new Set());
-      await load();
+      await refresh();
       showToast('success', `${count} product${count > 1 ? 's' : ''} deleted`);
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Bulk delete failed');
@@ -133,7 +118,7 @@ export default function ProductsPage(): React.ReactElement {
       const count = selection.size;
       await bulkStatus(Array.from(selection), status);
       setSelection(new Set());
-      await load();
+      await refresh();
       showToast('success', `${count} product${count > 1 ? 's' : ''} ${status === 'published' ? 'published' : 'set to draft'}`);
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Bulk update failed');
@@ -150,6 +135,21 @@ export default function ProductsPage(): React.ReactElement {
     <div className="p-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Products</h1>
+        <button
+          onClick={() => void handleRefresh()}
+          disabled={refreshing || loading}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-600 hover:text-[#7A021D] hover:bg-[#FDF8F4] rounded-lg transition-colors disabled:opacity-50"
+        >
+          <svg
+            className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       <div className="mb-4">
         <ProductFilters query={query} onChange={setQuery} />

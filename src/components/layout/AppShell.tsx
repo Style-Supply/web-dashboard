@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { type ReactNode } from 'react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ProductsProvider } from '@/context/ProductsContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
@@ -36,13 +37,15 @@ function AuthenticatedLayout({ children }: { children: ReactNode }): React.React
 
   // Authenticated - show full layout
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <TopBar />
-        <main className="flex-1 overflow-auto">{children}</main>
+    <ProductsProvider>
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <TopBar />
+          <main className="flex-1 overflow-auto">{children}</main>
+        </div>
       </div>
-    </div>
+    </ProductsProvider>
   );
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { ProductImage, ProductPayload } from '@/types/product';
 import { saveProduct, updateProduct } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
+import { useProducts } from '@/context/ProductsContext';
 import Button from '@/components/ui/Button';
 import BasicFieldsBlock from './BasicFieldsBlock';
 import PricingBlock from './PricingBlock';
@@ -29,6 +30,7 @@ export default function ProductForm({
 }: ProductFormProps): React.ReactElement {
   const router = useRouter();
   const { showToast } = useToast();
+  const { invalidate } = useProducts();
   const { state, setField, addVariant, removeVariant, updateVariant } = form;
   const [saveAction, setSaveAction] = useState<SaveAction>(null);
 
@@ -47,9 +49,11 @@ export default function ProductForm({
       const payload: ProductPayload = { ...state, status };
       if (productId) {
         await updateProduct(productId, payload);
+        invalidate();
         showToast('success', status === 'published' ? 'Product published successfully' : 'Draft saved successfully');
       } else {
         const created = await saveProduct(payload);
+        invalidate();
         showToast('success', status === 'published' ? 'Product created and published' : 'Draft created successfully');
         router.push(`/products/${created.id}`);
       }

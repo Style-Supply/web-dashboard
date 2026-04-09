@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type { Product, ProductListQuery, ProductListResponse } from '@/types/product';
 import { listProducts } from '@/lib/api';
 
@@ -31,15 +31,18 @@ export function ProductsProvider({ children }: { children: ReactNode }): React.R
   const [query, setQueryState] = useState<ProductListQuery>({ limit: PAGE_SIZE, offset: 0, sort: '-created_at' });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [fetchKey, setFetchKey] = useState(0);
-  const [lastFetchedKey, setLastFetchedKey] = useState<string | null>(null);
-
-  const currentKey = `${fetchKey}-${JSON.stringify(query)}`;
+  const [fetchTrigger, setFetchTrigger] = useState(0);
+  const lastFetchedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (lastFetchedKey === currentKey) return;
+    const cacheKey = `${fetchTrigger}-${JSON.stringify(query)}`;
+
+    if (lastFetchedRef.current === cacheKey) {
+      return;
+    }
 
     let cancelled = false;
+    lastFetchedRef.current = cacheKey;
 
     async function doFetch(): Promise<void> {
       setLoading(true);
@@ -49,7 +52,6 @@ export function ProductsProvider({ children }: { children: ReactNode }): React.R
         if (cancelled) return;
         setProducts(res.products);
         setTotal(res.total);
-        setLastFetchedKey(currentKey);
       } catch (e) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : 'Failed to load');
@@ -60,19 +62,20 @@ export function ProductsProvider({ children }: { children: ReactNode }): React.R
 
     void doFetch();
     return () => { cancelled = true; };
-  }, [currentKey, query, lastFetchedKey]);
+  }, [fetchTrigger, query]);
 
   const setQuery = useCallback((update: ProductListQuery | ((prev: ProductListQuery) => ProductListQuery)) => {
     setQueryState(update);
   }, []);
 
   const refresh = useCallback(() => {
-    setFetchKey((k) => k + 1);
+    setFetchTrigger((n) => n + 1);
     return Promise.resolve();
   }, []);
 
   const invalidate = useCallback(() => {
-    setFetchKey((k) => k + 1);
+    lastFetchedRef.current = null;
+    setFetchTrigger((n) => n + 1);
   }, []);
 
   return (

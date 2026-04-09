@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Product, ProductListQuery, ProductListResponse } from '@/types/product';
 import { listProducts } from '@/lib/api';
 
@@ -31,51 +31,49 @@ export function ProductsProvider({ children }: { children: ReactNode }): React.R
   const [query, setQueryState] = useState<ProductListQuery>({ limit: PAGE_SIZE, offset: 0, sort: '-created_at' });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const hasFetched = useRef<string | null>(null);
+  const [fetchKey, setFetchKey] = useState(0);
+  const [lastFetchedKey, setLastFetchedKey] = useState<string | null>(null);
 
-  const fetchProducts = useCallback(async (q: ProductListQuery, force = false): Promise<void> => {
-    const queryKey = JSON.stringify(q);
+  const currentKey = `${fetchKey}-${JSON.stringify(query)}`;
 
-    // Skip if already fetched this exact query (unless forced)
-    if (!force && hasFetched.current === queryKey) {
-      return;
+  useEffect(() => {
+    if (lastFetchedKey === currentKey) return;
+
+    let cancelled = false;
+
+    async function doFetch(): Promise<void> {
+      setLoading(true);
+      setError(null);
+      try {
+        const res: ProductListResponse = await listProducts(query);
+        if (cancelled) return;
+        setProducts(res.products);
+        setTotal(res.total);
+        setLastFetchedKey(currentKey);
+      } catch (e) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : 'Failed to load');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
-    setLoading(true);
-    setError(null);
-    try {
-      const res: ProductListResponse = await listProducts(q);
-      setProducts(res.products);
-      setTotal(res.total);
-      hasFetched.current = queryKey;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    void doFetch();
+    return () => { cancelled = true; };
+  }, [currentKey, query, lastFetchedKey]);
 
   const setQuery = useCallback((update: ProductListQuery | ((prev: ProductListQuery) => ProductListQuery)) => {
-    setQueryState((prev) => {
-      const next = typeof update === 'function' ? update(prev) : update;
-      void fetchProducts(next);
-      return next;
-    });
-  }, [fetchProducts]);
-
-  const refresh = useCallback(async () => {
-    await fetchProducts(query, true);
-  }, [fetchProducts, query]);
-
-  const invalidate = useCallback(() => {
-    hasFetched.current = null;
+    setQueryState(update);
   }, []);
 
-  // Initial fetch when query changes and hasn't been fetched
-  const queryKey = JSON.stringify(query);
-  if (hasFetched.current !== queryKey && !loading) {
-    void fetchProducts(query);
-  }
+  const refresh = useCallback(() => {
+    setFetchKey((k) => k + 1);
+    return Promise.resolve();
+  }, []);
+
+  const invalidate = useCallback(() => {
+    setFetchKey((k) => k + 1);
+  }, []);
 
   return (
     <ProductsContext.Provider

@@ -9,6 +9,8 @@ import { supabase } from '@/lib/supabase';
 const ALLOWED_EMAILS = [
   'tech@stylesupply.io',
   'hhmhta@gmail.com',
+  'aarya@stylesupply.io',
+  'shivani@stylesupply.io'
   // Add more emails as needed
 ];
 

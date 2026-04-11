@@ -5,14 +5,15 @@ import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
-// Add allowed admin emails here
-const ALLOWED_EMAILS = [
-  'tech@stylesupply.io',
-  'hhmhta@gmail.com',
-  'aarya@stylesupply.io',
-  'shivani@stylesupply.io'
-  // Add more emails as needed
-];
+const ALLOWED_EMAIL_DOMAIN = 'stylesupply.io';
+
+function isAllowedEmail(email: string | undefined | null): boolean {
+  if (!email) return false;
+  const at = email.lastIndexOf('@');
+  if (at === -1) return false;
+  const domain = email.slice(at + 1).toLowerCase().trim();
+  return domain === ALLOWED_EMAIL_DOMAIN;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const email = session.user.email?.toLowerCase();
-        if (email && ALLOWED_EMAILS.includes(email)) {
+        if (email && isAllowedEmail(email)) {
           setUser(session.user);
         } else {
           // Not in allowlist - sign them out
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const email = session.user.email?.toLowerCase();
-        if (email && ALLOWED_EMAILS.includes(email)) {
+        if (email && isAllowedEmail(email)) {
           setUser(session.user);
           setError(null);
         } else {
@@ -106,8 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   const loginWithEmail = useCallback(async (email: string, password: string) => {
     setError(null);
 
-    // Check allowlist before attempting login
-    if (!ALLOWED_EMAILS.includes(email.toLowerCase())) {
+    // Restrict to company domain before attempting login
+    if (!isAllowedEmail(email)) {
       setError('Access denied. This dashboard is restricted.');
       return;
     }

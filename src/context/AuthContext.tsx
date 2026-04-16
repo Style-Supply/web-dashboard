@@ -7,11 +7,16 @@ import { supabase } from '@/lib/supabase';
 
 const ALLOWED_EMAIL_DOMAIN = 'stylesupply.io';
 
+/** Full addresses allowed outside the company domain. */
+const ALLOWED_EMAIL_ADDRESSES = new Set<string>(['chintamanijoshiwork@gmail.com']);
+
 function isAllowedEmail(email: string | undefined | null): boolean {
   if (!email) return false;
-  const at = email.lastIndexOf('@');
+  const normalized = email.toLowerCase().trim();
+  if (ALLOWED_EMAIL_ADDRESSES.has(normalized)) return true;
+  const at = normalized.lastIndexOf('@');
   if (at === -1) return false;
-  const domain = email.slice(at + 1).toLowerCase().trim();
+  const domain = normalized.slice(at + 1);
   return domain === ALLOWED_EMAIL_DOMAIN;
 }
 

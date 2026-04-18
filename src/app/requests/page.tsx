@@ -36,7 +36,7 @@ export default function OnboardingRequests() {
         <header className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-black">Onboarding Queue</h1>
-            <p className="text-sm text-gray-500">Sunday Launch: Request Access Triage</p>
+            <p className="text-sm text-gray-500">Request Access</p>
           </div>
           <button 
             onClick={fetchRequests} 

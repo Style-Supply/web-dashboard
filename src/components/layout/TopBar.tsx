@@ -8,6 +8,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/products': 'Products',
   '/products/new': 'Add Product',
   '/products/batch': 'Batch Upload',
+  '/users': 'Users',
 };
 
 export default function TopBar(): React.ReactElement {

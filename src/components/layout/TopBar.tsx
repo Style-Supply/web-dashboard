@@ -9,13 +9,20 @@ const PAGE_TITLES: Record<string, string> = {
   '/products/new': 'Add Product',
   '/products/batch': 'Batch Upload',
   '/users': 'Users',
+  '/users/new': 'Add User',
 };
 
 export default function TopBar(): React.ReactElement {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const title = PAGE_TITLES[pathname] || (pathname.startsWith('/products/') ? 'Edit Product' : 'Dashboard');
+  const title =
+    PAGE_TITLES[pathname] ||
+    (pathname.startsWith('/products/')
+      ? 'Edit Product'
+      : pathname.startsWith('/users/')
+        ? 'Edit User'
+        : 'Dashboard');
 
   const name = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email;
   const initials = name

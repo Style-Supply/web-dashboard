@@ -1,14 +1,27 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/ui/Toast';
+import {
+  bulkDeleteUsers,
+  bulkUpdateStatus,
+  deleteUser,
+  listUsers,
+  updateUser,
+} from '@/lib/users';
 import type { OnboardingSubmission } from '@/types/user';
 import UserTable from '@/components/list/UserTable';
 import UserDetailPanel from '@/components/list/UserDetailPanel';
+import UserBulkActionBar from '@/components/list/UserBulkActionBar';
 
 const PAGE_SIZE = 50;
 
+type BulkBusy = false | 'delete' | 'pending' | 'approved' | 'rejected';
+type RowAction = 'approving' | 'rejecting' | 'deleting' | null;
+
 export default function UsersPage(): React.ReactElement {
+  const { showToast } = useToast();
   const [users, setUsers] = useState<OnboardingSubmission[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -16,35 +29,29 @@ export default function UsersPage(): React.ReactElement {
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState<BulkBusy>(false);
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+  const [rowAction, setRowAction] = useState<RowAction>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-
-    let query = supabase
-      .from('onboarding_submissions')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    const trimmed = search.trim();
-    if (trimmed.length > 0) {
-      const pattern = `%${trimmed}%`;
-      query = query.or(
-        `full_name.ilike.${pattern},email.ilike.${pattern},phone_number.ilike.${pattern}`,
-      );
-    }
-
-    const { data, count, error: err } = await query;
-    if (err) {
-      setError(err.message);
+    try {
+      const { users, total } = await listUsers({
+        q: search,
+        limit: PAGE_SIZE,
+        offset,
+      });
+      setUsers(users);
+      setTotal(total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load users');
       setUsers([]);
       setTotal(0);
-    } else {
-      setUsers((data ?? []) as OnboardingSubmission[]);
-      setTotal(count ?? 0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [offset, search]);
 
   useEffect(() => {
@@ -56,6 +63,81 @@ export default function UsersPage(): React.ReactElement {
     [users, selectedId],
   );
 
+  async function handleRowStatus(
+    id: string,
+    status: 'approved' | 'rejected',
+  ): Promise<void> {
+    setRowBusy(id);
+    setRowAction(status === 'approved' ? 'approving' : 'rejecting');
+    try {
+      await updateUser(id, { approval_status: status });
+      await load();
+      showToast(
+        'success',
+        status === 'approved' ? 'User approved' : 'User rejected',
+      );
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Update failed');
+    } finally {
+      setRowBusy(null);
+      setRowAction(null);
+    }
+  }
+
+  async function handleRowDelete(id: string): Promise<void> {
+    if (!confirm('Delete this user?')) return;
+    setRowBusy(id);
+    setRowAction('deleting');
+    try {
+      await deleteUser(id);
+      setSelection((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      await load();
+      showToast('success', 'User deleted');
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setRowBusy(null);
+      setRowAction(null);
+    }
+  }
+
+  async function handleBulkDelete(): Promise<void> {
+    if (!confirm(`Delete ${selection.size} user${selection.size === 1 ? '' : 's'}?`)) return;
+    setBulkBusy('delete');
+    try {
+      const count = selection.size;
+      await bulkDeleteUsers(Array.from(selection));
+      setSelection(new Set());
+      await load();
+      showToast('success', `${count} user${count === 1 ? '' : 's'} deleted`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Bulk delete failed');
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function handleBulkStatus(
+    status: 'pending' | 'approved' | 'rejected',
+  ): Promise<void> {
+    setBulkBusy(status);
+    try {
+      const count = selection.size;
+      await bulkUpdateStatus(Array.from(selection), status);
+      setSelection(new Set());
+      await load();
+      showToast('success', `${count} user${count === 1 ? '' : 's'} set to ${status}`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Bulk update failed');
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -63,26 +145,42 @@ export default function UsersPage(): React.ReactElement {
     <div className="p-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-[#2C0505]">Users</h1>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:bg-[#FDF8F4] hover:text-[#7A021D] disabled:opacity-50"
-        >
-          <svg
-            className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void load()}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:bg-[#FDF8F4] hover:text-[#7A021D] disabled:opacity-50"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          {loading ? 'Loading…' : 'Refresh'}
-        </button>
+            <svg
+              className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            {loading ? 'Loading…' : 'Refresh'}
+          </button>
+          <Link
+            href="/users/new"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#7A021D] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#6B0019]"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add User
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4">
@@ -98,6 +196,15 @@ export default function UsersPage(): React.ReactElement {
         />
       </div>
 
+      <div className="mb-3">
+        <UserBulkActionBar
+          selectedIds={Array.from(selection)}
+          busy={bulkBusy}
+          onDelete={() => void handleBulkDelete()}
+          onStatusChange={(s) => void handleBulkStatus(s)}
+        />
+      </div>
+
       {error && (
         <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
@@ -108,7 +215,14 @@ export default function UsersPage(): React.ReactElement {
         <UserTable
           users={users}
           loading={loading}
-          onSelect={(id) => setSelectedId(id)}
+          selection={selection}
+          rowBusy={rowBusy}
+          rowAction={rowAction}
+          onSelectionChange={setSelection}
+          onView={(id) => setSelectedId(id)}
+          onApprove={(id) => void handleRowStatus(id, 'approved')}
+          onReject={(id) => void handleRowStatus(id, 'rejected')}
+          onDelete={(id) => void handleRowDelete(id)}
         />
       </div>
 

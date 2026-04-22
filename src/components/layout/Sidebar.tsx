@@ -2,16 +2,22 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-interface NavItem {
+interface NavChild {
+  href: string;
+  label: string;
+}
+
+interface NavGroup {
   href: string;
   label: string;
   icon: React.ReactNode;
+  children: NavChild[];
 }
 
-const NAV: NavItem[] = [
+const NAV: NavGroup[] = [
   {
     href: '/products',
     label: 'Products',
@@ -20,24 +26,10 @@ const NAV: NavItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
       </svg>
     ),
-  },
-  {
-    href: '/products/new',
-    label: 'Add Product',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-      </svg>
-    ),
-  },
-  {
-    href: '/products/batch',
-    label: 'Batch Upload',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-      </svg>
-    ),
+    children: [
+      { href: '/products/new', label: 'Add Product' },
+      { href: '/products/batch', label: 'Batch Upload' },
+    ],
   },
   {
     href: '/users',
@@ -47,27 +39,55 @@ const NAV: NavItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H2v-2a4 4 0 013-3.87m10-4a4 4 0 10-8 0 4 4 0 008 0zm6-4a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
-  },
-  {
-    href: '/users/new',
-    label: 'Add User',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h9m5-5v6m3-3h-6" />
-      </svg>
-    ),
+    children: [{ href: '/users/new', label: 'Add User' }],
   },
 ];
 
 export default function Sidebar(): React.ReactElement {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const g of NAV) {
+      if (pathname.startsWith(g.href)) initial[g.href] = true;
+    }
+    return initial;
+  });
+
+  useEffect(() => {
+    // Auto-expand the group that owns the current route.
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const g of NAV) {
+        if (pathname.startsWith(g.href)) next[g.href] = true;
+      }
+      return next;
+    });
+  }, [pathname]);
+
+  function isGroupActive(group: NavGroup): boolean {
+    return pathname === group.href || pathname.startsWith(`${group.href}/`);
+  }
+
+  function handleGroupClick(group: NavGroup, e: React.MouseEvent): void {
+    // On the group row: open/close the dropdown AND navigate to the index route.
+    // If already on the index, just toggle the dropdown.
+    e.preventDefault();
+    if (collapsed) {
+      router.push(group.href);
+      return;
+    }
+    setOpenGroups((prev) => ({ ...prev, [group.href]: !prev[group.href] }));
+    if (pathname !== group.href) {
+      router.push(group.href);
+    }
+  }
 
   return (
     <aside
       className={`${collapsed ? 'w-[72px]' : 'w-60'} shrink-0 bg-[#2C0505] text-white flex flex-col transition-all duration-300`}
     >
-      {/* Logo and toggle */}
       <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-5 py-5 border-b border-white/10`}>
         {!collapsed && (
           <Link href="/products" className="flex items-center">
@@ -90,31 +110,60 @@ export default function Sidebar(): React.ReactElement {
         </button>
       </div>
 
-      {/* Navigation */}
       <nav className={`flex-1 flex flex-col gap-1 ${collapsed ? 'px-2' : 'px-3'} py-4`}>
-        {NAV.map((item) => {
-          const active =
-            pathname === item.href ||
-            (item.href === '/products' &&
-              pathname.startsWith('/products/') &&
-              !['/products/new', '/products/batch'].includes(pathname)) ||
-            (item.href === '/users' &&
-              pathname.startsWith('/users/') &&
-              pathname !== '/users/new');
+        {NAV.map((group) => {
+          const groupActive = isGroupActive(group);
+          const open = !collapsed && !!openGroups[group.href];
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-[#7A021D] text-white'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
-              } ${collapsed ? 'justify-center' : ''}`}
-            >
-              {item.icon}
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
+            <div key={group.href} className="flex flex-col">
+              <a
+                href={group.href}
+                onClick={(e) => handleGroupClick(group, e)}
+                title={collapsed ? group.label : undefined}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors cursor-pointer ${
+                  groupActive
+                    ? 'bg-[#7A021D] text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                } ${collapsed ? 'justify-center' : ''}`}
+              >
+                {group.icon}
+                {!collapsed && (
+                  <>
+                    <span className="flex-1">{group.label}</span>
+                    {group.children.length > 0 && (
+                      <svg
+                        className={`w-4 h-4 opacity-70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </>
+                )}
+              </a>
+              {open && group.children.length > 0 && (
+                <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-white/10 pl-3">
+                  {group.children.map((child) => {
+                    const childActive = pathname === child.href;
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                          childActive
+                            ? 'bg-[#7A021D] text-white'
+                            : 'text-white/60 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {child.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>

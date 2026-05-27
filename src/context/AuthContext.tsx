@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 const ALLOWED_EMAIL_DOMAIN = 'stylesupply.io';
 
 /** Full addresses allowed outside the company domain. */
-const ALLOWED_EMAIL_ADDRESSES = new Set<string>(['chintamanijoshiwork@gmail.com']);
+const ALLOWED_EMAIL_ADDRESSES = new Set<string>([]);
 
 function isAllowedEmail(email: string | undefined | null): boolean {
   if (!email) return false;

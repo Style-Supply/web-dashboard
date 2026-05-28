@@ -115,6 +115,7 @@ export async function uploadImages(productId: string, files: File[]): Promise<Im
   const res = await fetch(`${API_BASE}/api/admin/products/${productId}/images/upload`, {
     method: 'POST',
     body: fd,
+    credentials: 'include',
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: { message: res.statusText } }));

@@ -7,12 +7,14 @@ import {
   scrapeImagesFromPage,
   deleteImage,
   reorderImages,
-  registerImage,
+  uploadImages,
+  retagImage,
+  type ColourTag,
 } from '@/lib/api';
-import { supabase, PRODUCT_IMAGES_BUCKET } from '@/lib/supabase';
 import { isLikelyHttpUrl } from '@/lib/url-check';
 import Button from '@/components/ui/Button';
 import Textarea from '@/components/ui/Textarea';
+import { useTaxonomy } from '@/hooks/useTaxonomy';
 
 interface ImageImporterProps {
   productId: string | null;
@@ -36,6 +38,10 @@ export default function ImageImporter({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const { colours } = useTaxonomy();
+  const [activeColour, setActiveColour] = useState<ColourTag>({ colour_id: null, custom_colour: null });
+  const [otherText, setOtherText] = useState('');
+
   if (productId === null) {
     return (
       <div className="rounded border border-dashed border-neutral-300 bg-neutral-50 p-4 text-sm text-neutral-600">
@@ -53,7 +59,7 @@ export default function ImageImporter({
     if (urls.length === 0) return;
     setBusy('url');
     try {
-      const result = await importImagesFromUrls(productId, urls);
+      const result = await importImagesFromUrls(productId, urls, activeColour);
       onImagesChange([...images, ...result.imported]);
       setUrlText('');
       if (result.failed.length > 0) {
@@ -72,7 +78,7 @@ export default function ImageImporter({
     if (!url || !isLikelyHttpUrl(url)) return;
     setBusy('page');
     try {
-      const result = await scrapeImagesFromPage(productId, url);
+      const result = await scrapeImagesFromPage(productId, url, undefined, activeColour);
       onImagesChange([...images, ...result.imported]);
       setPageUrl('');
       if (result.imported.length === 0) {
@@ -87,66 +93,21 @@ export default function ImageImporter({
     }
   }
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB per file (Supabase default limit)
-
   async function handleFiles(files: File[]): Promise<void> {
     if (!productId || files.length === 0) return;
 
-    // Check individual file sizes
-    const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
-    if (oversized.length > 0) {
-      const names = oversized.map((f) => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ');
-      alert(`File size exceeds 50 MB limit: ${names}`);
-      return;
-    }
-
     setBusy('upload');
-    const imported: ProductImage[] = [];
-    const failed: { name: string; reason: string }[] = [];
-
-    for (const file of files) {
-      try {
-        // Generate unique path
-        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const storagePath = `${productId}/${crypto.randomUUID()}.${ext}`;
-
-        // Upload directly to Supabase Storage
-        const { error: uploadErr } = await supabase.storage
-          .from(PRODUCT_IMAGES_BUCKET)
-          .upload(storagePath, file, {
-            contentType: file.type,
-            upsert: false,
-          });
-
-        if (uploadErr) {
-          throw new Error(uploadErr.message);
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from(PRODUCT_IMAGES_BUCKET)
-          .getPublicUrl(storagePath);
-
-        // Register in database via backend
-        const registered = await registerImage(productId, storagePath, urlData.publicUrl);
-        imported.push(registered);
-      } catch (e) {
-        failed.push({
-          name: file.name,
-          reason: e instanceof Error ? e.message : 'Upload failed',
-        });
+    try {
+      const result = await uploadImages(productId, files, activeColour);
+      onImagesChange([...images, ...result.imported]);
+      if (result.failed.length > 0) {
+        alert(`Failed to upload ${result.failed.length} file(s): ${result.failed.map(f => `${f.url}: ${f.reason}`).join(', ')}`);
       }
+    } catch (e) {
+      alert(`Upload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    } finally {
+      setBusy(false);
     }
-
-    if (imported.length > 0) {
-      onImagesChange([...images, ...imported]);
-    }
-
-    if (failed.length > 0) {
-      alert(`Failed to upload ${failed.length} file(s): ${failed.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
-    }
-
-    setBusy(false);
   }
 
   async function handleDelete(imageId: string): Promise<void> {
@@ -277,6 +238,39 @@ export default function ImageImporter({
 
       {images.length > 0 && (
         <div>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-neutral-500">Tag uploads as:</span>
+            <button
+              type="button"
+              onClick={() => setActiveColour({ colour_id: null, custom_colour: null })}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                activeColour.colour_id === null && !activeColour.custom_colour ? 'border-black bg-black text-white' : 'border-neutral-300'
+              }`}
+            >
+              All colours
+            </button>
+            {colours.map((c) => {
+              const on = activeColour.colour_id === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => { setActiveColour({ colour_id: c.id, custom_colour: null }); setOtherText(''); }}
+                  className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs ${on ? 'border-black bg-black text-white' : 'border-neutral-300'}`}
+                >
+                  <span className="inline-block h-3 w-3 rounded-full border" style={{ backgroundColor: c.hex }} />
+                  {c.name}
+                </button>
+              );
+            })}
+            <input
+              type="text"
+              value={otherText}
+              placeholder="Custom colour…"
+              onChange={(e) => { setOtherText(e.target.value); setActiveColour({ colour_id: null, custom_colour: e.target.value || null }); }}
+              className="w-40 rounded border border-neutral-200 px-2 py-1 text-xs"
+            />
+          </div>
           <p className="mb-2 text-xs text-neutral-500">Drag images to reorder. First image is the thumbnail.</p>
           <div className="grid grid-cols-3 gap-3">
             {images.map((img, index) => (
@@ -333,6 +327,33 @@ export default function ImageImporter({
                 >
                   {deletingId === img.id ? 'Deleting…' : 'Delete'}
                 </button>
+                {(() => {
+                  const tag = colours.find((c) => c.id === img.colour_id);
+                  return (
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-neutral-500">
+                      {img.colour_id ? (
+                        <>
+                          <span className="inline-block h-2 w-2 rounded-full border" style={{ backgroundColor: tag?.hex ?? '#888' }} />
+                          {tag?.name ?? 'Unknown'}
+                        </>
+                      ) : img.custom_colour ? (
+                        <span>Custom: {img.custom_colour}</span>
+                      ) : (
+                        <span>All colours</span>
+                      )}
+                      <button
+                        type="button"
+                        className="ml-auto text-neutral-400 hover:text-black"
+                        onClick={async () => {
+                          await retagImage(img.id, activeColour);
+                          onImagesChange(images.map((i) => (i.id === img.id ? { ...i, ...activeColour } : i)));
+                        }}
+                      >
+                        Retag
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

@@ -3,6 +3,8 @@
 import type { ProductListQuery } from '@/types/product';
 import Input from '@/components/ui/Input';
 import AutocompleteInput from '@/components/product-form/AutocompleteInput';
+import DropdownSelect from '@/components/ui/DropdownSelect';
+import { useTaxonomy } from '@/hooks/useTaxonomy';
 
 interface ProductFiltersProps {
   query: ProductListQuery;
@@ -15,6 +17,8 @@ export default function ProductFilters({
   query,
   onChange,
 }: ProductFiltersProps): React.ReactElement {
+  const { brands, tree, colours, collections } = useTaxonomy();
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="w-64">
@@ -25,19 +29,35 @@ export default function ProductFilters({
         />
       </div>
       <div className="w-48">
-        <AutocompleteInput
-          field="brand"
-          value={query.brand ?? ''}
-          onChange={(v) => onChange({ ...query, brand: v || undefined, offset: 0 })}
-          placeholder="Brand"
+        <DropdownSelect
+          value={query.brand_id ?? null}
+          options={brands.map((b) => ({ value: b.id, label: b.name }))}
+          placeholder="All brands"
+          onChange={(v) => onChange({ ...query, brand_id: v ?? undefined, offset: 0 })}
         />
       </div>
       <div className="w-48">
-        <AutocompleteInput
-          field="category"
-          value={query.category ?? ''}
-          onChange={(v) => onChange({ ...query, category: v || undefined, offset: 0 })}
-          placeholder="Category"
+        <DropdownSelect
+          value={query.category_id ?? null}
+          options={tree.map((t) => ({ value: t.id, label: t.name }))}
+          placeholder="All types"
+          onChange={(v) => onChange({ ...query, category_id: v ?? undefined, subcategory_id: undefined, offset: 0 })}
+        />
+      </div>
+      <div className="w-48">
+        <DropdownSelect
+          value={query.colour_id ?? null}
+          options={colours.map((c) => ({ value: c.id, label: c.name, swatch: c.hex }))}
+          placeholder="All colours"
+          onChange={(v) => onChange({ ...query, colour_id: v ?? undefined, offset: 0 })}
+        />
+      </div>
+      <div className="w-48">
+        <DropdownSelect
+          value={query.collection_id ?? null}
+          options={collections.map((c) => ({ value: c.id, label: c.name }))}
+          placeholder="All collections"
+          onChange={(v) => onChange({ ...query, collection_id: v ?? undefined, offset: 0 })}
         />
       </div>
       <div className="flex gap-1 rounded-full bg-neutral-100 p-1 text-xs">
@@ -47,7 +67,7 @@ export default function ProductFilters({
             <button
               key={s}
               type="button"
-              onClick={() => onChange({ ...query, status: s, offset: 0 })}
+              onClick={() => onChange({ ...query, status: s === 'all' ? undefined : s, offset: 0 })}
               className={`rounded-full px-3 py-1.5 capitalize ${active ? 'bg-white shadow' : 'text-neutral-600'}`}
             >
               {s}

@@ -122,6 +122,7 @@ export default function ProductForm({
           <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Images</h2>
           <ImageImporter
             productId={productId}
+            variants={state.variants}
             images={images}
             onImagesChange={onImagesChange}
           />

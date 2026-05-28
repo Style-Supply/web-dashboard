@@ -1,103 +1,99 @@
 'use client';
 
+import DropdownSelect from '@/components/ui/DropdownSelect';
+import ColourPicker from './ColourPicker';
+import { useTaxonomy } from '@/hooks/useTaxonomy';
 import type { ProductVariant } from '@/types/product';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
-import AutocompleteInput from './AutocompleteInput';
 
-const SIZES = ['', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free'] as const;
+const SIZES: ProductVariant['size'][] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free'];
 
-interface VariantEditorProps {
-  variants: ProductVariant[];
-  addVariant: () => void;
-  removeVariant: (index: number) => void;
-  updateVariant: (index: number, patch: Partial<ProductVariant>) => void;
+export interface VariantEditorProps {
+  value: ProductVariant[];
+  onChange: (next: ProductVariant[]) => void;
 }
 
 function tupleKey(v: ProductVariant): string {
-  return `${v.size}__${v.colour ?? ''}__${v.location ?? ''}`;
+  const colourKey = v.colour_id ?? (v.custom_colour ? `_custom_${v.custom_colour.toLowerCase().trim()}` : '');
+  return `${v.size}__${colourKey}__${v.location_id ?? ''}`;
 }
 
-export default function VariantEditor({
-  variants,
-  addVariant,
-  removeVariant,
-  updateVariant,
-}: VariantEditorProps): React.ReactElement {
-  const dupes = new Set<number>();
-  const seen = new Map<string, number>();
-  variants.forEach((v, i) => {
-    if (!v.size) return;
-    const key = tupleKey(v);
-    if (seen.has(key)) {
-      dupes.add(i);
-      dupes.add(seen.get(key) as number);
-    } else {
-      seen.set(key, i);
-    }
-  });
+export default function VariantEditor({ value, onChange }: VariantEditorProps): React.ReactElement {
+  const { colours, locations, loading } = useTaxonomy();
+
+  if (loading) return <div className="text-sm text-neutral-400">Loading…</div>;
+
+  function add() {
+    onChange([
+      ...value,
+      { size: 'M', colour_id: null, custom_colour: null, quantity: 1, location_id: null },
+    ]);
+  }
+
+  function update(index: number, patch: Partial<ProductVariant>) {
+    onChange(value.map((v, i) => (i === index ? { ...v, ...patch } : v)));
+  }
+
+  function remove(index: number) {
+    onChange(value.filter((_, i) => i !== index));
+  }
+
+  // Duplicate detection
+  const counts = new Map<string, number>();
+  for (const v of value) counts.set(tupleKey(v), (counts.get(tupleKey(v)) ?? 0) + 1);
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Variants</h2>
-      <div className="space-y-2">
-        {variants.map((v, i) => {
-          const dup = dupes.has(i);
-          return (
-            <div
-              key={i}
-              className={`grid grid-cols-[100px_1fr_100px_1fr_auto] items-center gap-2 rounded border p-2 ${dup ? 'border-red-500 bg-red-50' : 'border-neutral-200'}`}
+    <div className="space-y-2">
+      {value.map((v, i) => {
+        const dup = (counts.get(tupleKey(v)) ?? 0) > 1;
+        return (
+          <div
+            key={i}
+            className={`grid grid-cols-1 gap-2 rounded border p-3 md:grid-cols-[120px_1fr_120px_1fr_40px] md:items-center ${dup ? 'border-red-300 bg-red-50' : 'border-neutral-200'}`}
+          >
+            <DropdownSelect
+              value={v.size}
+              allowClear={false}
+              options={SIZES.map((s) => ({ value: s, label: s }))}
+              onChange={(val) => update(i, { size: val as ProductVariant['size'] })}
+            />
+            <ColourPicker
+              value={{ colour_id: v.colour_id, custom_colour: v.custom_colour }}
+              colours={colours}
+              onChange={(p) => update(i, { colour_id: p.colour_id, custom_colour: p.custom_colour })}
+            />
+            <input
+              type="number"
+              min={0}
+              value={v.quantity}
+              onChange={(e) => update(i, { quantity: Number(e.target.value) || 0 })}
+              className="w-full rounded border border-neutral-200 px-3 py-2 text-sm"
+            />
+            <DropdownSelect
+              value={v.location_id}
+              options={locations.map((l) => ({ value: l.id, label: l.name }))}
+              placeholder="Location"
+              onChange={(val) => update(i, { location_id: val })}
+            />
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="rounded border border-neutral-200 px-2 py-2 text-sm text-neutral-500 hover:border-red-300 hover:text-red-600"
             >
-              <select
-                value={v.size}
-                onChange={(e) => updateVariant(i, { size: e.target.value })}
-                className="h-10 rounded border border-neutral-300 bg-white px-2 text-sm"
-              >
-                {SIZES.map((s) => (
-                  <option key={s} value={s}>
-                    {s || '—'}
-                  </option>
-                ))}
-              </select>
-              <AutocompleteInput
-                field="colour"
-                value={v.colour ?? ''}
-                onChange={(val) => updateVariant(i, { colour: val || null })}
-                placeholder="Colour"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={v.quantity}
-                onChange={(e) => updateVariant(i, { quantity: Number(e.target.value) || 0 })}
-              />
-              <AutocompleteInput
-                field="location"
-                value={v.location ?? ''}
-                onChange={(val) => updateVariant(i, { location: val || null })}
-                placeholder="Location"
-              />
-              <Button variant="ghost" size="sm" type="button" onClick={() => removeVariant(i)}>
-                ✕
-              </Button>
-            </div>
-          );
-        })}
-      </div>
-      <Button variant="secondary" size="sm" type="button" onClick={addVariant}>
+              ×
+            </button>
+            {dup && <p className="md:col-span-5 text-xs text-red-600">Duplicate row — same size + colour + location.</p>}
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        onClick={add}
+        className="rounded border border-dashed border-neutral-300 px-3 py-2 text-sm hover:border-neutral-400"
+      >
         + Add variant
-      </Button>
-    </section>
+      </button>
+    </div>
   );
 }
 
-export function hasDuplicateVariants(variants: ProductVariant[]): boolean {
-  const seen = new Set<string>();
-  for (const v of variants) {
-    if (!v.size) continue;
-    const key = tupleKey(v);
-    if (seen.has(key)) return true;
-    seen.add(key);
-  }
-  return false;
-}
+export { tupleKey };

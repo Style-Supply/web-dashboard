@@ -140,9 +140,10 @@ export async function deleteImage(imageId: string): Promise<void> {
 }
 
 export async function reorderImages(productId: string, imageIds: string[]): Promise<void> {
-  // TODO: backend has no reorder endpoint yet. No-op pending task 3/4 extension.
-  void productId;
-  void imageIds;
+  await request<void>(`/api/admin/products/${productId}/images/reorder`, {
+    method: 'POST',
+    body: JSON.stringify({ image_ids: imageIds }),
+  });
 }
 
 // ---------- Batch ----------

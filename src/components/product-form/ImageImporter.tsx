@@ -276,47 +276,66 @@ export default function ImageImporter({
       )}
 
       {images.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          {images.map((img, index) => (
-            <div
-              key={img.id}
-              draggable
-              onDragStart={() => setDragIndex(index)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleReorderDrop(index)}
-              className="rounded border border-neutral-200 bg-white p-2"
-            >
-              <div className="relative aspect-square overflow-hidden rounded bg-neutral-100">
-                {img.public_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={img.public_url}
-                    alt={img.alt ?? ''}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                )}
-                {deletingId === img.id && (
-                  <div className="absolute inset-0 grid place-items-center bg-black/40">
-                    <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  </div>
-                )}
-              </div>
-              <input
-                className="mt-2 w-full rounded border border-neutral-200 px-2 py-1 text-xs"
-                value={img.alt ?? ''}
-                placeholder="Alt text"
-                onChange={(e) => handleAltChange(img.id, e.target.value)}
-              />
-              <button
-                type="button"
-                disabled={deletingId === img.id}
-                onClick={() => void handleDelete(img.id)}
-                className="mt-1 w-full text-xs text-red-600 hover:underline disabled:opacity-50"
+        <div>
+          <p className="mb-2 text-xs text-neutral-500">Drag images to reorder. First image is the thumbnail.</p>
+          <div className="grid grid-cols-3 gap-3">
+            {images.map((img, index) => (
+              <div
+                key={img.id}
+                draggable
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleReorderDrop(index)}
+                className={`group relative cursor-grab rounded border bg-white p-2 transition-all active:cursor-grabbing ${
+                  dragIndex === index
+                    ? 'border-[color:var(--color-primary)] ring-2 ring-[color:var(--color-primary)]/20'
+                    : 'border-neutral-200 hover:border-neutral-300'
+                }`}
               >
-                {deletingId === img.id ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          ))}
+                {/* Drag handle indicator */}
+                <div className="absolute left-1/2 top-1 z-10 -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex gap-0.5 rounded bg-black/50 px-1.5 py-0.5">
+                    <span className="h-1 w-1 rounded-full bg-white"></span>
+                    <span className="h-1 w-1 rounded-full bg-white"></span>
+                    <span className="h-1 w-1 rounded-full bg-white"></span>
+                  </div>
+                </div>
+                {/* Position badge */}
+                <div className="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[10px] font-medium text-white">
+                  {index + 1}
+                </div>
+                <div className="relative aspect-square overflow-hidden rounded bg-neutral-100">
+                  {img.public_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={img.public_url}
+                      alt={img.alt ?? ''}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )}
+                  {deletingId === img.id && (
+                    <div className="absolute inset-0 grid place-items-center bg-black/40">
+                      <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    </div>
+                  )}
+                </div>
+                <input
+                  className="mt-2 w-full rounded border border-neutral-200 px-2 py-1 text-xs"
+                  value={img.alt ?? ''}
+                  placeholder="Alt text"
+                  onChange={(e) => handleAltChange(img.id, e.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={deletingId === img.id}
+                  onClick={() => void handleDelete(img.id)}
+                  className="mt-1 w-full text-xs text-red-600 hover:underline disabled:opacity-50"
+                >
+                  {deletingId === img.id ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

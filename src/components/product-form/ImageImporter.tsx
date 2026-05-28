@@ -21,7 +21,11 @@ interface DerivedSection {
   label: string;
 }
 
-function buildSections(variants: ProductVariant[], colours: { id: string; name: string; hex: string }[]): DerivedSection[] {
+function buildSections(
+  variants: ProductVariant[],
+  colours: { id: string; name: string; hex: string }[],
+  images: ProductImage[],
+): DerivedSection[] {
   const seenColourIds = new Set<string>();
   const seenCustomLower = new Set<string>();
   const sections: DerivedSection[] = [];
@@ -56,13 +60,18 @@ function buildSections(variants: ProductVariant[], colours: { id: string; name: 
     }
   }
 
-  sections.push({
-    key: 'unassigned',
-    kind: { type: 'unassigned' },
-    match: (img) => img.colour_id === null && img.custom_colour === null,
-    tag: { colour_id: null, custom_colour: null },
-    label: 'Unassigned / All colours',
-  });
+  const hasUnassignedImages = images.some(
+    (img) => img.colour_id === null && img.custom_colour === null,
+  );
+  if (sections.length === 0 || hasUnassignedImages) {
+    sections.push({
+      key: 'unassigned',
+      kind: { type: 'unassigned' },
+      match: (img) => img.colour_id === null && img.custom_colour === null,
+      tag: { colour_id: null, custom_colour: null },
+      label: 'Unassigned / All colours',
+    });
+  }
 
   return sections;
 }
@@ -84,8 +93,8 @@ export default function ImageImporter({
   }
 
   const id = productId;
-  const sections = buildSections(variants, colours);
-  const onlyUnassigned = sections.length === 1; // means no variant colours
+  const sections = buildSections(variants, colours, images);
+  const onlyUnassigned = sections.length === 1 && sections[0].kind.type === 'unassigned';
 
   // Helper: re-flatten and persist global sort order whenever section composition changes.
   function commit(reflattened: ProductImage[]): void {

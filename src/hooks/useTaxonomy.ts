@@ -1,6 +1,17 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
+
+export function invalidateTaxonomyCache() {
+  mutate(
+    (key) =>
+      Array.isArray(key) &&
+      ['brands', 'collections', 'looks', 'materials', 'colours', 'locations'].includes(key[0]),
+    undefined,
+    { revalidate: true }
+  );
+  mutate('categoryTree', undefined, { revalidate: true });
+}
 import {
   Brands,
   Collections,

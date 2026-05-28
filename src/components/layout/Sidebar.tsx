@@ -32,6 +32,66 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    href: '/brands',
+    label: 'Brands',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+    children: [],
+  },
+  {
+    href: '/collections',
+    label: 'Collections',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+    children: [],
+  },
+  {
+    href: '/categories',
+    label: 'Categories',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 012 12V7a2 2 0 012-2z" />
+      </svg>
+    ),
+    children: [],
+  },
+  {
+    href: '/materials',
+    label: 'Materials',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7m0 16.972a4.006 4.006 0 003.7-3.7c.092-1.209.138-2.43.138-3.662m0 0a18.022 18.022 0 05.174-5.6m0 0a18.022 18.022 0 01-5.174 5.6m0 0C9.930 9.755 8.25 9 6 9c-1.657 0-3 .895-3 2s1.343 2 3 2h3z" />
+      </svg>
+    ),
+    children: [],
+  },
+  {
+    href: '/colours',
+    label: 'Colours',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v10.5A2.25 2.25 0 006.75 22.5h10.5A2.25 2.25 0 0019.5 20.25V9.75a2.25 2.25 0 00-2.25-2.25h-.75m0 0a4.5 4.5 0 1-9 0m0 0a4.5 4.5 0 019 0m-4.5 3a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+      </svg>
+    ),
+    children: [],
+  },
+  {
+    href: '/locations',
+    label: 'Locations',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.8 15.5a7.5 7.5 0 11-15 0" />
+      </svg>
+    ),
+    children: [],
+  },
+  {
     href: '/users',
     label: 'Users',
     icon: (

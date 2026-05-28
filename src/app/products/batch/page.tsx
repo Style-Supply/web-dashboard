@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { BatchProductPayload } from '@/types/product';
+import type { BatchRowPayload } from '@/types/product';
 import { batchImport, type BatchImportRow } from '@/lib/api';
 import { parseCsvFile } from '@/lib/csv-parse';
 import type { GroupingError } from '@/components/batch/csvTemplate';
@@ -16,7 +16,7 @@ type Step = 'drop' | 'preview' | 'results';
 export default function BatchPage(): React.ReactElement {
   const { invalidate } = useProducts();
   const [step, setStep] = useState<Step>('drop');
-  const [products, setProducts] = useState<BatchProductPayload[]>([]);
+  const [products, setProducts] = useState<BatchRowPayload[]>([]);
   const [errors, setErrors] = useState<GroupingError[]>([]);
   const [results, setResults] = useState<BatchImportRow[]>([]);
   const [importing, setImporting] = useState<boolean>(false);

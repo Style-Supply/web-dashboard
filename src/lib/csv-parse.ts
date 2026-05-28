@@ -4,9 +4,13 @@ import {
   groupRowsIntoProducts,
   type CsvRow,
   type GroupingResult,
+  type GroupingError,
 } from '@/components/batch/csvTemplate';
+import type { BatchRowPayload } from '@/types/product';
 
-export interface CsvParseResult extends GroupingResult {
+export interface CsvParseResult {
+  products: BatchRowPayload[];
+  errors: GroupingError[];
   rowCount: number;
 }
 

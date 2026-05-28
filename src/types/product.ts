@@ -107,3 +107,27 @@ export type SuggestionField =
   | 'fabric'
   | 'colour'
   | 'location';
+
+export interface BatchRowPayload {
+  name: string;
+  sku?: string | null;
+  brand_slug?: string;
+  category_type_slug?: string;
+  subcategory_slug?: string;
+  sub_subcategory_slug?: string;
+  material_slug?: string;
+  fabric_details?: string | null;
+  description?: string | null;
+  retail_price_minor: number;
+  rent_price_minor?: number | null;
+  currency?: string;
+  look_slugs?: string[];
+  variants?: Array<{
+    size: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'Free';
+    colour_slug?: string | null;
+    custom_colour?: string | null;
+    quantity: number;
+    location_slug?: string | null;
+  }>;
+  image_urls?: string[];
+}

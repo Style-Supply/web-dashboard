@@ -1,12 +1,12 @@
 'use client';
 
 import { Fragment, useState } from 'react';
-import type { BatchProductPayload } from '@/types/product';
+import type { BatchRowPayload } from '@/types/product';
 import type { GroupingError } from './csvTemplate';
 import { formatINR } from '@/lib/price';
 
 interface BatchPreviewTableProps {
-  products: BatchProductPayload[];
+  products: BatchRowPayload[];
   errors: GroupingError[];
 }
 
@@ -46,7 +46,7 @@ export default function BatchPreviewTable({
               >
                 <td className="px-3 py-2">{i + 1}</td>
                 <td className="px-3 py-2">{p.name}</td>
-                <td className="px-3 py-2">{p.brand_id ?? '—'}</td>
+                <td className="px-3 py-2">{p.brand_slug ?? '—'}</td>
                 <td className="px-3 py-2">{formatINR(p.retail_price_minor)}</td>
                 <td className="px-3 py-2">{p.variants?.length ?? 0}</td>
                 <td className="px-3 py-2">{p.image_urls?.length ?? 0}</td>
@@ -58,7 +58,7 @@ export default function BatchPreviewTable({
                     <ul className="mt-1 space-y-0.5">
                       {(p.variants ?? []).map((v, vi) => (
                         <li key={vi}>
-                          {v.size} / {v.colour_id ?? v.custom_colour ?? '—'} / qty {v.quantity} / {v.location_id ?? '—'}
+                          {v.size} / {v.colour_slug ?? v.custom_colour ?? '—'} / qty {v.quantity} / {v.location_slug ?? '—'}
                         </li>
                       ))}
                     </ul>

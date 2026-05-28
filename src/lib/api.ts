@@ -1,7 +1,7 @@
 import type {
   Product,
   ProductPayload,
-  BatchProductPayload,
+  BatchRowPayload,
   ProductListQuery,
   ProductListResponse,
   ProductImage,
@@ -172,7 +172,7 @@ export interface BatchImportRow {
 
 export type BatchImportResponse = BatchImportRow[];
 
-export async function batchImport(products: BatchProductPayload[]): Promise<BatchImportResponse> {
+export async function batchImport(products: BatchRowPayload[]): Promise<BatchImportResponse> {
   return request<BatchImportResponse>(`/api/admin/products/batch`, {
     method: 'POST',
     body: JSON.stringify({ products }),

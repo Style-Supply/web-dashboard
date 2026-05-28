@@ -1,21 +1,20 @@
-import type { BatchProductPayload, ProductVariant } from '@/types/product';
-import { toMinor } from '@/lib/price';
+import type { BatchRowPayload } from '@/types/product';
 
 export const CSV_COLUMNS = [
   'name',
+  'sku',
   'brand',
-  'retail_price_inr',
-  'rent_price_inr',
-  'currency',
-  'category',
-  'collection',
-  'fabric',
+  'category_type',
+  'subcategory',
+  'sub_subcategory',
+  'material',
+  'fabric_details',
   'description',
-  'status',
-  'variant_size',
-  'variant_colour',
-  'variant_quantity',
-  'variant_location',
+  'retail_price_minor',
+  'rent_price_minor',
+  'currency',
+  'look_slugs',
+  'variants_json',
   'image_urls',
 ] as const;
 
@@ -28,76 +27,43 @@ export interface GroupingError {
 }
 
 export interface GroupingResult {
-  products: BatchProductPayload[];
+  products: BatchRowPayload[];
   errors: GroupingError[];
 }
 
-function variantFromRow(row: CsvRow): ProductVariant | null {
-  if (!row.variant_size) return null;
-  const size = row.variant_size.trim() as ProductVariant['size'];
-  const validSizes: ProductVariant['size'][] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free'];
-  if (!validSizes.includes(size)) return null;
-  return {
-    size,
-    colour_id: null,
-    custom_colour: row.variant_colour?.trim() || null,
-    quantity: Number(row.variant_quantity) || 0,
-    location_id: null,
-  };
-}
+export const EXPECTED_COLUMNS = [
+  'name', 'sku', 'brand', 'category_type', 'subcategory', 'sub_subcategory',
+  'material', 'fabric_details', 'description',
+  'retail_price_minor', 'rent_price_minor', 'currency',
+  'look_slugs', 'variants_json', 'image_urls',
+];
 
 export function groupRowsIntoProducts(rows: CsvRow[]): GroupingResult {
-  const products: BatchProductPayload[] = [];
+  const products: BatchRowPayload[] = [];
   const errors: GroupingError[] = [];
-  let current: BatchProductPayload | null = null;
 
-  rows.forEach((row, i) => {
-    const hasName = row.name && row.name.trim().length > 0;
-    if (hasName) {
-      if (current) products.push(current);
-      const retail = Number(row.retail_price_inr);
-      if (!Number.isFinite(retail)) {
-        errors.push({ rowIndex: i, message: 'retail_price_inr is required and must be numeric' });
-      }
-      const rentRaw = row.rent_price_inr?.trim();
-      const rent = rentRaw ? Number(rentRaw) : null;
-      const status = row.status?.trim() === 'published' ? 'published' : 'draft';
-      current = {
-        name: row.name.trim(),
-        sku: null,
-        brand_id: null, // Will be resolved server-side in Phase 7
-        category_id: null,
-        subcategory_id: null,
-        sub_subcategory_id: null,
-        material_id: null,
-        fabric_details: row.fabric?.trim() || null,
-        description: row.description?.trim() || null,
-        retail_price_minor: toMinor(Number.isFinite(retail) ? retail : 0),
-        rent_price_minor: rent !== null && Number.isFinite(rent) ? toMinor(rent) : null,
-        currency: row.currency?.trim() || 'INR',
-        status,
-        variants: [],
-        look_ids: [],
-        image_urls: (row.image_urls || '')
-          .split('|')
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0),
-      };
-    }
-    if (!current) {
-      errors.push({ rowIndex: i, message: 'Row has no preceding product' });
+  rows.forEach((r, i) => {
+    if (!r.name?.trim()) {
+      errors.push({ rowIndex: i, message: 'name is required' });
       return;
     }
-    const variant = variantFromRow(row);
-    if (variant) current.variants.push(variant);
-  });
-
-  if (current) products.push(current);
-
-  products.forEach((p, i) => {
-    if (p.variants.length === 0) {
-      errors.push({ rowIndex: i, message: `Product "${p.name}" has no variants` });
-    }
+    products.push({
+      name: r.name?.trim() ?? '',
+      sku: r.sku?.trim() || null,
+      brand_slug: r.brand?.trim() || undefined,
+      category_type_slug: r.category_type?.trim() || undefined,
+      subcategory_slug: r.subcategory?.trim() || undefined,
+      sub_subcategory_slug: r.sub_subcategory?.trim() || undefined,
+      material_slug: r.material?.trim() || undefined,
+      fabric_details: r.fabric_details?.trim() || null,
+      description: r.description?.trim() || null,
+      retail_price_minor: Number(r.retail_price_minor || 0),
+      rent_price_minor: r.rent_price_minor ? Number(r.rent_price_minor) : null,
+      currency: r.currency?.trim() || 'INR',
+      look_slugs: (r.look_slugs ?? '').split('|').map((s) => s.trim()).filter(Boolean),
+      variants: r.variants_json ? JSON.parse(r.variants_json) : [],
+      image_urls: (r.image_urls ?? '').split('|').map((s) => s.trim()).filter(Boolean),
+    });
   });
 
   return { products, errors };

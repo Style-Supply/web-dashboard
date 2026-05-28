@@ -7,13 +7,35 @@ import type {
   ProductImage,
   SuggestionField,
 } from '@/types/product';
+import { PRODUCT_IMAGES_BUCKET, supabase } from '@/lib/supabase';
 
 export interface ColourTag {
   colour_id?: string | null;
   custom_colour?: string | null;
 }
 
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function extFromMime(mime: string): string {
+  const base = mime.split(';')[0].trim().toLowerCase();
+  if (base === 'image/jpeg') return 'jpg';
+  if (base === 'image/png') return 'png';
+  if (base === 'image/webp') return 'webp';
+  throw new Error(`Unsupported image type: ${mime}`);
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+
+export class ApiError extends Error {
+  status: number;
+  code: string | null;
+  constructor(message: string, status: number, code: string | null) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -27,7 +49,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: { code: 'UNKNOWN', message: res.statusText } }));
-    throw new Error(body?.error?.message ?? res.statusText);
+    const message = body?.error?.message ?? res.statusText;
+    const code = body?.error?.code ?? null;
+    throw new ApiError(message, res.status, code);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -48,6 +72,22 @@ export async function listProducts(query: ProductListQuery = {}): Promise<Produc
 
 export async function getProduct(id: string): Promise<Product> {
   return request<Product>(`/api/admin/products/${id}`);
+}
+
+export async function getProductWithRetry(id: string, attempts = 4): Promise<Product> {
+  const delays = [300, 600, 1200, 2000];
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await getProduct(id);
+    } catch (err) {
+      lastErr = err;
+      const is404 = err instanceof ApiError && err.status === 404;
+      if (!is404 || i === attempts - 1) throw err;
+      await new Promise((r) => setTimeout(r, delays[Math.min(i, delays.length - 1)]));
+    }
+  }
+  throw lastErr;
 }
 
 export async function saveProduct(payload: ProductPayload): Promise<Product> {
@@ -115,30 +155,51 @@ export async function scrapeImagesFromPage(productId: string, url: string, limit
 }
 
 export async function uploadImages(productId: string, files: File[], colourTag?: ColourTag): Promise<ImageImportResult> {
-  const fd = new FormData();
-  for (const f of files) fd.append('files', f);
-  if (colourTag?.colour_id) fd.append('colour_id', colourTag.colour_id);
-  if (colourTag?.custom_colour) fd.append('custom_colour', colourTag.custom_colour);
-  const res = await fetch(`${API_BASE}/api/admin/products/${productId}/images/upload`, {
-    method: 'POST',
-    body: fd,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: { message: res.statusText } }));
-    throw new Error(body?.error?.message ?? res.statusText);
+  const imported: ProductImage[] = [];
+  const failed: { url: string; reason: string }[] = [];
+
+  for (const file of files) {
+    const label = file.name || 'file';
+    try {
+      if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+        throw new Error(`Unsupported image type: ${file.type || 'unknown'}`);
+      }
+      const ext = extFromMime(file.type);
+      const storagePath = `${productId}/${crypto.randomUUID()}.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .upload(storagePath, file, { contentType: file.type, upsert: false });
+      if (uploadErr) throw new Error(uploadErr.message);
+
+      const { data: pub } = supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .getPublicUrl(storagePath);
+
+      const registered = await registerImage(productId, storagePath, pub.publicUrl, colourTag);
+      imported.push(registered);
+    } catch (err) {
+      failed.push({ url: label, reason: err instanceof Error ? err.message : 'Upload failed' });
+    }
   }
-  return res.json() as Promise<ImageImportResult>;
+
+  return { imported, failed };
 }
 
 export async function registerImage(
   productId: string,
   storagePath: string,
-  publicUrl: string
+  publicUrl: string,
+  colourTag?: ColourTag,
 ): Promise<ProductImage> {
   return request<ProductImage>(`/api/admin/products/${productId}/images/register`, {
     method: 'POST',
-    body: JSON.stringify({ storage_path: storagePath, public_url: publicUrl }),
+    body: JSON.stringify({
+      storage_path: storagePath,
+      public_url: publicUrl,
+      ...(colourTag?.colour_id !== undefined ? { colour_id: colourTag.colour_id } : {}),
+      ...(colourTag?.custom_colour !== undefined ? { custom_colour: colourTag.custom_colour } : {}),
+    }),
   });
 }
 

@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Product, ProductImage } from '@/types/product';
-import { deleteProduct, getProduct } from '@/lib/api';
+import { deleteProduct, getProductWithRetry } from '@/lib/api';
 import { useProductFormState } from '@/hooks/useProductFormState';
 import { useToast } from '@/components/ui/Toast';
 import { useProducts } from '@/context/ProductsContext';
@@ -28,7 +28,7 @@ export default function EditProductPage({
 
   useEffect(() => {
     let cancelled = false;
-    getProduct(id)
+    getProductWithRetry(id)
       .then((product: Product) => {
         if (cancelled) return;
         set({

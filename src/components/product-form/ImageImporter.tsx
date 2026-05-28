@@ -55,8 +55,11 @@ export default function ImageImporter({
       const result = await importImagesFromUrls(productId, urls);
       onImagesChange([...images, ...result.imported]);
       setUrlText('');
-    } catch {
-      // silent
+      if (result.failed.length > 0) {
+        alert(`Failed to import ${result.failed.length} image(s): ${result.failed.map(f => f.reason).join(', ')}`);
+      }
+    } catch (e) {
+      alert(`Import failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setBusy(false);
     }
@@ -71,8 +74,13 @@ export default function ImageImporter({
       const result = await scrapeImagesFromPage(productId, url);
       onImagesChange([...images, ...result.imported]);
       setPageUrl('');
-    } catch {
-      // silent
+      if (result.imported.length === 0) {
+        alert('No images found on this page');
+      } else if (result.failed.length > 0) {
+        alert(`Imported ${result.imported.length} image(s), ${result.failed.length} failed`);
+      }
+    } catch (e) {
+      alert(`Scrape failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setBusy(false);
     }
@@ -84,8 +92,11 @@ export default function ImageImporter({
     try {
       const result = await uploadImages(productId, files);
       onImagesChange([...images, ...result.imported]);
-    } catch {
-      // silent
+      if (result.failed.length > 0) {
+        alert(`Failed to upload ${result.failed.length} file(s): ${result.failed.map(f => f.reason).join(', ')}`);
+      }
+    } catch (e) {
+      alert(`Upload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setBusy(false);
     }

@@ -8,7 +8,6 @@ import { useProductFormState } from '@/hooks/useProductFormState';
 import { useToast } from '@/components/ui/Toast';
 import { useProducts } from '@/context/ProductsContext';
 import ProductForm from '@/components/product-form/ProductForm';
-import PreviewPane from '@/components/preview/PreviewPane';
 import Button from '@/components/ui/Button';
 
 export default function EditProductPage({
@@ -76,7 +75,7 @@ export default function EditProductPage({
 
   return (
     <div className="flex flex-col">
-      <div className="bg-white border-b border-neutral-200">
+      <div className="bg-white">
         <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-3">
           <h1 className="text-lg font-semibold">Edit product</h1>
           <Button variant="ghost" size="sm" loading={deleting} onClick={() => void handleDelete()}>
@@ -89,10 +88,6 @@ export default function EditProductPage({
           images={images}
           onImagesChange={setImages}
         />
-      </div>
-      <div className="bg-neutral-50 pb-16">
-        <div className="px-6 pt-6 pb-3 text-sm font-medium text-neutral-600">Live preview</div>
-        <PreviewPane state={form.state} images={images} />
       </div>
     </div>
   );

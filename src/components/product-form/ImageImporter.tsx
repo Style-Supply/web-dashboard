@@ -86,16 +86,24 @@ export default function ImageImporter({
     }
   }
 
-  const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
+  const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB per file
+  const MAX_TOTAL_SIZE = 500 * 1024 * 1024; // 500 MB total
 
   async function handleFiles(files: File[]): Promise<void> {
     if (!productId || files.length === 0) return;
 
-    // Check file sizes before uploading
+    // Check individual file sizes
     const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
       const names = oversized.map((f) => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ');
       alert(`File size exceeds 500 MB limit: ${names}`);
+      return;
+    }
+
+    // Check total size
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > MAX_TOTAL_SIZE) {
+      alert(`Total upload size (${(totalSize / 1024 / 1024).toFixed(1)} MB) exceeds 500 MB limit. Please upload fewer files at once.`);
       return;
     }
 

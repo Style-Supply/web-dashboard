@@ -68,3 +68,22 @@ export function useLocations(q?: string) {
     Locations.list(q).then((r) => r.items)
   );
 }
+
+export function useTaxonomy() {
+  const { data: brands = [], isLoading: brandsLoading } = useBrands();
+  const { data: collections = [], isLoading: collectionsLoading } = useCollections();
+  const { data: tree = [], isLoading: treeLoading } = useCategoryTree();
+  const { data: materials = [], isLoading: materialsLoading } = useMaterials();
+  const { data: colours = [], isLoading: coloursLoading } = useColours();
+  const { data: locations = [], isLoading: locationsLoading } = useLocations();
+
+  return {
+    brands,
+    collections,
+    tree,
+    materials,
+    colours,
+    locations,
+    loading: brandsLoading || collectionsLoading || treeLoading || materialsLoading || coloursLoading || locationsLoading,
+  };
+}

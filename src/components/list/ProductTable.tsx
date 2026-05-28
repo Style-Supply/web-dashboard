@@ -87,8 +87,8 @@ export default function ProductTable({
                 {p.name}
               </Link>
             </td>
-            <td className="px-4 py-3 text-[#2C0505]/70">{p.brand ?? '—'}</td>
-            <td className="px-4 py-3 text-[#2C0505]/70">{p.category ?? '—'}</td>
+            <td className="px-4 py-3 text-[#2C0505]/70">{p.brand?.name ?? '—'}</td>
+            <td className="px-4 py-3 text-[#2C0505]/70">{p.category?.name ?? '—'}</td>
             <td className="px-4 py-3 text-[#2C0505]/70">{formatINR(p.retail_price_minor)}</td>
             <td className="px-4 py-3">
               {rowBusy === p.id && busyAction ? (

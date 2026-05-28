@@ -9,7 +9,7 @@ import { useProducts } from '@/context/ProductsContext';
 import Button from '@/components/ui/Button';
 import BasicFieldsBlock from './BasicFieldsBlock';
 import PricingBlock from './PricingBlock';
-import VariantEditor, { hasDuplicateVariants } from './VariantEditor';
+import VariantEditor, { tupleKey } from './VariantEditor';
 import ImageImporter from './ImageImporter';
 import type { UseProductFormState } from '@/hooks/useProductFormState';
 import { useTaxonomy } from '@/hooks/useTaxonomy';
@@ -70,11 +70,14 @@ export default function ProductForm({
   const router = useRouter();
   const { showToast } = useToast();
   const { invalidate } = useProducts();
-  const { state, setField, addVariant, removeVariant, updateVariant } = form;
+  const { state, setField } = form;
   const [saveAction, setSaveAction] = useState<SaveAction>(null);
   const { tree } = useTaxonomy();
 
-  const dup = hasDuplicateVariants(state.variants);
+  // Duplicate detection using tupleKey
+  const counts = new Map<string, number>();
+  for (const v of state.variants) counts.set(tupleKey(v), (counts.get(tupleKey(v)) ?? 0) + 1);
+  const dup = [...counts.values()].some((c) => c > 1);
   const invalid =
     !state.name.trim() ||
     state.retail_price_minor < 0 ||
@@ -110,13 +113,11 @@ export default function ProductForm({
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-8 overflow-auto p-6">
-        <BasicFieldsBlock state={state} setField={setField} />
+        <BasicFieldsBlock value={state} onChange={(patch) => { for (const [k, v] of Object.entries(patch)) setField(k as keyof typeof state, v); }} />
         <PricingBlock state={state} setField={setField} />
         <VariantEditor
-          variants={state.variants}
-          addVariant={addVariant}
-          removeVariant={removeVariant}
-          updateVariant={updateVariant}
+          value={state.variants}
+          onChange={(next) => setField('variants', next)}
         />
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Images</h2>

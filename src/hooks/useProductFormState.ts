@@ -4,22 +4,26 @@ import { useCallback, useState } from 'react';
 import type { ProductPayload, ProductVariant } from '@/types/product';
 
 function emptyVariant(): ProductVariant {
-  return { size: '', colour: null, quantity: 0, location: null };
+  return { size: 'M', colour_id: null, custom_colour: null, quantity: 0, location_id: null };
 }
 
 function defaultState(): ProductPayload {
   return {
     name: '',
-    brand: null,
+    sku: null,
+    brand_id: null,
+    category_id: null,
+    subcategory_id: null,
+    sub_subcategory_id: null,
+    material_id: null,
+    fabric_details: null,
+    description: null,
     retail_price_minor: 0,
     rent_price_minor: null,
     currency: 'INR',
-    category: null,
-    collection: null,
-    fabric: null,
-    description: null,
     status: 'draft',
     variants: [emptyVariant()],
+    look_ids: [],
   };
 }
 
@@ -27,9 +31,6 @@ export interface UseProductFormState {
   state: ProductPayload;
   set: (next: ProductPayload) => void;
   setField: <K extends keyof ProductPayload>(key: K, value: ProductPayload[K]) => void;
-  addVariant: () => void;
-  removeVariant: (index: number) => void;
-  updateVariant: (index: number, patch: Partial<ProductVariant>) => void;
 }
 
 export function useProductFormState(initial?: Partial<ProductPayload>): UseProductFormState {
@@ -46,20 +47,5 @@ export function useProductFormState(initial?: Partial<ProductPayload>): UseProdu
     [],
   );
 
-  const addVariant = useCallback((): void => {
-    setState((prev) => ({ ...prev, variants: [...prev.variants, emptyVariant()] }));
-  }, []);
-
-  const removeVariant = useCallback((index: number): void => {
-    setState((prev) => ({ ...prev, variants: prev.variants.filter((_, i) => i !== index) }));
-  }, []);
-
-  const updateVariant = useCallback((index: number, patch: Partial<ProductVariant>): void => {
-    setState((prev) => ({
-      ...prev,
-      variants: prev.variants.map((v, i) => (i === index ? { ...v, ...patch } : v)),
-    }));
-  }, []);
-
-  return { state, set, setField, addVariant, removeVariant, updateVariant };
+  return { state, set, setField };
 }

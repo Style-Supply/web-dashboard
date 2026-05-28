@@ -40,7 +40,7 @@ export function ProductsProvider({ children }: { children: ReactNode }): React.R
     setError(null);
     try {
       const res: ProductListResponse = await listProducts(q);
-      setProducts(res.products);
+      setProducts(res.items);
       setTotal(res.total);
       setHasFetched(true);
       setStale(false);

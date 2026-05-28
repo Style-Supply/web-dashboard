@@ -33,16 +33,27 @@ export default function EditProductPage({
         if (cancelled) return;
         set({
           name: product.name,
-          brand: product.brand,
+          sku: product.sku,
+          brand_id: product.brand_id,
+          category_id: product.category_id,
+          subcategory_id: product.subcategory_id,
+          sub_subcategory_id: product.sub_subcategory_id,
+          material_id: product.material_id,
+          fabric_details: product.fabric_details,
+          description: product.description,
           retail_price_minor: product.retail_price_minor,
           rent_price_minor: product.rent_price_minor,
           currency: product.currency,
-          category: product.category,
-          collection: product.collection,
-          fabric: product.fabric,
-          description: product.description,
           status: product.status,
-          variants: product.variants,
+          variants: product.variants.map((v) => ({
+            id: v.id,
+            size: v.size,
+            colour_id: v.colour?.id ?? null,
+            custom_colour: v.custom_colour,
+            quantity: v.quantity,
+            location_id: v.location?.id ?? null,
+          })),
+          look_ids: product.looks.map((l) => l.id),
         });
         setImages(product.images);
         setLoaded(true);

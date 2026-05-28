@@ -34,11 +34,15 @@ export interface GroupingResult {
 
 function variantFromRow(row: CsvRow): ProductVariant | null {
   if (!row.variant_size) return null;
+  const size = row.variant_size.trim() as ProductVariant['size'];
+  const validSizes: ProductVariant['size'][] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free'];
+  if (!validSizes.includes(size)) return null;
   return {
-    size: row.variant_size.trim(),
-    colour: row.variant_colour?.trim() || null,
+    size,
+    colour_id: null,
+    custom_colour: row.variant_colour?.trim() || null,
     quantity: Number(row.variant_quantity) || 0,
-    location: row.variant_location?.trim() || null,
+    location_id: null,
   };
 }
 
@@ -60,16 +64,20 @@ export function groupRowsIntoProducts(rows: CsvRow[]): GroupingResult {
       const status = row.status?.trim() === 'published' ? 'published' : 'draft';
       current = {
         name: row.name.trim(),
-        brand: row.brand?.trim() || null,
+        sku: null,
+        brand_id: null, // Will be resolved server-side in Phase 7
+        category_id: null,
+        subcategory_id: null,
+        sub_subcategory_id: null,
+        material_id: null,
+        fabric_details: row.fabric?.trim() || null,
+        description: row.description?.trim() || null,
         retail_price_minor: toMinor(Number.isFinite(retail) ? retail : 0),
         rent_price_minor: rent !== null && Number.isFinite(rent) ? toMinor(rent) : null,
         currency: row.currency?.trim() || 'INR',
-        category: row.category?.trim() || null,
-        collection: row.collection?.trim() || null,
-        fabric: row.fabric?.trim() || null,
-        description: row.description?.trim() || null,
         status,
         variants: [],
+        look_ids: [],
         image_urls: (row.image_urls || '')
           .split('|')
           .map((s) => s.trim())

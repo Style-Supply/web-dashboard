@@ -122,10 +122,6 @@ export default function ImageImporter({
     }
   }
 
-  function handleAltChange(imageId: string, alt: string): void {
-    // TODO: backend PATCH does not persist image alt text yet — update local only.
-    onImagesChange(images.map((i) => (i.id === imageId ? { ...i, alt } : i)));
-  }
 
   function handleReorderDrop(targetIndex: number): void {
     if (dragIndex === null || dragIndex === targetIndex) {
@@ -303,7 +299,7 @@ export default function ImageImporter({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={img.public_url}
-                      alt={img.alt ?? ''}
+                      alt=""
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   )}
@@ -313,12 +309,6 @@ export default function ImageImporter({
                     </div>
                   )}
                 </div>
-                <input
-                  className="mt-2 w-full rounded border border-neutral-200 px-2 py-1 text-xs"
-                  value={img.alt ?? ''}
-                  placeholder="Alt text"
-                  onChange={(e) => handleAltChange(img.id, e.target.value)}
-                />
                 <button
                   type="button"
                   disabled={deletingId === img.id}

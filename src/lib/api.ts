@@ -124,6 +124,17 @@ export async function uploadImages(productId: string, files: File[]): Promise<Im
   return res.json() as Promise<ImageImportResult>;
 }
 
+export async function registerImage(
+  productId: string,
+  storagePath: string,
+  publicUrl: string
+): Promise<ProductImage> {
+  return request<ProductImage>(`/api/admin/products/${productId}/images/register`, {
+    method: 'POST',
+    body: JSON.stringify({ storage_path: storagePath, public_url: publicUrl }),
+  });
+}
+
 export async function deleteImage(imageId: string): Promise<void> {
   await request<void>(`/api/admin/products/images/${imageId}`, { method: 'DELETE' });
 }

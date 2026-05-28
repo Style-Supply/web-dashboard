@@ -5,10 +5,11 @@ import type { ProductImage } from '@/types/product';
 import {
   importImagesFromUrls,
   scrapeImagesFromPage,
-  uploadImages,
   deleteImage,
   reorderImages,
+  registerImage,
 } from '@/lib/api';
+import { supabase, PRODUCT_IMAGES_BUCKET } from '@/lib/supabase';
 import { isLikelyHttpUrl } from '@/lib/url-check';
 import Button from '@/components/ui/Button';
 import Textarea from '@/components/ui/Textarea';
@@ -86,8 +87,7 @@ export default function ImageImporter({
     }
   }
 
-  const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB per file
-  const MAX_TOTAL_SIZE = 500 * 1024 * 1024; // 500 MB total
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB per file (Supabase default limit)
 
   async function handleFiles(files: File[]): Promise<void> {
     if (!productId || files.length === 0) return;
@@ -96,34 +96,57 @@ export default function ImageImporter({
     const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
       const names = oversized.map((f) => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ');
-      alert(`File size exceeds 500 MB limit: ${names}`);
-      return;
-    }
-
-    // Check total size
-    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-    if (totalSize > MAX_TOTAL_SIZE) {
-      alert(`Total upload size (${(totalSize / 1024 / 1024).toFixed(1)} MB) exceeds 500 MB limit. Please upload fewer files at once.`);
+      alert(`File size exceeds 50 MB limit: ${names}`);
       return;
     }
 
     setBusy('upload');
-    try {
-      const result = await uploadImages(productId, files);
-      onImagesChange([...images, ...result.imported]);
-      if (result.failed.length > 0) {
-        alert(`Failed to upload ${result.failed.length} file(s): ${result.failed.map(f => f.reason).join(', ')}`);
+    const imported: ProductImage[] = [];
+    const failed: { name: string; reason: string }[] = [];
+
+    for (const file of files) {
+      try {
+        // Generate unique path
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const storagePath = `${productId}/${crypto.randomUUID()}.${ext}`;
+
+        // Upload directly to Supabase Storage
+        const { error: uploadErr } = await supabase.storage
+          .from(PRODUCT_IMAGES_BUCKET)
+          .upload(storagePath, file, {
+            contentType: file.type,
+            upsert: false,
+          });
+
+        if (uploadErr) {
+          throw new Error(uploadErr.message);
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from(PRODUCT_IMAGES_BUCKET)
+          .getPublicUrl(storagePath);
+
+        // Register in database via backend
+        const registered = await registerImage(productId, storagePath, urlData.publicUrl);
+        imported.push(registered);
+      } catch (e) {
+        failed.push({
+          name: file.name,
+          reason: e instanceof Error ? e.message : 'Upload failed',
+        });
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      if (msg === 'Failed to fetch') {
-        alert('Upload failed: File may be too large or network error occurred');
-      } else {
-        alert(`Upload failed: ${msg}`);
-      }
-    } finally {
-      setBusy(false);
     }
+
+    if (imported.length > 0) {
+      onImagesChange([...images, ...imported]);
+    }
+
+    if (failed.length > 0) {
+      alert(`Failed to upload ${failed.length} file(s): ${failed.map((f) => `${f.name}: ${f.reason}`).join(', ')}`);
+    }
+
+    setBusy(false);
   }
 
   async function handleDelete(imageId: string): Promise<void> {

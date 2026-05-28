@@ -15,123 +15,153 @@ interface NavGroup {
   label: string;
   icon: React.ReactNode;
   children: NavChild[];
+  /** Virtual groups have no own page; clicking expands them or jumps to first child. */
+  virtual?: boolean;
 }
+
+const stroke = {
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.6,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+};
+
+const Icon = {
+  Products: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <path d="M3.27 6.96 12 12.01l8.73-5.05" />
+      <path d="M12 22.08V12" />
+    </svg>
+  ),
+  Catalog: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+  ),
+  Brands: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <circle cx="7" cy="7" r="1.5" />
+    </svg>
+  ),
+  Collections: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="m12.83 2.18-9.74 4.42a1 1 0 0 0 0 1.83l8.58 3.9a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83l-9.08-4.42z" />
+      <path d="M2 12.5 11.17 17a2 2 0 0 0 1.66 0L22 12.5" />
+      <path d="M2 17.5 11.17 22a2 2 0 0 0 1.66 0L22 17.5" />
+    </svg>
+  ),
+  Categories: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  ),
+  Materials: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+    </svg>
+  ),
+  Colours: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M13.5 2C7.97 2 3.5 6.47 3.5 12s4.47 10 10 10c1.65 0 3-1.35 3-3v-1c0-.55.45-1 1-1h1.5c2.49 0 4.5-2.01 4.5-4.5C23.5 6.36 19.14 2 13.5 2z" />
+      <circle cx="7.5" cy="11" r="1" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="6.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="14" cy="5.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="9" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  ),
+  Locations: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M20 10c0 7-8 12-8 12s-8-5-8-12a8 8 0 0 1 16 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  ),
+  Users: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  Boxes: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <path d="M16.5 9.4 7.55 4.24" />
+      <path d="M3.27 6.96 12 12.01l8.73-5.05" />
+      <path d="M12 22.08V12" />
+    </svg>
+  ),
+  Memberships: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+      <path d="M6 15h4" />
+    </svg>
+  ),
+  AccessCodes: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <circle cx="7.5" cy="15.5" r="4.5" />
+      <path d="m21 2-9.6 9.6" />
+      <path d="m15.5 7.5 3 3L22 7l-3-3" />
+    </svg>
+  ),
+  Chevron: (
+    <svg className="w-4 h-4 opacity-70" viewBox="0 0 24 24" {...stroke}>
+      <path d="M19 9l-7 7-7-7" />
+    </svg>
+  ),
+};
 
 const NAV: NavGroup[] = [
   {
     href: '/products',
     label: 'Products',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-    ),
+    icon: Icon.Products,
     children: [
       { href: '/products/new', label: 'Add Product' },
       { href: '/products/batch', label: 'Batch Upload' },
     ],
   },
   {
-    href: '/brands',
-    label: 'Brands',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    ),
-    children: [],
-  },
-  {
-    href: '/collections',
-    label: 'Collections',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-    ),
-    children: [],
-  },
-  {
-    href: '/categories',
-    label: 'Categories',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 012 12V7a2 2 0 012-2z" />
-      </svg>
-    ),
-    children: [],
-  },
-  {
-    href: '/materials',
-    label: 'Materials',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7m0 16.972a4.006 4.006 0 003.7-3.7c.092-1.209.138-2.43.138-3.662m0 0a18.022 18.022 0 05.174-5.6m0 0a18.022 18.022 0 01-5.174 5.6m0 0C9.930 9.755 8.25 9 6 9c-1.657 0-3 .895-3 2s1.343 2 3 2h3z" />
-      </svg>
-    ),
-    children: [],
-  },
-  {
-    href: '/colours',
-    label: 'Colours',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v10.5A2.25 2.25 0 006.75 22.5h10.5A2.25 2.25 0 0019.5 20.25V9.75a2.25 2.25 0 00-2.25-2.25h-.75m0 0a4.5 4.5 0 1-9 0m0 0a4.5 4.5 0 019 0m-4.5 3a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-      </svg>
-    ),
-    children: [],
-  },
-  {
-    href: '/locations',
-    label: 'Locations',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.8 15.5a7.5 7.5 0 11-15 0" />
-      </svg>
-    ),
-    children: [],
+    href: '/catalog',
+    label: 'Catalog',
+    icon: Icon.Catalog,
+    virtual: true,
+    children: [
+      { href: '/brands', label: 'Brands' },
+      { href: '/collections', label: 'Collections' },
+      { href: '/categories', label: 'Categories' },
+      { href: '/materials', label: 'Materials' },
+      { href: '/colours', label: 'Colours' },
+      { href: '/locations', label: 'Locations' },
+    ],
   },
   {
     href: '/users',
     label: 'Users',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H2v-2a4 4 0 013-3.87m10-4a4 4 0 10-8 0 4 4 0 008 0zm6-4a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
+    icon: Icon.Users,
     children: [{ href: '/users/new', label: 'Add User' }],
   },
-  {
-    href: '/boxes',
-    label: 'Boxes',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-      </svg>
-    ),
-    children: [],
-  },
-  {
-    href: '/memberships',
-    label: 'Memberships',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5z" />
-      </svg>
-    ),
-    children: [],
-  },
-  {
-    href: '/codes',
-    label: 'Access Codes',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-      </svg>
-    ),
-    children: [],
-  },
+  { href: '/boxes', label: 'Boxes', icon: Icon.Boxes, children: [] },
+  { href: '/memberships', label: 'Memberships', icon: Icon.Memberships, children: [] },
+  { href: '/codes', label: 'Access Codes', icon: Icon.AccessCodes, children: [] },
 ];
+
+function isPathInGroup(group: NavGroup, pathname: string): boolean {
+  if (!group.virtual && (pathname === group.href || pathname.startsWith(`${group.href}/`))) {
+    return true;
+  }
+  return group.children.some(
+    (c) => pathname === c.href || pathname.startsWith(`${c.href}/`),
+  );
+}
 
 export default function Sidebar(): React.ReactElement {
   const pathname = usePathname();
@@ -140,36 +170,35 @@ export default function Sidebar(): React.ReactElement {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     for (const g of NAV) {
-      if (pathname.startsWith(g.href)) initial[g.href] = true;
+      if (isPathInGroup(g, pathname)) initial[g.href] = true;
     }
     return initial;
   });
 
   useEffect(() => {
-    // Auto-expand the group that owns the current route.
     setOpenGroups((prev) => {
       const next = { ...prev };
       for (const g of NAV) {
-        if (pathname.startsWith(g.href)) next[g.href] = true;
+        if (isPathInGroup(g, pathname)) next[g.href] = true;
       }
       return next;
     });
   }, [pathname]);
 
-  function isGroupActive(group: NavGroup): boolean {
-    return pathname === group.href || pathname.startsWith(`${group.href}/`);
-  }
-
   function handleGroupClick(group: NavGroup, e: React.MouseEvent): void {
-    // On the group row: open/close the dropdown AND navigate to the index route.
-    // If already on the index, just toggle the dropdown.
     e.preventDefault();
+
     if (collapsed) {
-      router.push(group.href);
+      // In collapsed mode, virtual groups jump to their first child.
+      const target = group.virtual ? group.children[0]?.href ?? group.href : group.href;
+      router.push(target);
       return;
     }
+
     setOpenGroups((prev) => ({ ...prev, [group.href]: !prev[group.href] }));
-    if (pathname !== group.href) {
+
+    // Non-virtual groups also navigate to their index route on click.
+    if (!group.virtual && pathname !== group.href) {
       router.push(group.href);
     }
   }
@@ -191,18 +220,21 @@ export default function Sidebar(): React.ReactElement {
         >
           <svg
             className={`w-5 h-5 opacity-60 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
             viewBox="0 0 24 24"
+            {...stroke}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            <path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
           </svg>
         </button>
       </div>
 
       <nav className={`flex-1 flex flex-col gap-1 ${collapsed ? 'px-2' : 'px-3'} py-4`}>
         {NAV.map((group) => {
-          const groupActive = isGroupActive(group);
+          const groupActive = isPathInGroup(group, pathname);
+          // For non-virtual groups, only highlight the parent row if the user is exactly on its index page.
+          const parentRowActive = group.virtual
+            ? false
+            : pathname === group.href || (group.children.length === 0 && pathname.startsWith(`${group.href}/`));
           const open = !collapsed && !!openGroups[group.href];
           return (
             <div key={group.href} className="flex flex-col">
@@ -211,8 +243,10 @@ export default function Sidebar(): React.ReactElement {
                 onClick={(e) => handleGroupClick(group, e)}
                 title={collapsed ? group.label : undefined}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors cursor-pointer ${
-                  groupActive
+                  parentRowActive
                     ? 'bg-[#7A021D] text-white'
+                    : groupActive
+                    ? 'text-white hover:bg-white/10'
                     : 'text-white/70 hover:text-white hover:bg-white/10'
                 } ${collapsed ? 'justify-center' : ''}`}
               >
@@ -221,14 +255,11 @@ export default function Sidebar(): React.ReactElement {
                   <>
                     <span className="flex-1">{group.label}</span>
                     {group.children.length > 0 && (
-                      <svg
-                        className={`w-4 h-4 opacity-70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <span
+                        className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-                      </svg>
+                        {Icon.Chevron}
+                      </span>
                     )}
                   </>
                 )}
@@ -236,7 +267,8 @@ export default function Sidebar(): React.ReactElement {
               {open && group.children.length > 0 && (
                 <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-white/10 pl-3">
                   {group.children.map((child) => {
-                    const childActive = pathname === child.href;
+                    const childActive =
+                      pathname === child.href || pathname.startsWith(`${child.href}/`);
                     return (
                       <Link
                         key={child.href}

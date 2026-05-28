@@ -39,9 +39,8 @@ function publishCheck({ v, tree, images }: CheckArgs): string | null {
   const subNode = findNode(tree, v.subcategory_id);
   if (subNode && subNode.children.length > 0 && !v.sub_subcategory_id) return 'sub-subcategory is required';
   if (!v.material_id) return 'material is required';
-  if (!v.fabric_details?.trim()) return 'fabric details is required';
   if (!v.description?.trim()) return 'description is required';
-  if (v.look_ids.length === 0) return 'at least one look is required';
+  if (!(v.retail_price_minor > 0)) return 'retail price must be greater than 0';
   if (v.variants.length === 0) return 'at least one variant is required';
   for (const va of v.variants) {
     if ((va.colour_id !== null) === (va.custom_colour !== null)) return 'variant: pick either colour or custom_colour (not both/neither)';

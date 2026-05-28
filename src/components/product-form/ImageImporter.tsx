@@ -86,8 +86,19 @@ export default function ImageImporter({
     }
   }
 
+  const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
+
   async function handleFiles(files: File[]): Promise<void> {
     if (!productId || files.length === 0) return;
+
+    // Check file sizes before uploading
+    const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      const names = oversized.map((f) => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ');
+      alert(`File size exceeds 500 MB limit: ${names}`);
+      return;
+    }
+
     setBusy('upload');
     try {
       const result = await uploadImages(productId, files);
@@ -96,7 +107,12 @@ export default function ImageImporter({
         alert(`Failed to upload ${result.failed.length} file(s): ${result.failed.map(f => f.reason).join(', ')}`);
       }
     } catch (e) {
-      alert(`Upload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      if (msg === 'Failed to fetch') {
+        alert('Upload failed: File may be too large or network error occurred');
+      } else {
+        alert(`Upload failed: ${msg}`);
+      }
     } finally {
       setBusy(false);
     }

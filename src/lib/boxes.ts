@@ -31,3 +31,23 @@ export async function dispatchBox(id: string, trackingNumber?: string): Promise<
 export async function deliverBox(id: string): Promise<Box> {
   return request<Box>(`/api/admin/boxes/${id}/deliver`, { method: 'POST' });
 }
+
+// --- 48h boutique session control ---
+
+// delivered → boutique_session_active (start the 48h timer for the member)
+export async function startSession(id: string): Promise<Box> {
+  return request<Box>(`/api/admin/boxes/${id}/start-session`, { method: 'POST' });
+}
+
+// extend an active session by N hours
+export async function extendSession(id: string, hours = 24): Promise<Box> {
+  return request<Box>(`/api/admin/boxes/${id}/extend-session`, {
+    method: 'POST',
+    body: JSON.stringify({ hours }),
+  });
+}
+
+// end an active session immediately (→ decision_pending)
+export async function endSession(id: string): Promise<Box> {
+  return request<Box>(`/api/admin/boxes/${id}/end-session`, { method: 'POST' });
+}

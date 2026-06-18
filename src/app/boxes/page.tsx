@@ -2,10 +2,28 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
-import { listBoxes, packBox, dispatchBox, deliverBox } from '@/lib/boxes';
+import {
+  listBoxes,
+  packBox,
+  dispatchBox,
+  deliverBox,
+  startSession,
+  extendSession,
+  endSession,
+} from '@/lib/boxes';
 import type { Box } from '@/types/box';
 
 const PAGE_SIZE = 50;
+
+// Render the remaining time on an active 48h session (or "Expired").
+function sessionRemaining(endsAt: string | null | undefined): string {
+  if (!endsAt) return '—';
+  const ms = new Date(endsAt).getTime() - Date.now();
+  if (ms <= 0) return 'Expired';
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return `${h}h ${m}m left`;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   building: 'Building',
@@ -80,6 +98,45 @@ export default function BoxesPage(): React.ReactElement {
     }
   }
 
+  async function handleStartSession(id: string): Promise<void> {
+    if (!confirm('Start the 48-hour session for this member now?')) return;
+    try {
+      await startSession(id);
+      showToast('success', '48h session started');
+      void load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed');
+    }
+  }
+
+  async function handleExtendSession(id: string): Promise<void> {
+    const input = prompt('Extend session by how many hours?', '24');
+    if (!input) return;
+    const hours = parseInt(input, 10);
+    if (!Number.isFinite(hours) || hours < 1) {
+      showToast('error', 'Enter a valid number of hours');
+      return;
+    }
+    try {
+      await extendSession(id, hours);
+      showToast('success', `Session extended by ${hours}h`);
+      void load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed');
+    }
+  }
+
+  async function handleEndSession(id: string): Promise<void> {
+    if (!confirm('End this session now and move to decision pending?')) return;
+    try {
+      await endSession(id);
+      showToast('success', 'Session ended');
+      void load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed');
+    }
+  }
+
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -114,6 +171,7 @@ export default function BoxesPage(): React.ReactElement {
             <tr>
               <th className="px-4 py-3">User</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Session</th>
               <th className="px-4 py-3">Created</th>
               <th className="px-4 py-3">Tracking</th>
               <th className="px-4 py-3">Actions</th>
@@ -121,9 +179,9 @@ export default function BoxesPage(): React.ReactElement {
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-neutral-400">Loading...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">Loading...</td></tr>
             ) : boxes.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-neutral-400">No boxes found</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">No boxes found</td></tr>
             ) : boxes.map((box) => (
               <tr key={box.id} className="hover:bg-neutral-50">
                 <td className="px-4 py-3">{box.profiles?.full_name ?? 'Unknown'}</td>
@@ -132,9 +190,14 @@ export default function BoxesPage(): React.ReactElement {
                     {STATUS_LABELS[box.status] ?? box.status}
                   </span>
                 </td>
+                <td className="px-4 py-3 text-xs text-neutral-600">
+                  {box.status === 'boutique_session_active'
+                    ? sessionRemaining(box.session_ends_at)
+                    : '—'}
+                </td>
                 <td className="px-4 py-3">{new Date(box.created_at).toLocaleDateString('en-IN')}</td>
                 <td className="px-4 py-3 font-mono text-xs">{box.tracking_number ?? '—'}</td>
-                <td className="px-4 py-3 space-x-2">
+                <td className="px-4 py-3 space-x-2 whitespace-nowrap">
                   {box.status === 'confirmed' && (
                     <button onClick={() => void handlePack(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Pack</button>
                   )}
@@ -143,6 +206,15 @@ export default function BoxesPage(): React.ReactElement {
                   )}
                   {box.status === 'out_for_delivery' && (
                     <button onClick={() => void handleDeliver(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Mark Delivered</button>
+                  )}
+                  {box.status === 'delivered' && (
+                    <button onClick={() => void handleStartSession(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Start Session</button>
+                  )}
+                  {box.status === 'boutique_session_active' && (
+                    <>
+                      <button onClick={() => void handleExtendSession(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Extend</button>
+                      <button onClick={() => void handleEndSession(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">End</button>
+                    </>
                   )}
                 </td>
               </tr>

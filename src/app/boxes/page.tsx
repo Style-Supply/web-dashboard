@@ -2,19 +2,26 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
-import { listBoxes, shipBox, deliverBox } from '@/lib/boxes';
+import { listBoxes, packBox, dispatchBox, deliverBox } from '@/lib/boxes';
 import type { Box } from '@/types/box';
 
 const PAGE_SIZE = 50;
 
 const STATUS_LABELS: Record<string, string> = {
   building: 'Building',
+  full: 'Full',
+  pending_membership_payment: 'Awaiting Membership Payment',
+  pending_payment_verification: 'Payment Verifying',
   confirmed: 'Confirmed',
-  paid: 'Paid',
-  shipped: 'Shipped',
+  packing: 'Packing',
+  out_for_delivery: 'Out for Delivery',
   delivered: 'Delivered',
-  session_active: 'Session Active',
-  session_ended: 'Session Ended',
+  boutique_session_active: 'Session Active (48h)',
+  decision_pending: 'Decision Pending',
+  purchase_pending: 'Purchase Pending',
+  returns_review: 'Returns Review',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
 export default function BoxesPage(): React.ReactElement {
@@ -40,12 +47,22 @@ export default function BoxesPage(): React.ReactElement {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function handleShip(id: string): Promise<void> {
-    const tracking = prompt('Enter tracking number:');
-    if (!tracking) return;
+  async function handlePack(id: string): Promise<void> {
+    if (!confirm('Start packing this box?')) return;
     try {
-      await shipBox(id, tracking);
-      showToast('success', 'Box marked as shipped');
+      await packBox(id);
+      showToast('success', 'Box moved to packing');
+      void load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed');
+    }
+  }
+
+  async function handleDispatch(id: string): Promise<void> {
+    const tracking = prompt('Enter tracking number (optional):') ?? undefined;
+    try {
+      await dispatchBox(id, tracking || undefined);
+      showToast('success', 'Box dispatched for delivery');
       void load();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed');
@@ -118,11 +135,14 @@ export default function BoxesPage(): React.ReactElement {
                 <td className="px-4 py-3">{new Date(box.created_at).toLocaleDateString('en-IN')}</td>
                 <td className="px-4 py-3 font-mono text-xs">{box.tracking_number ?? '—'}</td>
                 <td className="px-4 py-3 space-x-2">
-                  {box.status === 'paid' && (
-                    <button onClick={() => void handleShip(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Ship</button>
+                  {box.status === 'confirmed' && (
+                    <button onClick={() => void handlePack(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Pack</button>
                   )}
-                  {box.status === 'shipped' && (
-                    <button onClick={() => void handleDeliver(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Deliver</button>
+                  {box.status === 'packing' && (
+                    <button onClick={() => void handleDispatch(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Dispatch</button>
+                  )}
+                  {box.status === 'out_for_delivery' && (
+                    <button onClick={() => void handleDeliver(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Mark Delivered</button>
                   )}
                 </td>
               </tr>

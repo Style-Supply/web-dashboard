@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import {
+  approveAccessRequest,
   bulkDeleteUsers,
-  bulkUpdateStatus,
   deleteUser,
   listUsers,
-  updateUser,
+  rejectAccessRequest,
+  waitlistAccessRequest,
 } from '@/lib/users';
 import type { OnboardingSubmission } from '@/types/user';
 import UserTable from '@/components/list/UserTable';
@@ -17,8 +18,8 @@ import UserBulkActionBar from '@/components/list/UserBulkActionBar';
 
 const PAGE_SIZE = 50;
 
-type BulkBusy = false | 'delete' | 'pending' | 'approved' | 'rejected';
-type RowAction = 'approving' | 'rejecting' | 'deleting' | null;
+type BulkBusy = false | 'delete';
+type RowAction = 'approving' | 'rejecting' | 'waitlisting' | 'deleting' | null;
 
 export default function UsersPage(): React.ReactElement {
   const { showToast } = useToast();
@@ -63,21 +64,48 @@ export default function UsersPage(): React.ReactElement {
     [users, selectedId],
   );
 
-  async function handleRowStatus(
-    id: string,
-    status: 'approved' | 'rejected',
-  ): Promise<void> {
+  async function handleApprove(id: string): Promise<void> {
     setRowBusy(id);
-    setRowAction(status === 'approved' ? 'approving' : 'rejecting');
+    setRowAction('approving');
     try {
-      await updateUser(id, { approval_status: status });
+      const result = await approveAccessRequest(id);
       await load();
-      showToast(
-        'success',
-        status === 'approved' ? 'User approved' : 'User rejected',
-      );
+      const emailNote = result.email_sent
+        ? 'Invite email sent.'
+        : `Invite email NOT sent — share code manually: ${result.access_code}`;
+      showToast(result.email_sent ? 'success' : 'error', `User approved. ${emailNote}`);
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Update failed');
+      showToast('error', err instanceof Error ? err.message : 'Approval failed');
+    } finally {
+      setRowBusy(null);
+      setRowAction(null);
+    }
+  }
+
+  async function handleReject(id: string): Promise<void> {
+    setRowBusy(id);
+    setRowAction('rejecting');
+    try {
+      await rejectAccessRequest(id);
+      await load();
+      showToast('success', 'User rejected');
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Reject failed');
+    } finally {
+      setRowBusy(null);
+      setRowAction(null);
+    }
+  }
+
+  async function handleWaitlist(id: string): Promise<void> {
+    setRowBusy(id);
+    setRowAction('waitlisting');
+    try {
+      await waitlistAccessRequest(id);
+      await load();
+      showToast('success', 'User waitlisted');
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Waitlist failed');
     } finally {
       setRowBusy(null);
       setRowAction(null);
@@ -116,23 +144,6 @@ export default function UsersPage(): React.ReactElement {
       showToast('success', `${count} user${count === 1 ? '' : 's'} deleted`);
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Bulk delete failed');
-    } finally {
-      setBulkBusy(false);
-    }
-  }
-
-  async function handleBulkStatus(
-    status: 'pending' | 'approved' | 'rejected',
-  ): Promise<void> {
-    setBulkBusy(status);
-    try {
-      const count = selection.size;
-      await bulkUpdateStatus(Array.from(selection), status);
-      setSelection(new Set());
-      await load();
-      showToast('success', `${count} user${count === 1 ? '' : 's'} set to ${status}`);
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Bulk update failed');
     } finally {
       setBulkBusy(false);
     }
@@ -201,7 +212,6 @@ export default function UsersPage(): React.ReactElement {
           selectedIds={Array.from(selection)}
           busy={bulkBusy}
           onDelete={() => void handleBulkDelete()}
-          onStatusChange={(s) => void handleBulkStatus(s)}
         />
       </div>
 
@@ -220,8 +230,9 @@ export default function UsersPage(): React.ReactElement {
           rowAction={rowAction}
           onSelectionChange={setSelection}
           onView={(id) => setSelectedId(id)}
-          onApprove={(id) => void handleRowStatus(id, 'approved')}
-          onReject={(id) => void handleRowStatus(id, 'rejected')}
+          onApprove={(id) => void handleApprove(id)}
+          onReject={(id) => void handleReject(id)}
+          onWaitlist={(id) => void handleWaitlist(id)}
           onDelete={(id) => void handleRowDelete(id)}
         />
       </div>

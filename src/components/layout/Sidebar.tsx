@@ -112,6 +112,23 @@ const Icon = {
       <path d="m15.5 7.5 3 3L22 7l-3-3" />
     </svg>
   ),
+  Payments: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+    </svg>
+  ),
+  Returns: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M3 7v6h6" />
+      <path d="M3 13a9 9 0 1 0 3-7.7L3 8" />
+    </svg>
+  ),
+  Reviews: (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" {...stroke}>
+      <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+    </svg>
+  ),
   Chevron: (
     <svg className="w-4 h-4 opacity-70" viewBox="0 0 24 24" {...stroke}>
       <path d="M19 9l-7 7-7-7" />
@@ -150,6 +167,9 @@ const NAV: NavGroup[] = [
     children: [{ href: '/users/new', label: 'Add User' }],
   },
   { href: '/boxes', label: 'Boxes', icon: Icon.Boxes, children: [] },
+  { href: '/returns', label: 'Returns', icon: Icon.Returns, children: [] },
+  { href: '/payments', label: 'Payments', icon: Icon.Payments, children: [] },
+  { href: '/reviews', label: 'Reviews', icon: Icon.Reviews, children: [] },
   { href: '/memberships', label: 'Memberships', icon: Icon.Memberships, children: [] },
   { href: '/codes', label: 'Access Codes', icon: Icon.AccessCodes, children: [] },
 ];

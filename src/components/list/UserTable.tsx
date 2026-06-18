@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { OnboardingSubmission } from '@/types/user';
 
-type RowAction = 'approving' | 'rejecting' | 'deleting' | null;
+type RowAction = 'approving' | 'rejecting' | 'waitlisting' | 'deleting' | null;
 
 interface UserTableProps {
   users: OnboardingSubmission[];
@@ -16,12 +16,14 @@ interface UserTableProps {
   onView: (id: string) => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
+  onWaitlist: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
 const BUSY_MESSAGES: Record<NonNullable<RowAction>, string> = {
   approving: 'Approving…',
   rejecting: 'Rejecting…',
+  waitlisting: 'Waitlisting…',
   deleting: 'Deleting…',
 };
 
@@ -44,6 +46,7 @@ export default function UserTable({
   onView,
   onApprove,
   onReject,
+  onWaitlist,
   onDelete,
 }: UserTableProps): React.ReactElement {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -130,7 +133,9 @@ export default function UserTable({
                       ? 'bg-emerald-50 text-emerald-700'
                       : u.approval_status === 'rejected'
                         ? 'bg-red-50 text-red-700'
-                        : 'bg-amber-50 text-amber-700'
+                        : u.approval_status === 'waitlisted'
+                          ? 'bg-sky-50 text-sky-700'
+                          : 'bg-amber-50 text-amber-700'
                   }`}
                 >
                   {u.approval_status ?? 'pending'}
@@ -212,31 +217,7 @@ export default function UserTable({
                       Edit
                     </Link>
                     <div className="my-1.5 border-t border-neutral-100" />
-                    {u.approval_status === 'approved' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMenuOpen(null);
-                          onReject(u.id);
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-amber-600 hover:bg-[#FDF8F4]"
-                      >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                        Mark rejected
-                      </button>
-                    ) : (
+                    {u.approval_status !== 'approved' && (
                       <button
                         type="button"
                         onClick={() => {
@@ -258,7 +239,57 @@ export default function UserTable({
                             d="M5 13l4 4L19 7"
                           />
                         </svg>
-                        Approve
+                        Approve &amp; send invite
+                      </button>
+                    )}
+                    {u.approval_status !== 'waitlisted' && u.approval_status !== 'approved' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(null);
+                          onWaitlist(u.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-sky-600 hover:bg-[#FDF8F4]"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        Waitlist
+                      </button>
+                    )}
+                    {u.approval_status !== 'rejected' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(null);
+                          onReject(u.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-amber-600 hover:bg-[#FDF8F4]"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                        Reject
                       </button>
                     )}
                     <div className="my-1.5 border-t border-neutral-100" />

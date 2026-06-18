@@ -25,4 +25,9 @@ export interface OnboardingSubmission {
 
   morning_routine_selections: string[] | null;
   approval_status: string | null;
+  approved_at?: string | null;
+  admin_notes?: string | null;
+  linked_user_id?: string | null;
+  invite_code?: string | null;
+  invite_sent_at?: string | null;
 }

@@ -1,7 +1,47 @@
 import { supabase } from '@/lib/supabase';
+import { request } from '@/lib/api';
 import type { OnboardingSubmission } from '@/types/user';
 
 export type UserPayload = Omit<OnboardingSubmission, 'id' | 'created_at'>;
+
+export interface ApproveResult {
+  success: boolean;
+  submission: OnboardingSubmission;
+  access_code: string;
+  user_id: string;
+  email_sent: boolean;
+}
+
+/**
+ * Approve an access request via the backend. This creates a Supabase auth
+ * user, generates the access-code password, and sends the invite email.
+ */
+export async function approveAccessRequest(id: string): Promise<ApproveResult> {
+  return request<ApproveResult>(`/api/admin/access-requests/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function rejectAccessRequest(
+  id: string,
+  adminNotes?: string,
+): Promise<{ success: boolean; submission: OnboardingSubmission }> {
+  return request(`/api/admin/access-requests/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ admin_notes: adminNotes }),
+  });
+}
+
+export async function waitlistAccessRequest(
+  id: string,
+  adminNotes?: string,
+): Promise<{ success: boolean; submission: OnboardingSubmission }> {
+  return request(`/api/admin/access-requests/${id}/waitlist`, {
+    method: 'POST',
+    body: JSON.stringify({ admin_notes: adminNotes }),
+  });
+}
 
 export interface ListUsersQuery {
   q?: string;

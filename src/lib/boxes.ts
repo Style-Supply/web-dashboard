@@ -1,5 +1,5 @@
 import { request } from './api';
-import type { Box, BoxListResponse } from '@/types/box';
+import type { Box, BoxDetail, BoxListResponse } from '@/types/box';
 
 export async function listBoxes(query: { status?: string; limit?: number; offset?: number } = {}): Promise<BoxListResponse> {
   const params = new URLSearchParams();
@@ -10,17 +10,24 @@ export async function listBoxes(query: { status?: string; limit?: number; offset
   return request<BoxListResponse>(`/api/admin/boxes${qs ? `?${qs}` : ''}`);
 }
 
-export async function getBox(id: string): Promise<Box> {
-  return request<Box>(`/api/admin/boxes/${id}`);
+export async function getBox(id: string): Promise<BoxDetail> {
+  return request<BoxDetail>(`/api/admin/boxes/${id}`);
 }
 
-export async function shipBox(id: string, trackingNumber: string): Promise<Box> {
-  return request<Box>(`/api/admin/boxes/${id}/ship`, {
+// confirmed → packing
+export async function packBox(id: string): Promise<Box> {
+  return request<Box>(`/api/admin/boxes/${id}/pack`, { method: 'POST' });
+}
+
+// packing → out_for_delivery (optional tracking number)
+export async function dispatchBox(id: string, trackingNumber?: string): Promise<Box> {
+  return request<Box>(`/api/admin/boxes/${id}/dispatch`, {
     method: 'POST',
-    body: JSON.stringify({ tracking_number: trackingNumber }),
+    body: JSON.stringify(trackingNumber ? { tracking_number: trackingNumber } : {}),
   });
 }
 
+// out_for_delivery → delivered
 export async function deliverBox(id: string): Promise<Box> {
   return request<Box>(`/api/admin/boxes/${id}/deliver`, { method: 'POST' });
 }

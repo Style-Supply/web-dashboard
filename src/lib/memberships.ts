@@ -16,3 +16,10 @@ export async function updateMembership(id: string, payload: Partial<Pick<Members
     body: JSON.stringify(payload),
   });
 }
+
+// Admin-initiated reactivate (cancelled or paused → active).
+export async function reactivateMembership(id: string): Promise<Membership> {
+  return request<Membership>(`/api/admin/memberships/${id}/reactivate`, {
+    method: 'POST',
+  });
+}

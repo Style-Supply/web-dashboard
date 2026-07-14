@@ -1,45 +1,37 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
-import {
-  listBoxes,
-  packBox,
-  dispatchBox,
-  deliverBox,
-  startSession,
-  extendSession,
-  endSession,
-} from '@/lib/boxes';
+import { listBoxes } from '@/lib/boxes';
 import type { Box } from '@/types/box';
 
 const PAGE_SIZE = 50;
 
-// Render the remaining time on an active 48h session (or "Expired").
-function sessionRemaining(endsAt: string | null | undefined): string {
-  if (!endsAt) return '—';
-  const ms = new Date(endsAt).getTime() - Date.now();
-  if (ms <= 0) return 'Expired';
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  return `${h}h ${m}m left`;
-}
-
 const STATUS_LABELS: Record<string, string> = {
   building: 'Building',
-  full: 'Full',
-  pending_membership_payment: 'Awaiting Membership Payment',
-  pending_payment_verification: 'Payment Verifying',
   confirmed: 'Confirmed',
   packing: 'Packing',
   out_for_delivery: 'Out for Delivery',
   delivered: 'Delivered',
-  boutique_session_active: 'Session Active (48h)',
-  decision_pending: 'Decision Pending',
-  purchase_pending: 'Purchase Pending',
+  boutique_session_active: 'Boutique Session',
+  decision_pending: 'Decisions Pending',
   returns_review: 'Returns Review',
   completed: 'Completed',
   cancelled: 'Cancelled',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  building: 'bg-neutral-100 text-neutral-600',
+  confirmed: 'bg-blue-100 text-blue-700',
+  packing: 'bg-indigo-100 text-indigo-700',
+  out_for_delivery: 'bg-violet-100 text-violet-700',
+  delivered: 'bg-amber-100 text-amber-700',
+  boutique_session_active: 'bg-orange-100 text-orange-700',
+  decision_pending: 'bg-rose-100 text-rose-700',
+  returns_review: 'bg-red-100 text-red-700',
+  completed: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-neutral-200 text-neutral-500',
 };
 
 export default function BoxesPage(): React.ReactElement {
@@ -64,78 +56,6 @@ export default function BoxesPage(): React.ReactElement {
   }, [offset, statusFilter]);
 
   useEffect(() => { void load(); }, [load]);
-
-  async function handlePack(id: string): Promise<void> {
-    if (!confirm('Start packing this box?')) return;
-    try {
-      await packBox(id);
-      showToast('success', 'Box moved to packing');
-      void load();
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed');
-    }
-  }
-
-  async function handleDispatch(id: string): Promise<void> {
-    const tracking = prompt('Enter tracking number (optional):') ?? undefined;
-    try {
-      await dispatchBox(id, tracking || undefined);
-      showToast('success', 'Box dispatched for delivery');
-      void load();
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed');
-    }
-  }
-
-  async function handleDeliver(id: string): Promise<void> {
-    if (!confirm('Mark this box as delivered?')) return;
-    try {
-      await deliverBox(id);
-      showToast('success', 'Box marked as delivered');
-      void load();
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed');
-    }
-  }
-
-  async function handleStartSession(id: string): Promise<void> {
-    if (!confirm('Start the 48-hour session for this member now?')) return;
-    try {
-      await startSession(id);
-      showToast('success', '48h session started');
-      void load();
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed');
-    }
-  }
-
-  async function handleExtendSession(id: string): Promise<void> {
-    const input = prompt('Extend session by how many hours?', '24');
-    if (!input) return;
-    const hours = parseInt(input, 10);
-    if (!Number.isFinite(hours) || hours < 1) {
-      showToast('error', 'Enter a valid number of hours');
-      return;
-    }
-    try {
-      await extendSession(id, hours);
-      showToast('success', `Session extended by ${hours}h`);
-      void load();
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed');
-    }
-  }
-
-  async function handleEndSession(id: string): Promise<void> {
-    if (!confirm('End this session now and move to decision pending?')) return;
-    try {
-      await endSession(id);
-      showToast('success', 'Session ended');
-      void load();
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed');
-    }
-  }
 
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -171,7 +91,6 @@ export default function BoxesPage(): React.ReactElement {
             <tr>
               <th className="px-4 py-3">User</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Session</th>
               <th className="px-4 py-3">Created</th>
               <th className="px-4 py-3">Tracking</th>
               <th className="px-4 py-3">Actions</th>
@@ -179,43 +98,23 @@ export default function BoxesPage(): React.ReactElement {
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">Loading...</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-neutral-400">Loading...</td></tr>
             ) : boxes.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">No boxes found</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-neutral-400">No boxes found</td></tr>
             ) : boxes.map((box) => (
               <tr key={box.id} className="hover:bg-neutral-50">
                 <td className="px-4 py-3">{box.profiles?.full_name ?? 'Unknown'}</td>
                 <td className="px-4 py-3">
-                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[box.status] ?? 'bg-neutral-100 text-neutral-600'}`}>
                     {STATUS_LABELS[box.status] ?? box.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-neutral-600">
-                  {box.status === 'boutique_session_active'
-                    ? sessionRemaining(box.session_ends_at)
-                    : '—'}
-                </td>
                 <td className="px-4 py-3">{new Date(box.created_at).toLocaleDateString('en-IN')}</td>
                 <td className="px-4 py-3 font-mono text-xs">{box.tracking_number ?? '—'}</td>
-                <td className="px-4 py-3 space-x-2 whitespace-nowrap">
-                  {box.status === 'confirmed' && (
-                    <button onClick={() => void handlePack(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Pack</button>
-                  )}
-                  {box.status === 'packing' && (
-                    <button onClick={() => void handleDispatch(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Dispatch</button>
-                  )}
-                  {box.status === 'out_for_delivery' && (
-                    <button onClick={() => void handleDeliver(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Mark Delivered</button>
-                  )}
-                  {box.status === 'delivered' && (
-                    <button onClick={() => void handleStartSession(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Start Session</button>
-                  )}
-                  {box.status === 'boutique_session_active' && (
-                    <>
-                      <button onClick={() => void handleExtendSession(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">Extend</button>
-                      <button onClick={() => void handleEndSession(box.id)} className="text-xs font-medium text-[#7A021D] hover:underline">End</button>
-                    </>
-                  )}
+                <td className="px-4 py-3">
+                  <Link href={`/boxes/${box.id}`} className="text-xs font-medium text-[#7A021D] hover:underline">
+                    View →
+                  </Link>
                 </td>
               </tr>
             ))}

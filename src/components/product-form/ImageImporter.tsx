@@ -1,88 +1,39 @@
 'use client';
 
-import type { ProductImage, ProductVariant } from '@/types/product';
-import type { ColourTag } from '@/lib/api';
-import { reorderImages } from '@/lib/api';
-import { useTaxonomy } from '@/hooks/useTaxonomy';
-import ImageColourSection, { type SectionKind } from './ImageColourSection';
+import { useRef, useState } from 'react';
+import type { ProductImage } from '@/types/product';
+import {
+  importImagesFromUrls,
+  scrapeImagesFromPage,
+  uploadImages,
+  deleteImage,
+  reorderImages,
+} from '@/lib/api';
+import { isLikelyHttpUrl } from '@/lib/url-check';
+import Button from '@/components/ui/Button';
+import Textarea from '@/components/ui/Textarea';
 
 interface ImageImporterProps {
   productId: string | null;
-  variants: ProductVariant[];
   images: ProductImage[];
   onImagesChange: (next: ProductImage[]) => void;
 }
 
-interface DerivedSection {
-  key: string;
-  kind: SectionKind;
-  match: (img: ProductImage) => boolean;
-  tag: ColourTag;
-  label: string;
-}
-
-function buildSections(
-  variants: ProductVariant[],
-  colours: { id: string; name: string; hex: string }[],
-  images: ProductImage[],
-): DerivedSection[] {
-  const seenColourIds = new Set<string>();
-  const seenCustomLower = new Set<string>();
-  const sections: DerivedSection[] = [];
-
-  for (const v of variants) {
-    if (v.colour_id && !seenColourIds.has(v.colour_id)) {
-      seenColourIds.add(v.colour_id);
-      const c = colours.find((x) => x.id === v.colour_id);
-      const name = c?.name ?? 'Unknown';
-      const hex = c?.hex ?? '#888';
-      sections.push({
-        key: `c:${v.colour_id}`,
-        kind: { type: 'colour', colour_id: v.colour_id, name, hex },
-        match: (img) => img.colour_id === v.colour_id,
-        tag: { colour_id: v.colour_id, custom_colour: null },
-        label: name,
-      });
-    } else if (v.custom_colour) {
-      const lower = v.custom_colour.trim().toLowerCase();
-      if (lower && !seenCustomLower.has(lower)) {
-        seenCustomLower.add(lower);
-        sections.push({
-          key: `x:${lower}`,
-          kind: { type: 'custom', custom_colour: v.custom_colour.trim() },
-          match: (img) =>
-            img.colour_id === null &&
-            (img.custom_colour ?? '').trim().toLowerCase() === lower,
-          tag: { colour_id: null, custom_colour: v.custom_colour.trim() },
-          label: `Custom: ${v.custom_colour.trim()}`,
-        });
-      }
-    }
-  }
-
-  const hasUnassignedImages = images.some(
-    (img) => img.colour_id === null && img.custom_colour === null,
-  );
-  if (sections.length === 0 || hasUnassignedImages) {
-    sections.push({
-      key: 'unassigned',
-      kind: { type: 'unassigned' },
-      match: (img) => img.colour_id === null && img.custom_colour === null,
-      tag: { colour_id: null, custom_colour: null },
-      label: 'Unassigned / All colours',
-    });
-  }
-
-  return sections;
-}
+type Mode = 'url' | 'page' | 'upload';
 
 export default function ImageImporter({
   productId,
-  variants,
   images,
   onImagesChange,
 }: ImageImporterProps): React.ReactElement {
-  const { colours } = useTaxonomy();
+  const [mode, setMode] = useState<Mode>('page');
+  const [urlText, setUrlText] = useState<string>('');
+  const [pageUrl, setPageUrl] = useState<string>('');
+  const [busy, setBusy] = useState<false | 'url' | 'page' | 'upload'>(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<boolean>(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   if (productId === null) {
     return (
@@ -92,87 +43,224 @@ export default function ImageImporter({
     );
   }
 
-  const id = productId;
-  const sections = buildSections(variants, colours, images);
-  const onlyUnassigned = sections.length === 1 && sections[0].kind.type === 'unassigned';
+  async function handleImportUrls(): Promise<void> {
+    if (!productId) return;
+    const urls = urlText
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && isLikelyHttpUrl(s));
+    if (urls.length === 0) return;
+    setBusy('url');
+    try {
+      const result = await importImagesFromUrls(productId, urls);
+      onImagesChange([...images, ...result.imported]);
+      setUrlText('');
+    } catch {
+      // silent
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  // Helper: re-flatten and persist global sort order whenever section composition changes.
-  function commit(reflattened: ProductImage[]): void {
-    const reindexed = reflattened.map((img, idx) => ({ ...img, sort_order: idx }));
+  async function handleScrapePage(): Promise<void> {
+    if (!productId) return;
+    const url = pageUrl.trim();
+    if (!url || !isLikelyHttpUrl(url)) return;
+    setBusy('page');
+    try {
+      const result = await scrapeImagesFromPage(productId, url);
+      onImagesChange([...images, ...result.imported]);
+      setPageUrl('');
+    } catch {
+      // silent
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFiles(files: File[]): Promise<void> {
+    if (!productId || files.length === 0) return;
+    setBusy('upload');
+    try {
+      const result = await uploadImages(productId, files);
+      onImagesChange([...images, ...result.imported]);
+    } catch {
+      // silent
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(imageId: string): Promise<void> {
+    setDeletingId(imageId);
+    try {
+      await deleteImage(imageId);
+      onImagesChange(images.filter((i) => i.id !== imageId));
+    } catch (e) {
+      console.error('Failed to delete image', e);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function handleAltChange(imageId: string, alt: string): void {
+    // TODO: backend PATCH does not persist image alt text yet — update local only.
+    onImagesChange(images.map((i) => (i.id === imageId ? { ...i, alt } : i)));
+  }
+
+  function handleReorderDrop(targetIndex: number): void {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      return;
+    }
+    const next = [...images];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    const reindexed = next.map((img, idx) => ({ ...img, sort_order: idx }));
     onImagesChange(reindexed);
-    void reorderImages(id, reindexed.map((i) => i.id));
-  }
-
-  // Build per-section image arrays in the user's current order. We derive
-  // section image lists from the global `images` array, sorted by sort_order
-  // ascending (which is how the backend gives them back).
-  const sortedGlobal = [...images].sort((a, b) => a.sort_order - b.sort_order);
-  const sectionImages = new Map<string, ProductImage[]>();
-  for (const s of sections) {
-    sectionImages.set(s.key, sortedGlobal.filter(s.match));
-  }
-
-  function reflatten(updated: Map<string, ProductImage[]>): ProductImage[] {
-    const out: ProductImage[] = [];
-    for (const s of sections) out.push(...(updated.get(s.key) ?? []));
-    return out;
-  }
-
-  function handleAppend(sectionKey: string, added: ProductImage[]): void {
-    const updated = new Map(sectionImages);
-    updated.set(sectionKey, [...(updated.get(sectionKey) ?? []), ...added]);
-    commit(reflatten(updated));
-  }
-
-  function handleReorderSection(sectionKey: string, newOrderIds: string[]): void {
-    const current = sectionImages.get(sectionKey) ?? [];
-    const byId = new Map(current.map((i) => [i.id, i]));
-    const reordered = newOrderIds.map((id) => byId.get(id)).filter((i): i is ProductImage => Boolean(i));
-    const updated = new Map(sectionImages);
-    updated.set(sectionKey, reordered);
-    commit(reflatten(updated));
-  }
-
-  function handleUpdateImage(imageId: string, patch: Partial<ProductImage>): void {
-    // Apply patch in the global list; recompute section membership by re-filtering.
-    const nextGlobal = sortedGlobal.map((i) => (i.id === imageId ? { ...i, ...patch } : i));
-    const updated = new Map<string, ProductImage[]>();
-    for (const s of sections) updated.set(s.key, nextGlobal.filter(s.match));
-    commit(reflatten(updated));
-  }
-
-  function handleDeleteImage(imageId: string): void {
-    const nextGlobal = sortedGlobal.filter((i) => i.id !== imageId);
-    const updated = new Map<string, ProductImage[]>();
-    for (const s of sections) updated.set(s.key, nextGlobal.filter(s.match));
-    commit(reflatten(updated));
+    if (productId) void reorderImages(productId, reindexed.map((i) => i.id));
+    setDragIndex(null);
   }
 
   return (
     <div className="space-y-4">
-      {onlyUnassigned && (
-        <div className="rounded border border-dashed border-neutral-300 bg-neutral-50 p-3 text-xs text-neutral-600">
-          Add a variant with a colour to upload images per colour.
+      <div className="flex gap-1 rounded-lg bg-neutral-100 p-1 text-sm">
+        <button
+          type="button"
+          onClick={() => setMode('url')}
+          className={`flex-1 rounded px-3 py-1.5 ${mode === 'url' ? 'bg-white shadow' : 'text-neutral-600'}`}
+        >
+          From URL
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('page')}
+          className={`flex-1 rounded px-3 py-1.5 ${mode === 'page' ? 'bg-white shadow' : 'text-neutral-600'}`}
+        >
+          From page
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('upload')}
+          className={`flex-1 rounded px-3 py-1.5 ${mode === 'upload' ? 'bg-white shadow' : 'text-neutral-600'}`}
+        >
+          Upload
+        </button>
+      </div>
+
+      {mode === 'url' ? (
+        <div className="space-y-2">
+          <Textarea
+            value={urlText}
+            onChange={(e) => setUrlText(e.target.value)}
+            placeholder="One image URL per line"
+          />
+          <Button variant="secondary" size="sm" loading={busy === 'url'} disabled={!!busy} onClick={handleImportUrls}>
+            {busy === 'url' ? 'Importing…' : 'Import from URLs'}
+          </Button>
+        </div>
+      ) : mode === 'page' ? (
+        <div className="space-y-2">
+          <input
+            type="url"
+            value={pageUrl}
+            onChange={(e) => setPageUrl(e.target.value)}
+            placeholder="https://example.com/product/123"
+            className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+          />
+          <p className="text-xs text-neutral-500">
+            Paste a product page URL. We&apos;ll scrape og:image, JSON-LD, and inline &lt;img&gt; tags and import up to 20 candidates.
+          </p>
+          <Button variant="secondary" size="sm" loading={busy === 'page'} disabled={!!busy} onClick={handleScrapePage}>
+            {busy === 'page' ? 'Scraping…' : 'Scrape page'}
+          </Button>
+        </div>
+      ) : (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
+            void handleFiles(files);
+          }}
+          className={`rounded border border-dashed p-6 text-center text-sm ${dragOver ? 'border-[color:var(--color-primary)] bg-red-50' : 'border-neutral-300 bg-neutral-50'}`}
+        >
+          <p className="text-neutral-600">{busy === 'upload' ? 'Uploading…' : 'Drop images here'}</p>
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files ? Array.from(e.target.files) : [];
+              void handleFiles(files);
+              e.target.value = '';
+            }}
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            className="mt-3"
+            loading={busy === 'upload'}
+            disabled={!!busy}
+            onClick={() => fileRef.current?.click()}
+          >
+            Choose files
+          </Button>
         </div>
       )}
-      {sections.map((s) => {
-        const moveTargets = sections
-          .filter((other) => other.key !== s.key)
-          .map((other) => ({ label: other.label, tag: other.tag }));
-        return (
-          <ImageColourSection
-            key={s.key}
-            productId={id}
-            kind={s.kind}
-            images={sectionImages.get(s.key) ?? []}
-            moveTargets={moveTargets}
-            onAppendImages={(added) => handleAppend(s.key, added)}
-            onReorderSection={(ids) => handleReorderSection(s.key, ids)}
-            onUpdateImage={handleUpdateImage}
-            onDeleteImage={handleDeleteImage}
-          />
-        );
-      })}
+
+      {images.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          {images.map((img, index) => (
+            <div
+              key={img.id}
+              draggable
+              onDragStart={() => setDragIndex(index)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleReorderDrop(index)}
+              className="rounded border border-neutral-200 bg-white p-2"
+            >
+              <div className="relative aspect-square overflow-hidden rounded bg-neutral-100">
+                {img.public_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={img.public_url}
+                    alt={img.alt ?? ''}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
+                {deletingId === img.id && (
+                  <div className="absolute inset-0 grid place-items-center bg-black/40">
+                    <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                )}
+              </div>
+              <input
+                className="mt-2 w-full rounded border border-neutral-200 px-2 py-1 text-xs"
+                value={img.alt ?? ''}
+                placeholder="Alt text"
+                onChange={(e) => handleAltChange(img.id, e.target.value)}
+              />
+              <button
+                type="button"
+                disabled={deletingId === img.id}
+                onClick={() => void handleDelete(img.id)}
+                className="mt-1 w-full text-xs text-red-600 hover:underline disabled:opacity-50"
+              >
+                {deletingId === img.id ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

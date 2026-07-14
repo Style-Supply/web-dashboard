@@ -1,5 +1,5 @@
 import { request } from './api';
-import type { Box, BoxDetail, BoxListResponse } from '@/types/box';
+import type { Box, BoxListResponse } from '@/types/box';
 
 export async function listBoxes(query: { status?: string; limit?: number; offset?: number } = {}): Promise<BoxListResponse> {
   const params = new URLSearchParams();
@@ -10,44 +10,32 @@ export async function listBoxes(query: { status?: string; limit?: number; offset
   return request<BoxListResponse>(`/api/admin/boxes${qs ? `?${qs}` : ''}`);
 }
 
-export async function getBox(id: string): Promise<BoxDetail> {
-  return request<BoxDetail>(`/api/admin/boxes/${id}`);
+export async function getBox(id: string): Promise<Box> {
+  return request<Box>(`/api/admin/boxes/${id}`);
 }
 
-// confirmed → packing
+/** T-4.7: Admin lifecycle transitions */
 export async function packBox(id: string): Promise<Box> {
   return request<Box>(`/api/admin/boxes/${id}/pack`, { method: 'POST' });
 }
 
-// packing → out_for_delivery (optional tracking number)
 export async function dispatchBox(id: string, trackingNumber?: string): Promise<Box> {
   return request<Box>(`/api/admin/boxes/${id}/dispatch`, {
     method: 'POST',
-    body: JSON.stringify(trackingNumber ? { tracking_number: trackingNumber } : {}),
+    body: JSON.stringify({ tracking_number: trackingNumber }),
   });
 }
 
-// out_for_delivery → delivered
 export async function deliverBox(id: string): Promise<Box> {
   return request<Box>(`/api/admin/boxes/${id}/deliver`, { method: 'POST' });
 }
 
-// --- 48h boutique session control ---
-
-// delivered → boutique_session_active (start the 48h timer for the member)
-export async function startSession(id: string): Promise<Box> {
-  return request<Box>(`/api/admin/boxes/${id}/start-session`, { method: 'POST' });
+/** T-5.4: QC actions */
+export async function qcPassItem(boxId: string, itemId: string): Promise<{ qc_status: string }> {
+  return request(`/api/admin/boxes/${boxId}/items/${itemId}/qc-pass`, { method: 'POST' });
 }
 
-// extend an active session by N hours
-export async function extendSession(id: string, hours = 24): Promise<Box> {
-  return request<Box>(`/api/admin/boxes/${id}/extend-session`, {
-    method: 'POST',
-    body: JSON.stringify({ hours }),
-  });
+export async function qcFailItem(boxId: string, itemId: string): Promise<{ qc_status: string }> {
+  return request(`/api/admin/boxes/${boxId}/items/${itemId}/qc-fail`, { method: 'POST' });
 }
 
-// end an active session immediately (→ decision_pending)
-export async function endSession(id: string): Promise<Box> {
-  return request<Box>(`/api/admin/boxes/${id}/end-session`, { method: 'POST' });
-}

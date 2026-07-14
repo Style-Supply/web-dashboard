@@ -6,15 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import {
-  createUser,
-  deleteUser,
-  updateUser,
-  approveAccessRequest,
-  rejectAccessRequest,
-  waitlistAccessRequest,
-  type UserPayload,
-} from '@/lib/users';
+import { createUser, deleteUser, updateUser, type UserPayload } from '@/lib/users';
 import type { OnboardingSubmission } from '@/types/user';
 
 type Mode = 'create' | 'edit';
@@ -24,7 +16,7 @@ interface UserFormProps {
   initial?: OnboardingSubmission;
 }
 
-const STATUS_OPTIONS = ['pending', 'approved', 'waitlisted', 'rejected'] as const;
+const STATUS_OPTIONS = ['pending', 'approved', 'rejected'] as const;
 const HEIGHT_UNITS = ['cm', 'ft'] as const;
 const BODY_UNITS = ['cm', 'in'] as const;
 const STYLE_TAGS = [
@@ -96,10 +88,6 @@ export default function UserForm({ mode, initial }: UserFormProps): React.ReactE
       return;
     }
 
-    // Approval status is NOT a plain field: changing it must run the real
-    // onboarding actions (approve creates/links an auth user + sends the
-    // invite; reject/waitlist set status). So we persist field edits without
-    // approval_status, then apply any status change via the proper endpoint.
     const payload: UserPayload = {
       full_name: fullName.trim(),
       email: email.trim(),
@@ -121,7 +109,7 @@ export default function UserForm({ mode, initial }: UserFormProps): React.ReactE
       age_value: toNum(age),
       age_unit: ageUnit || null,
       morning_routine_selections: styles,
-      approval_status: initial?.approval_status ?? 'pending',
+      approval_status: approvalStatus || null,
     };
 
     setSaving(true);
@@ -131,30 +119,7 @@ export default function UserForm({ mode, initial }: UserFormProps): React.ReactE
         showToast('success', 'User created');
       } else if (initial) {
         await updateUser(initial.id, payload);
-
-        // If the admin changed the approval status, run the real action.
-        const statusChanged = approvalStatus !== (initial.approval_status ?? 'pending');
-        if (statusChanged) {
-          if (approvalStatus === 'approved') {
-            const res = await approveAccessRequest(initial.id);
-            showToast(
-              res.email_sent ? 'success' : 'error',
-              res.email_sent
-                ? 'User approved — invite email sent'
-                : `User approved — invite NOT sent. Share code manually: ${res.access_code}`,
-            );
-          } else if (approvalStatus === 'rejected') {
-            await rejectAccessRequest(initial.id);
-            showToast('success', 'User updated & rejected');
-          } else if (approvalStatus === 'waitlisted') {
-            await waitlistAccessRequest(initial.id);
-            showToast('success', 'User updated & waitlisted');
-          } else {
-            showToast('success', 'User updated');
-          }
-        } else {
-          showToast('success', 'User updated');
-        }
+        showToast('success', 'User updated');
       }
       router.push('/users');
       router.refresh();

@@ -5,21 +5,18 @@ import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
-const ALLOWED_EMAIL_DOMAIN = 'stylesupply.io';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-/** Full addresses allowed outside the company domain. */
-const ALLOWED_EMAIL_ADDRESSES = new Set<string>([
-  'sandeep@techaxlabs.com',
-]);
-
-function isAllowedEmail(email: string | undefined | null): boolean {
-  if (!email) return false;
-  const normalized = email.toLowerCase().trim();
-  if (ALLOWED_EMAIL_ADDRESSES.has(normalized)) return true;
-  const at = normalized.lastIndexOf('@');
-  if (at === -1) return false;
-  const domain = normalized.slice(at + 1);
-  return domain === ALLOWED_EMAIL_DOMAIN;
+/** Verify the session server-side via backend (bypasses Supabase RLS on profiles table) */
+async function verifyAdminSession(accessToken: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/system/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 interface AuthContextType {
@@ -47,45 +44,67 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check session on mount and listen for auth changes
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const email = session.user.email?.toLowerCase();
-        if (email && isAllowedEmail(email)) {
-          setUser(session.user);
-        } else {
-          // Not in allowlist - sign them out
-          void supabase.auth.signOut();
-          setUser(null);
-          setError('Access denied. This dashboard is restricted.');
-        }
-      }
-      setIsLoading(false);
-    });
+    let mounted = true;
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const email = session.user.email?.toLowerCase();
-        if (email && isAllowedEmail(email)) {
+    // Step 1: resolve the initial session with getSession() — always resolves.
+    // onAuthStateChange INITIAL_SESSION can be missed or delayed in Next.js 16+
+    async function initSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (session?.user && session.access_token) {
+          // Verify role server-side — avoids Supabase RLS blocking anon key on profiles
+          const isAdmin = await verifyAdminSession(session.access_token);
+          if (!mounted) return;
+
+          if (isAdmin) {
+            setUser(session.user);
+            setError(null);
+          } else {
+            await supabase.auth.signOut();
+            setUser(null);
+            setError('Access denied. Admin access only.');
+          }
+        } else {
+          setUser(null);
+        }
+      } catch {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void initSession();
+
+    // Step 2: listen for subsequent sign-in / sign-out / token refresh
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'INITIAL_SESSION') return;
+
+      if (session?.user && session.access_token) {
+        const isAdmin = await verifyAdminSession(session.access_token);
+        if (isAdmin) {
           setUser(session.user);
           setError(null);
         } else {
-          void supabase.auth.signOut();
+          await supabase.auth.signOut();
           setUser(null);
-          setError('Access denied. This dashboard is restricted.');
+          setError('Access denied. Admin access only.');
         }
       } else {
         setUser(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Redirect based on auth state
+  // Redirect based on auth state (runs after loading is done)
   useEffect(() => {
     if (isLoading) return;
 
@@ -94,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
     if (!user && !isLoginPage) {
       router.push('/login');
     } else if (user && isLoginPage) {
-      router.push('/products');
+      router.push('/overview');
     }
   }, [user, isLoading, pathname, router]);
 
@@ -113,17 +132,11 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
   const loginWithEmail = useCallback(async (email: string, password: string) => {
     setError(null);
-
-    // Restrict to company domain before attempting login
-    if (!isAllowedEmail(email)) {
-      setError('Access denied. This dashboard is restricted.');
-      return;
-    }
-
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
     }
+    // Role check happens automatically in onAuthStateChange
   }, []);
 
   const logout = useCallback(async () => {

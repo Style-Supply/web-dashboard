@@ -134,7 +134,7 @@ export default function UserTable({
                       : u.approval_status === 'rejected'
                         ? 'bg-red-50 text-red-700'
                         : u.approval_status === 'waitlisted'
-                          ? 'bg-sky-50 text-sky-700'
+                          ? 'bg-yellow-100 text-yellow-700'
                           : 'bg-amber-50 text-amber-700'
                   }`}
                 >
@@ -217,57 +217,7 @@ export default function UserTable({
                       Edit
                     </Link>
                     <div className="my-1.5 border-t border-neutral-100" />
-                    {u.approval_status !== 'approved' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMenuOpen(null);
-                          onApprove(u.id);
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[#7A021D] hover:bg-[#FDF8F4]"
-                      >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        Approve &amp; send invite
-                      </button>
-                    )}
-                    {u.approval_status !== 'waitlisted' && u.approval_status !== 'approved' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMenuOpen(null);
-                          onWaitlist(u.id);
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-sky-600 hover:bg-[#FDF8F4]"
-                      >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        Waitlist
-                      </button>
-                    )}
-                    {u.approval_status !== 'rejected' && (
+                    {u.approval_status === 'approved' ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -276,21 +226,53 @@ export default function UserTable({
                         }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-amber-600 hover:bg-[#FDF8F4]"
                       >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        Reject
+                        Mark rejected
                       </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuOpen(null);
+                            onApprove(u.id);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[#7A021D] hover:bg-[#FDF8F4]"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Approve &amp; Invite
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuOpen(null);
+                            onWaitlist(u.id);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-yellow-700 hover:bg-yellow-50"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Waitlist
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuOpen(null);
+                            onReject(u.id);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-amber-600 hover:bg-[#FDF8F4]"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Reject
+                        </button>
+                      </>
                     )}
                     <div className="my-1.5 border-t border-neutral-100" />
                     <button

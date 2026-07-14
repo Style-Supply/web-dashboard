@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import {
-  approveAccessRequest,
   bulkDeleteUsers,
+  bulkUpdateStatus,
   deleteUser,
   listUsers,
-  rejectAccessRequest,
-  waitlistAccessRequest,
+  updateUser,
+  approveUser,
+  waitlistUser,
 } from '@/lib/users';
 import type { OnboardingSubmission } from '@/types/user';
 import UserTable from '@/components/list/UserTable';
@@ -18,7 +19,7 @@ import UserBulkActionBar from '@/components/list/UserBulkActionBar';
 
 const PAGE_SIZE = 50;
 
-type BulkBusy = false | 'delete';
+type BulkBusy = false | 'delete' | 'pending' | 'approved' | 'rejected';
 type RowAction = 'approving' | 'rejecting' | 'waitlisting' | 'deleting' | null;
 
 export default function UsersPage(): React.ReactElement {
@@ -64,33 +65,24 @@ export default function UsersPage(): React.ReactElement {
     [users, selectedId],
   );
 
-  async function handleApprove(id: string): Promise<void> {
+  async function handleRowStatus(
+    id: string,
+    status: 'approved' | 'rejected',
+  ): Promise<void> {
     setRowBusy(id);
-    setRowAction('approving');
+    setRowAction(status === 'approved' ? 'approving' : 'rejecting');
     try {
-      const result = await approveAccessRequest(id);
+      if (status === 'approved') {
+        // T-2.3: Call backend API which creates auth user + sends invite email
+        await approveUser(id);
+        showToast('success', 'User approved — invite email sent!');
+      } else {
+        await updateUser(id, { approval_status: 'rejected' });
+        showToast('success', 'User rejected');
+      }
       await load();
-      const emailNote = result.email_sent
-        ? 'Invite email sent.'
-        : `Invite email NOT sent — share code manually: ${result.access_code}`;
-      showToast(result.email_sent ? 'success' : 'error', `User approved. ${emailNote}`);
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Approval failed');
-    } finally {
-      setRowBusy(null);
-      setRowAction(null);
-    }
-  }
-
-  async function handleReject(id: string): Promise<void> {
-    setRowBusy(id);
-    setRowAction('rejecting');
-    try {
-      await rejectAccessRequest(id);
-      await load();
-      showToast('success', 'User rejected');
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Reject failed');
+      showToast('error', err instanceof Error ? err.message : 'Update failed');
     } finally {
       setRowBusy(null);
       setRowAction(null);
@@ -101,11 +93,11 @@ export default function UsersPage(): React.ReactElement {
     setRowBusy(id);
     setRowAction('waitlisting');
     try {
-      await waitlistAccessRequest(id);
+      await waitlistUser(id);
       await load();
-      showToast('success', 'User waitlisted');
+      showToast('success', 'User added to waitlist');
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Waitlist failed');
+      showToast('error', err instanceof Error ? err.message : 'Update failed');
     } finally {
       setRowBusy(null);
       setRowAction(null);
@@ -149,13 +141,30 @@ export default function UsersPage(): React.ReactElement {
     }
   }
 
+  async function handleBulkStatus(
+    status: 'pending' | 'approved' | 'rejected',
+  ): Promise<void> {
+    setBulkBusy(status);
+    try {
+      const count = selection.size;
+      await bulkUpdateStatus(Array.from(selection), status);
+      setSelection(new Set());
+      await load();
+      showToast('success', `${count} user${count === 1 ? '' : 's'} set to ${status}`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Bulk update failed');
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-[#2C0505]">Users</h1>
+        <h1 className="text-2xl font-semibold text-[#2C0505]">Request Access</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={() => void load()}
@@ -212,6 +221,7 @@ export default function UsersPage(): React.ReactElement {
           selectedIds={Array.from(selection)}
           busy={bulkBusy}
           onDelete={() => void handleBulkDelete()}
+          onStatusChange={(s) => void handleBulkStatus(s)}
         />
       </div>
 
@@ -230,8 +240,8 @@ export default function UsersPage(): React.ReactElement {
           rowAction={rowAction}
           onSelectionChange={setSelection}
           onView={(id) => setSelectedId(id)}
-          onApprove={(id) => void handleApprove(id)}
-          onReject={(id) => void handleReject(id)}
+          onApprove={(id) => void handleRowStatus(id, 'approved')}
+          onReject={(id) => void handleRowStatus(id, 'rejected')}
           onWaitlist={(id) => void handleWaitlist(id)}
           onDelete={(id) => void handleRowDelete(id)}
         />

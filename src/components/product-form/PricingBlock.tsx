@@ -11,6 +11,7 @@ interface PricingBlockProps {
 
 export default function PricingBlock({ state, setField }: PricingBlockProps): React.ReactElement {
   const retail = fromMinor(state.retail_price_minor);
+  const rent = state.rent_price_minor !== null ? fromMinor(state.rent_price_minor) : '';
 
   return (
     <section className="space-y-4">
@@ -20,9 +21,21 @@ export default function PricingBlock({ state, setField }: PricingBlockProps): Re
           <label className="mb-1 block text-xs font-medium text-neutral-700">Retail price (₹)</label>
           <Input
             type="number"
-            min={1}
+            min={0}
             value={retail}
             onChange={(e) => setField('retail_price_minor', toMinor(Number(e.target.value) || 0))}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-neutral-700">Rent price (₹)</label>
+          <Input
+            type="number"
+            min={0}
+            value={rent}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setField('rent_price_minor', raw === '' ? null : toMinor(Number(raw) || 0));
+            }}
           />
         </div>
       </div>

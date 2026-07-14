@@ -3,11 +3,12 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Product, ProductImage } from '@/types/product';
-import { deleteProduct, getProductWithRetry } from '@/lib/api';
+import { deleteProduct, getProduct } from '@/lib/api';
 import { useProductFormState } from '@/hooks/useProductFormState';
 import { useToast } from '@/components/ui/Toast';
 import { useProducts } from '@/context/ProductsContext';
 import ProductForm from '@/components/product-form/ProductForm';
+import PreviewPane from '@/components/preview/PreviewPane';
 import Button from '@/components/ui/Button';
 
 export default function EditProductPage({
@@ -28,32 +29,21 @@ export default function EditProductPage({
 
   useEffect(() => {
     let cancelled = false;
-    getProductWithRetry(id)
+    getProduct(id)
       .then((product: Product) => {
         if (cancelled) return;
         set({
           name: product.name,
-          sku: product.sku,
-          brand_id: product.brand_id,
-          category_id: product.category_id,
-          subcategory_id: product.subcategory_id,
-          sub_subcategory_id: product.sub_subcategory_id,
-          material_id: product.material_id,
-          fabric_details: product.fabric_details,
-          description: product.description,
+          brand: product.brand,
           retail_price_minor: product.retail_price_minor,
           rent_price_minor: product.rent_price_minor,
           currency: product.currency,
+          category: product.category,
+          collection: product.collection,
+          fabric: product.fabric,
+          description: product.description,
           status: product.status,
-          variants: product.variants.map((v) => ({
-            id: v.id,
-            size: v.size,
-            colour_id: v.colour?.id ?? null,
-            custom_colour: v.custom_colour,
-            quantity: v.quantity,
-            location_id: v.location?.id ?? null,
-          })),
-          look_ids: product.looks.map((l) => l.id),
+          variants: product.variants,
         });
         setImages(product.images);
         setLoaded(true);
@@ -86,7 +76,7 @@ export default function EditProductPage({
 
   return (
     <div className="flex flex-col">
-      <div className="bg-white">
+      <div className="bg-white border-b border-neutral-200">
         <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-3">
           <h1 className="text-lg font-semibold">Edit product</h1>
           <Button variant="ghost" size="sm" loading={deleting} onClick={() => void handleDelete()}>
@@ -99,6 +89,10 @@ export default function EditProductPage({
           images={images}
           onImagesChange={setImages}
         />
+      </div>
+      <div className="bg-neutral-50 pb-16">
+        <div className="px-6 pt-6 pb-3 text-sm font-medium text-neutral-600">Live preview</div>
+        <PreviewPane state={form.state} images={images} />
       </div>
     </div>
   );

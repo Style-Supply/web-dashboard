@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { listMemberships, updateMembership } from '@/lib/memberships';
+import { request } from '@/lib/api';
 import type { Membership, MembershipStatus } from '@/types/membership';
 
 const PAGE_SIZE = 50;
 
 const STATUS_LABELS: Record<MembershipStatus, string> = {
   active: 'Active',
+  payment_pending: 'Pending Payment',
   paused: 'Paused',
   cancelled: 'Cancelled',
   expired: 'Expired',
@@ -16,6 +18,7 @@ const STATUS_LABELS: Record<MembershipStatus, string> = {
 
 const STATUS_COLORS: Record<MembershipStatus, string> = {
   active: 'bg-emerald-100 text-emerald-700',
+  payment_pending: 'bg-blue-100 text-blue-700',
   paused: 'bg-amber-100 text-amber-700',
   cancelled: 'bg-neutral-200 text-neutral-700',
   expired: 'bg-red-100 text-red-700',
@@ -139,7 +142,7 @@ export default function MembershipsPage(): React.ReactElement {
                   </span>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">{formatRupees(m.credit_balance_minor)}</td>
-                <td className="px-4 py-3">{new Date(m.activated_at).toLocaleDateString('en-IN')}</td>
+                <td className="px-4 py-3">{m.activated_at ? new Date(m.activated_at).toLocaleDateString('en-IN') : '—'}</td>
                 <td className="px-4 py-3">{m.expires_at ? new Date(m.expires_at).toLocaleDateString('en-IN') : '—'}</td>
                 <td className="px-4 py-3 space-x-2 whitespace-nowrap">
                   <button
@@ -153,7 +156,20 @@ export default function MembershipsPage(): React.ReactElement {
                     <button onClick={() => void handleStatusChange(m.id, 'paused')} disabled={rowBusy === m.id} className="text-xs font-medium text-amber-700 hover:underline disabled:opacity-40">Pause</button>
                   )}
                   {m.status === 'paused' && (
-                    <button onClick={() => void handleStatusChange(m.id, 'active')} disabled={rowBusy === m.id} className="text-xs font-medium text-emerald-700 hover:underline disabled:opacity-40">Resume</button>
+                    <button
+                      disabled={rowBusy === m.id}
+                      onClick={async () => {
+                        setRowBusy(m.id);
+                        try {
+                          await request(`/api/admin/memberships/${m.id}/reactivate`, { method: 'POST' });
+                          await load();
+                        } catch { /* ignore */ } finally { setRowBusy(null); }
+                      }}
+                      className="text-xs font-medium text-emerald-700 hover:underline disabled:opacity-40"
+                      title={m.paused_until ? `Paused until ${new Date(m.paused_until).toLocaleDateString('en-IN')}` : ''}
+                    >
+                      Reactivate
+                    </button>
                   )}
                   {(m.status === 'active' || m.status === 'paused') && (
                     <button onClick={() => void handleStatusChange(m.id, 'cancelled')} disabled={rowBusy === m.id} className="text-xs font-medium text-red-700 hover:underline disabled:opacity-40">Cancel</button>

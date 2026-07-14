@@ -1,51 +1,11 @@
-import { supabase } from '@/lib/supabase';
 import { request } from '@/lib/api';
 import type { OnboardingSubmission } from '@/types/user';
 
 export type UserPayload = Omit<OnboardingSubmission, 'id' | 'created_at'>;
 
-export interface ApproveResult {
-  success: boolean;
-  submission: OnboardingSubmission;
-  access_code: string;
-  user_id: string;
-  email_sent: boolean;
-}
-
-/**
- * Approve an access request via the backend. This creates a Supabase auth
- * user, generates the access-code password, and sends the invite email.
- */
-export async function approveAccessRequest(id: string): Promise<ApproveResult> {
-  return request<ApproveResult>(`/api/admin/access-requests/${id}/approve`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
-}
-
-export async function rejectAccessRequest(
-  id: string,
-  adminNotes?: string,
-): Promise<{ success: boolean; submission: OnboardingSubmission }> {
-  return request(`/api/admin/access-requests/${id}/reject`, {
-    method: 'POST',
-    body: JSON.stringify({ admin_notes: adminNotes }),
-  });
-}
-
-export async function waitlistAccessRequest(
-  id: string,
-  adminNotes?: string,
-): Promise<{ success: boolean; submission: OnboardingSubmission }> {
-  return request(`/api/admin/access-requests/${id}/waitlist`, {
-    method: 'POST',
-    body: JSON.stringify({ admin_notes: adminNotes }),
-  });
-}
-
 export interface ListUsersQuery {
   q?: string;
-  status?: 'pending' | 'approved' | 'rejected' | 'all';
+  status?: 'pending' | 'approved' | 'rejected' | 'waitlisted' | 'all';
   limit?: number;
   offset?: number;
 }
@@ -55,89 +15,107 @@ export interface ListUsersResponse {
   total: number;
 }
 
+/**
+ * List onboarding submissions via the backend API (uses service-role key,
+ * bypasses RLS — the direct Supabase anon client returns 0 rows due to RLS).
+ */
 export async function listUsers(query: ListUsersQuery = {}): Promise<ListUsersResponse> {
   const { q, status = 'all', limit = 50, offset = 0 } = query;
 
-  let builder = supabase
-    .from('onboarding_submissions')
-    .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+  const params = new URLSearchParams();
+  if (q?.trim()) params.set('q', q.trim());
+  if (status !== 'all') params.set('status', status);
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
 
-  const trimmed = q?.trim();
-  if (trimmed) {
-    const pattern = `%${trimmed}%`;
-    builder = builder.or(
-      `full_name.ilike.${pattern},email.ilike.${pattern},phone_number.ilike.${pattern}`,
-    );
-  }
+  const qs = params.toString();
+  const data = await request<{ requests: OnboardingSubmission[]; total: number }>(
+    `/api/admin/access-requests${qs ? `?${qs}` : ''}`,
+  );
 
-  if (status !== 'all') {
-    builder = builder.eq('approval_status', status);
-  }
-
-  const { data, count, error } = await builder;
-  if (error) throw new Error(error.message);
-
-  return { users: (data ?? []) as OnboardingSubmission[], total: count ?? 0 };
+  // Backend returns { requests, total } — map to { users, total }
+  return { users: data.requests ?? [], total: data.total ?? 0 };
 }
 
 export async function getUser(id: string): Promise<OnboardingSubmission> {
-  const { data, error } = await supabase
-    .from('onboarding_submissions')
-    .select('*')
-    .eq('id', id)
-    .single();
-  if (error) throw new Error(error.message);
-  return data as OnboardingSubmission;
-}
-
-export async function createUser(payload: UserPayload): Promise<OnboardingSubmission> {
-  const { data, error } = await supabase
-    .from('onboarding_submissions')
-    .insert(payload)
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return data as OnboardingSubmission;
+  const data = await request<{ submission: OnboardingSubmission }>(
+    `/api/admin/access-requests/${id}`,
+  );
+  return data.submission;
 }
 
 export async function updateUser(
   id: string,
   payload: Partial<UserPayload>,
 ): Promise<OnboardingSubmission> {
-  const { data, error } = await supabase
-    .from('onboarding_submissions')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return data as OnboardingSubmission;
+  const data = await request<{ submission: OnboardingSubmission }>(
+    `/api/admin/access-requests/${id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+  );
+  return data.submission;
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  const { error } = await supabase.from('onboarding_submissions').delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  await request(`/api/admin/access-requests/${id}`, { method: 'DELETE' });
 }
 
 export async function bulkDeleteUsers(ids: string[]): Promise<{ deleted: number }> {
-  const { error, count } = await supabase
-    .from('onboarding_submissions')
-    .delete({ count: 'exact' })
-    .in('id', ids);
-  if (error) throw new Error(error.message);
-  return { deleted: count ?? 0 };
+  const data = await request<{ deleted: number }>('/api/admin/access-requests/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+  return data;
 }
 
 export async function bulkUpdateStatus(
   ids: string[],
   status: 'pending' | 'approved' | 'rejected',
 ): Promise<{ updated: number }> {
-  const { error, count } = await supabase
-    .from('onboarding_submissions')
-    .update({ approval_status: status }, { count: 'exact' })
-    .in('id', ids);
-  if (error) throw new Error(error.message);
-  return { updated: count ?? 0 };
+  const data = await request<{ updated: number }>('/api/admin/access-requests/bulk-status', {
+    method: 'POST',
+    body: JSON.stringify({ ids, status }),
+  });
+  return data;
 }
+
+/**
+ * Approve a user — creates Supabase auth account + sends invite email.
+ */
+export async function approveUser(id: string): Promise<void> {
+  await request<{ success: boolean }>(`/api/admin/access-requests/${id}/approve`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Move a user to the waitlist.
+ */
+export async function waitlistUser(id: string): Promise<void> {
+  await request<{ success: boolean }>(`/api/admin/access-requests/${id}/waitlist`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Reject a user.
+ */
+export async function rejectUser(id: string): Promise<void> {
+  await request<{ success: boolean }>(`/api/admin/access-requests/${id}/reject`, {
+    method: 'POST',
+  });
+}
+
+// Legacy alias used by some components
+export const createUser = async (payload: UserPayload): Promise<OnboardingSubmission> => {
+  const data = await request<{ submission: OnboardingSubmission }>(
+    '/api/admin/access-requests',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+  return data.submission;
+};

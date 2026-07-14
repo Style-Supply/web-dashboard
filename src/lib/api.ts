@@ -180,3 +180,17 @@ export async function getSuggestions(field: SuggestionField, q: string, signal?:
   const body = (await res.json()) as { values: string[] };
   return body.values;
 }
+
+// ─── Colour tagging ──────────────────────────────────────────────────────────
+
+export interface ColourTag {
+  colour_id?: string | null;
+  custom_colour?: string | null;
+}
+
+export async function retagImage(imageId: string, tag: ColourTag): Promise<ProductImage> {
+  return request<ProductImage>(`/api/admin/products/images/${imageId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(tag),
+  });
+}

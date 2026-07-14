@@ -15,6 +15,8 @@ export interface ProductImage {
   source_url: string | null;
   alt: string | null;
   sort_order: number;
+  colour_id: string | null;
+  custom_colour: string | null;
 }
 
 export interface Product {

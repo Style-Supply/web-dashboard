@@ -106,10 +106,10 @@ export interface ImageImportResult {
   failed: { url: string; reason: string }[];
 }
 
-export async function importImagesFromUrls(productId: string, urls: string[], colourTag?: ColourTag): Promise<ImageImportResult> {
+export async function importImagesFromUrls(productId: string, urls: string[]): Promise<ImageImportResult> {
   return request<ImageImportResult>(`/api/admin/products/${productId}/images/import`, {
     method: 'POST',
-    body: JSON.stringify({ urls, ...colourTag }),
+    body: JSON.stringify({ urls }),
   });
 }
 
@@ -117,18 +117,16 @@ export interface ScrapeFromPageResult extends ImageImportResult {
   discovered: number;
 }
 
-export async function scrapeImagesFromPage(productId: string, url: string, limit?: number, colourTag?: ColourTag): Promise<ScrapeFromPageResult> {
+export async function scrapeImagesFromPage(productId: string, url: string, limit?: number): Promise<ScrapeFromPageResult> {
   return request<ScrapeFromPageResult>(`/api/admin/products/${productId}/images/scrape`, {
     method: 'POST',
-    body: JSON.stringify({ url, ...(limit ? { limit } : {}), ...colourTag }),
+    body: JSON.stringify({ url, ...(limit ? { limit } : {}) }),
   });
 }
 
-export async function uploadImages(productId: string, files: File[], colourTag?: ColourTag): Promise<ImageImportResult> {
+export async function uploadImages(productId: string, files: File[]): Promise<ImageImportResult> {
   const fd = new FormData();
   for (const f of files) fd.append('files', f);
-  if (colourTag?.colour_id !== undefined) fd.append('colour_id', colourTag.colour_id ?? '');
-  if (colourTag?.custom_colour !== undefined) fd.append('custom_colour', colourTag.custom_colour ?? '');
   const token = await getAuthToken();
   const res = await fetch(`${API_BASE}/api/admin/products/${productId}/images/upload`, {
     method: 'POST',
@@ -181,18 +179,4 @@ export async function getSuggestions(field: SuggestionField, q: string, signal?:
   }
   const body = (await res.json()) as { values: string[] };
   return body.values;
-}
-
-// ─── Colour tagging ──────────────────────────────────────────────────────────
-
-export interface ColourTag {
-  colour_id?: string | null;
-  custom_colour?: string | null;
-}
-
-export async function retagImage(imageId: string, tag: ColourTag): Promise<ProductImage> {
-  return request<ProductImage>(`/api/admin/products/images/${imageId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(tag),
-  });
 }

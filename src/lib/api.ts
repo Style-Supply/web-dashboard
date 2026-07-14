@@ -24,7 +24,7 @@ function extFromMime(mime: string): string {
   throw new Error(`Unsupported image type: ${mime}`);
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api.stylesupply.io';
 
 export class ApiError extends Error {
   status: number;

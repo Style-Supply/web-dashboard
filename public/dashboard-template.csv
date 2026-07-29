@@ -1,0 +1,7 @@
+name,brand,retail_price_inr,rent_price_inr,currency,category,collection,fabric,description,status,variant_size,variant_colour,variant_quantity,variant_location,image_urls
+Ursula Black Wrap Maxi Dress,Finesse,640000,18000,INR,Dresses,SS26,Stretch blend,"Crafted in a soft stretch blend with a flattering wrap construction and fluid drape.",draft,XS,Black,2,Mumbai,https://example.com/ursula-1.jpg|https://example.com/ursula-2.jpg
+,,,,,,,,,,S,Black,3,Mumbai,
+,,,,,,,,,,M,Black,4,Mumbai,
+,,,,,,,,,,L,Black,2,Delhi,
+,,,,,,,,,,XL,Black,1,Delhi,
+,,,,,,,,,,XXL,Black,0,Delhi,

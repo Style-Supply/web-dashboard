@@ -24,6 +24,13 @@ export interface OnboardingSubmission {
   age_unit: string | null;
 
   morning_routine_selections: string[] | null;
+
+  referral_code?: string | null;
+  hear_about_us?: string | null;
+  event_frequency?: string | null;
+  private_clubs?: string[] | null;
+  other_club?: string | null;
+
   approval_status: string | null;
   approved_at?: string | null;
   admin_notes?: string | null;

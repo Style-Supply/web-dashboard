@@ -107,6 +107,7 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
             <Field label="Email" value={user.email} />
             <Field label="Phone" value={user.phone_number} />
             <Field label="Instagram" value={user.instagram_handle} />
+            <Field label="Referral Code" value={user.referral_code} />
             <Field
               label="Status"
               value={
@@ -139,6 +140,36 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
             <Field label="Waist" value={formatMeasurement(user.waist_size_value, user.waist_size_unit)} />
             <Field label="Hips" value={formatMeasurement(user.hips_size_value, user.hips_size_unit)} />
           </Section>
+
+          <section>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#7A021D]">
+              Discovery & Social Profile
+            </h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <Field label="How they heard about us" value={user.hear_about_us} />
+              <Field label="Event Attendance" value={user.event_frequency} />
+            </div>
+
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-2">
+                Private Club Memberships
+              </div>
+              {user.private_clubs && user.private_clubs.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {user.private_clubs.map((club) => (
+                    <span
+                      key={club}
+                      className="rounded-lg bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800"
+                    >
+                      {club === 'Other' && user.other_club ? `Other (${user.other_club})` : club}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-neutral-500">None selected</div>
+              )}
+            </div>
+          </section>
 
           <section>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#7A021D]">

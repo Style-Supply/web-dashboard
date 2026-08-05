@@ -215,7 +215,7 @@ export default function UsersPage(): React.ReactElement {
       const targetUser = users.find((u) => u.id === id);
       if (targetUser?.approval_status === 'approved') {
         const res = await resendInviteEmail(id);
-        showToast('success', res.message || `Invite email sent via Resend! Code: ${res.access_code}`);
+        showToast('success', res.message);
       } else {
         const result = await approveAccessRequest(id);
         await load();

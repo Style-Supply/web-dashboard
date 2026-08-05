@@ -65,7 +65,7 @@ export default function PaymentsPage(): React.ReactElement {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<PaymentStatus | ''>('pending_admin_verification');
+  const [statusFilter, setStatusFilter] = useState<PaymentStatus | ''>('');
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [offset, setOffset] = useState(0);
@@ -151,9 +151,9 @@ export default function PaymentsPage(): React.ReactElement {
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const STATUS_TABS: { id: PaymentStatus | ''; label: string }[] = [
-    { id: 'pending_admin_verification', label: 'Needs Verification' },
     { id: '', label: 'All Statuses' },
     { id: 'confirmed', label: 'Confirmed' },
+    { id: 'pending_admin_verification', label: 'Needs Verification' },
     { id: 'pending_user_confirmation', label: 'Awaiting User' },
     { id: 'failed', label: 'Failed' },
     { id: 'cancelled', label: 'Cancelled' },

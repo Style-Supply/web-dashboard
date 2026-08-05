@@ -40,7 +40,7 @@ export async function listPayments(query: {
 } = {}): Promise<PaymentListResponse> {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(query)) {
-    if (v !== undefined && v !== null) params.set(k, String(v));
+    if (v !== undefined && v !== null && (v as unknown) !== '') params.set(k, String(v));
   }
   const qs = params.toString();
   return request<PaymentListResponse>(`/api/admin/payments${qs ? `?${qs}` : ''}`);

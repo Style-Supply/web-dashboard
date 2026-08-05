@@ -58,28 +58,45 @@ export interface ListUsersResponse {
 export async function listUsers(query: ListUsersQuery = {}): Promise<ListUsersResponse> {
   const { q, status = 'all', limit = 50, offset = 0 } = query;
 
-  let builder = supabase
-    .from('onboarding_submissions')
-    .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+  let rawSubmissions: OnboardingSubmission[] = [];
+  let count: number | null = 0;
 
-  const trimmed = q?.trim();
-  if (trimmed) {
-    const pattern = `%${trimmed}%`;
-    builder = builder.or(
-      `full_name.ilike.${pattern},email.ilike.${pattern},phone_number.ilike.${pattern}`,
-    );
+  try {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (status && status !== 'all') params.set('status', status);
+    params.set('limit', String(limit));
+    params.set('offset', String(offset));
+
+    const res = await request<ListUsersResponse>(`/api/admin/access-requests?${params.toString()}`);
+    rawSubmissions = res.users;
+    count = res.total;
+  } catch (_err) {
+    let builder = supabase
+      .from('onboarding_submissions')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    const trimmed = q?.trim();
+    if (trimmed) {
+      const pattern = `%${trimmed}%`;
+      builder = builder.or(
+        `full_name.ilike.${pattern},email.ilike.${pattern},phone_number.ilike.${pattern}`,
+      );
+    }
+
+    if (status !== 'all') {
+      builder = builder.eq('approval_status', status);
+    }
+
+    const { data, count: c, error } = await builder;
+    if (error) throw new Error(error.message);
+    rawSubmissions = (data ?? []) as OnboardingSubmission[];
+    count = c;
   }
 
-  if (status !== 'all') {
-    builder = builder.eq('approval_status', status);
-  }
-
-  const { data: rawSubmissions, count, error } = await builder;
-  if (error) throw new Error(error.message);
-
-  const submissions = (rawSubmissions ?? []) as OnboardingSubmission[];
+  const submissions = rawSubmissions;
 
   // Query profiles to find all users marked role = 'admin' in profiles table
   const { data: adminProfiles } = await supabase

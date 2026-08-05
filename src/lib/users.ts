@@ -191,29 +191,39 @@ export async function updateUser(
   id: string,
   payload: Partial<UserPayload>,
 ): Promise<OnboardingSubmission> {
-  const { role, ...updateFields } = payload as any;
+  try {
+    const res = await request<{ success: boolean; submission: OnboardingSubmission }>(
+      `/api/admin/access-requests/${id}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    );
+    return res.submission;
+  } catch (_err) {
+    const { role, ...updateFields } = payload as any;
 
-  // Sanitize text columns to empty string if null to comply with DB NOT NULL constraints
-  const textCols = ['phone_number', 'floor_apartment', 'city', 'zip_code', 'instagram_handle', 'referral_code', 'admin_notes'];
-  for (const col of textCols) {
-    if (updateFields[col] === null) {
-      updateFields[col] = '';
+    const textCols = ['phone_number', 'floor_apartment', 'city', 'zip_code', 'instagram_handle', 'referral_code', 'admin_notes'];
+    for (const col of textCols) {
+      if (updateFields[col] === null) {
+        updateFields[col] = '';
+      }
     }
+
+    const { data, error } = await supabase
+      .from('onboarding_submissions')
+      .update(updateFields)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+
+    if (role && data?.linked_user_id) {
+      await supabase.from('profiles').update({ role }).eq('id', data.linked_user_id);
+    }
+
+    return data as OnboardingSubmission;
   }
-
-  const { data, error } = await supabase
-    .from('onboarding_submissions')
-    .update(updateFields)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-
-  if (role && data?.linked_user_id) {
-    await supabase.from('profiles').update({ role }).eq('id', data.linked_user_id);
-  }
-
-  return data as OnboardingSubmission;
 }
 
 export async function deleteUser(id: string): Promise<void> {

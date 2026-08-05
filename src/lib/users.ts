@@ -23,6 +23,16 @@ export async function approveAccessRequest(id: string): Promise<ApproveResult> {
   });
 }
 
+export async function resendInviteEmail(id: string): Promise<{ success: boolean; message: string; access_code?: string }> {
+  return request<{ success: boolean; message: string; access_code?: string }>(
+    `/api/admin/access-requests/${id}/resend-invite`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+  );
+}
+
 export async function rejectAccessRequest(
   id: string,
   adminNotes?: string,

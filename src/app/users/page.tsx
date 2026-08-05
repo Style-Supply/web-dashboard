@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import {
   approveAccessRequest,
+  resendInviteEmail,
   bulkDeleteUsers,
   deleteUser,
   listUsers,
@@ -211,14 +212,24 @@ export default function UsersPage(): React.ReactElement {
     setRowBusy(id);
     setRowAction('approving');
     try {
-      const result = await approveAccessRequest(id);
-      await load();
-      const emailNote = result.email_sent
-        ? 'Invite email sent.'
-        : `Invite email NOT sent — share code manually: ${result.access_code}`;
-      showToast(result.email_sent ? 'success' : 'error', `User approved. ${emailNote}`);
+      const targetUser = users.find((u) => u.id === id);
+      if (targetUser?.approval_status === 'approved') {
+        const res = await resendInviteEmail(id);
+        showToast('success', res.message || `Invite email sent via Resend! Code: ${res.access_code}`);
+      } else {
+        const result = await approveAccessRequest(id);
+        await load();
+        if (result.email_sent) {
+          showToast('success', `User approved & invite email sent via Resend! Code: ${result.access_code}`);
+        } else {
+          showToast(
+            'success',
+            `User approved! Access Code: ${result.access_code} (Resend domain verification required at resend.com/domains to send to external emails)`,
+          );
+        }
+      }
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Approval failed');
+      showToast('error', err instanceof Error ? err.message : 'Action failed');
     } finally {
       setRowBusy(null);
       setRowAction(null);

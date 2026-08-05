@@ -102,11 +102,11 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
     const payload: UserPayload = {
       full_name: fullName.trim(),
       email: email.trim(),
-      phone_number: phone.trim() || null,
-      floor_apartment: apartment.trim() || null,
-      city: city.trim() || null,
-      zip_code: zip.trim() || null,
-      instagram_handle: instagram.trim() || null,
+      phone_number: phone.trim() || '',
+      floor_apartment: apartment.trim() || '',
+      city: city.trim() || '',
+      zip_code: zip.trim() || '',
+      instagram_handle: instagram.trim() || '',
       height_value: toNum(height),
       height_unit: heightUnit || null,
       shoulder_width_value: toNum(shoulder),
@@ -121,7 +121,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       age_unit: ageUnit || null,
       morning_routine_selections: styles,
       approval_status: initial?.approval_status ?? (role === 'admin' ? 'approved' : 'pending'),
-      admin_notes: role === 'admin' ? 'Administrator Account' : (initial?.admin_notes ?? null),
+      admin_notes: role === 'admin' ? 'Administrator Account' : (initial?.admin_notes ?? ''),
       role,
     };
 

@@ -192,6 +192,15 @@ export async function updateUser(
   payload: Partial<UserPayload>,
 ): Promise<OnboardingSubmission> {
   const { role, ...updateFields } = payload as any;
+
+  // Sanitize text columns to empty string if null to comply with DB NOT NULL constraints
+  const textCols = ['phone_number', 'floor_apartment', 'city', 'zip_code', 'instagram_handle', 'referral_code', 'admin_notes'];
+  for (const col of textCols) {
+    if (updateFields[col] === null) {
+      updateFields[col] = '';
+    }
+  }
+
   const { data, error } = await supabase
     .from('onboarding_submissions')
     .update(updateFields)

@@ -177,9 +177,10 @@ export async function getUser(id: string): Promise<OnboardingSubmission> {
 }
 
 export async function createUser(payload: UserPayload): Promise<OnboardingSubmission> {
+  const { role, ...insertFields } = payload as any;
   const { data, error } = await supabase
     .from('onboarding_submissions')
-    .insert(payload)
+    .insert(insertFields)
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -190,13 +191,19 @@ export async function updateUser(
   id: string,
   payload: Partial<UserPayload>,
 ): Promise<OnboardingSubmission> {
+  const { role, ...updateFields } = payload as any;
   const { data, error } = await supabase
     .from('onboarding_submissions')
-    .update(payload)
+    .update(updateFields)
     .eq('id', id)
     .select()
     .single();
   if (error) throw new Error(error.message);
+
+  if (role && data?.linked_user_id) {
+    await supabase.from('profiles').update({ role }).eq('id', data.linked_user_id);
+  }
+
   return data as OnboardingSubmission;
 }
 

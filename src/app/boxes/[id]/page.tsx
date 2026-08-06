@@ -726,6 +726,145 @@ export default function BoxDetailPage(): React.ReactElement {
             </div>
           )}
         </div>
+
+        {/* Two-Checkpoint Quality Control (QC) Cards */}
+        {box.items && box.items.length > 0 && (
+          <div className="space-y-4 pt-4 border-t border-neutral-200">
+            <h2 className="text-base font-semibold text-[#2C0505]">Items Quality Control (Two Checkpoints)</h2>
+            <div className="grid grid-cols-1 gap-4">
+              {box.items.map((item) => {
+                const isCustomerPickupUnlocked = box.pickup_status === 'picked_up' || box.status === 'returns_review';
+                return (
+                  <div key={`qc-${item.id}`} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <div className="flex items-center gap-3">
+                        {item.product.thumbnail_url && (
+                          <img src={item.product.thumbnail_url} alt="" className="h-10 w-8 rounded object-cover" />
+                        )}
+                        <div>
+                          <div className="font-semibold text-sm text-[#2C0505]">{item.product.name}</div>
+                          <div className="text-xs text-neutral-500">{item.product.brand ?? '—'} · Size: {item.variant.size}</div>
+                        </div>
+                      </div>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${DECISION_COLORS[item.decision] ?? ''}`}>
+                        Decision: {item.decision}
+                      </span>
+                    </div>
+
+                    {/* Two Checkpoint Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Checkpoint 1: Received from Brand */}
+                      <div className="rounded-lg border border-neutral-100 bg-neutral-50 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-neutral-700">1. Received from Brand</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            (item as any).received_from_brand_qc_status === 'passed' ? 'bg-green-100 text-green-700' :
+                            (item as any).received_from_brand_qc_status === 'failed' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {(item as any).received_from_brand_qc_status ?? 'Pending'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-500">Inspection on arrival from brand prior to box packing.</p>
+                        <div className="space-y-1.5 pt-1">
+                          <input
+                            type="text"
+                            placeholder="Condition notes..."
+                            defaultValue={(item as any).received_from_brand_qc_notes ?? ''}
+                            className="w-full text-xs border rounded px-2 py-1 bg-white"
+                          />
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => showToast('info', 'Brand QC marked Pass')}
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
+                            >
+                              Pass
+                            </button>
+                            <button
+                              onClick={() => showToast('info', 'Brand QC marked Fail')}
+                              className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
+                            >
+                              Fail
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Checkpoint 2: Picked from Customer */}
+                      <div className={`rounded-lg border p-3 space-y-2 ${
+                        isCustomerPickupUnlocked
+                          ? 'border-neutral-100 bg-neutral-50'
+                          : 'border-neutral-200 bg-neutral-100 opacity-60'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-neutral-700">2. Picked from Customer</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            item.qc_status === 'passed' ? 'bg-green-100 text-green-700' :
+                            item.qc_status === 'failed' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {item.qc_status ?? (isCustomerPickupUnlocked ? 'Pending' : 'Locked')}
+                          </span>
+                        </div>
+                        {!isCustomerPickupUnlocked ? (
+                          <p className="text-xs text-neutral-400 italic">Locked until customer return/rental pickup is confirmed.</p>
+                        ) : (
+                          <>
+                            <p className="text-xs text-neutral-500">Inspection after return or rental period end.</p>
+                            <div className="space-y-1.5 pt-1">
+                              <input
+                                type="text"
+                                placeholder="Condition notes..."
+                                defaultValue={item.qc_notes ?? ''}
+                                className="w-full text-xs border rounded px-2 py-1 bg-white"
+                              />
+                              <div className="flex gap-2 pt-1">
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await request(`/api/admin/returns/items/${item.id}/qc`, {
+                                        method: 'POST',
+                                        body: JSON.stringify({ result: 'passed' }),
+                                      });
+                                      showToast('success', 'Customer Pickup QC marked Pass');
+                                      await fetchDetail();
+                                    } catch (err) {
+                                      showToast('error', 'QC update failed');
+                                    }
+                                  }}
+                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
+                                >
+                                  Pass
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await request(`/api/admin/returns/items/${item.id}/qc`, {
+                                        method: 'POST',
+                                        body: JSON.stringify({ result: 'failed' }),
+                                      });
+                                      showToast('success', 'Customer Pickup QC marked Fail');
+                                      await fetchDetail();
+                                    } catch (err) {
+                                      showToast('error', 'QC update failed');
+                                    }
+                                  }}
+                                  className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
+                                >
+                                  Fail
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

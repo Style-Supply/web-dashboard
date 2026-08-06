@@ -775,13 +775,13 @@ export default function BoxDetailPage(): React.ReactElement {
                           />
                           <div className="flex gap-2 pt-1">
                             <button
-                              onClick={() => showToast('info', 'Brand QC marked Pass')}
+                              onClick={() => showToast('success', 'Brand QC marked Pass')}
                               className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
                             >
                               Pass
                             </button>
                             <button
-                              onClick={() => showToast('info', 'Brand QC marked Fail')}
+                              onClick={() => showToast('success', 'Brand QC marked Fail')}
                               className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
                             >
                               Fail
@@ -827,7 +827,7 @@ export default function BoxDetailPage(): React.ReactElement {
                                         body: JSON.stringify({ result: 'passed' }),
                                       });
                                       showToast('success', 'Customer Pickup QC marked Pass');
-                                      await fetchDetail();
+                                      await load();
                                     } catch (err) {
                                       showToast('error', 'QC update failed');
                                     }
@@ -844,7 +844,7 @@ export default function BoxDetailPage(): React.ReactElement {
                                         body: JSON.stringify({ result: 'failed' }),
                                       });
                                       showToast('success', 'Customer Pickup QC marked Fail');
-                                      await fetchDetail();
+                                      await load();
                                     } catch (err) {
                                       showToast('error', 'QC update failed');
                                     }

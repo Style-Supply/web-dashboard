@@ -41,9 +41,12 @@ export interface BoxItemDetail {
   box_id: string;
   product_id: string;
   variant_id: string;
-  decision: 'pending' | 'keep' | 'return';
+  decision: 'pending' | 'keep' | 'return' | 'rent';
   return_reason: string | null;
   qc_status: 'pending' | 'passed' | 'failed' | null;
+  qc_notes?: string | null;
+  received_from_brand_qc_status?: 'pending' | 'passed' | 'failed' | null;
+  received_from_brand_qc_notes?: string | null;
   product: {
     id: string;
     name: string;

@@ -754,110 +754,32 @@ export default function BoxDetailPage(): React.ReactElement {
                     {/* Two Checkpoint Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Checkpoint 1: Received from Brand */}
-                      <div className="rounded-lg border border-neutral-100 bg-neutral-50 p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-neutral-700">1. Received from Brand</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            (item as any).received_from_brand_qc_status === 'passed' ? 'bg-green-100 text-green-700' :
-                            (item as any).received_from_brand_qc_status === 'failed' ? 'bg-red-100 text-red-700' :
-                            'bg-amber-100 text-amber-700'
-                          }`}>
-                            {(item as any).received_from_brand_qc_status ?? 'Pending'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-neutral-500">Inspection on arrival from brand prior to box packing.</p>
-                        <div className="space-y-1.5 pt-1">
-                          <input
-                            type="text"
-                            placeholder="Condition notes..."
-                            defaultValue={(item as any).received_from_brand_qc_notes ?? ''}
-                            className="w-full text-xs border rounded px-2 py-1 bg-white"
-                          />
-                          <div className="flex gap-2 pt-1">
-                            <button
-                              onClick={() => showToast('success', 'Brand QC marked Pass')}
-                              className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
-                            >
-                              Pass
-                            </button>
-                            <button
-                              onClick={() => showToast('success', 'Brand QC marked Fail')}
-                              className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
-                            >
-                              Fail
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      <QcCheckpointCard
+                        title="1. Received from Brand"
+                        description="Inspection on arrival from brand prior to box packing."
+                        status={(item as any).received_from_brand_qc_status ?? 'pending'}
+                        initialNotes={(item as any).received_from_brand_qc_notes ?? ''}
+                        initialImages={(item as any).received_from_brand_qc_images ?? []}
+                        checkpoint="brand"
+                        itemId={item.id}
+                        isLocked={false}
+                        onSuccess={load}
+                        showToast={showToast}
+                      />
 
                       {/* Checkpoint 2: Picked from Customer */}
-                      <div className={`rounded-lg border p-3 space-y-2 ${
-                        isCustomerPickupUnlocked
-                          ? 'border-neutral-100 bg-neutral-50'
-                          : 'border-neutral-200 bg-neutral-100 opacity-60'
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-neutral-700">2. Picked from Customer</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            item.qc_status === 'passed' ? 'bg-green-100 text-green-700' :
-                            item.qc_status === 'failed' ? 'bg-red-100 text-red-700' :
-                            'bg-amber-100 text-amber-700'
-                          }`}>
-                            {item.qc_status ?? (isCustomerPickupUnlocked ? 'Pending' : 'Locked')}
-                          </span>
-                        </div>
-                        {!isCustomerPickupUnlocked ? (
-                          <p className="text-xs text-neutral-400 italic">Locked until customer return/rental pickup is confirmed.</p>
-                        ) : (
-                          <>
-                            <p className="text-xs text-neutral-500">Inspection after return or rental period end.</p>
-                            <div className="space-y-1.5 pt-1">
-                              <input
-                                type="text"
-                                placeholder="Condition notes..."
-                                defaultValue={item.qc_notes ?? ''}
-                                className="w-full text-xs border rounded px-2 py-1 bg-white"
-                              />
-                              <div className="flex gap-2 pt-1">
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await request(`/api/admin/returns/items/${item.id}/qc`, {
-                                        method: 'POST',
-                                        body: JSON.stringify({ result: 'passed' }),
-                                      });
-                                      showToast('success', 'Customer Pickup QC marked Pass');
-                                      await load();
-                                    } catch (err) {
-                                      showToast('error', 'QC update failed');
-                                    }
-                                  }}
-                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
-                                >
-                                  Pass
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await request(`/api/admin/returns/items/${item.id}/qc`, {
-                                        method: 'POST',
-                                        body: JSON.stringify({ result: 'failed' }),
-                                      });
-                                      showToast('success', 'Customer Pickup QC marked Fail');
-                                      await load();
-                                    } catch (err) {
-                                      showToast('error', 'QC update failed');
-                                    }
-                                  }}
-                                  className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors"
-                                >
-                                  Fail
-                                </button>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      <QcCheckpointCard
+                        title="2. Picked from Customer"
+                        description="Inspection after return or rental period end."
+                        status={item.qc_status ?? (isCustomerPickupUnlocked ? 'pending' : 'locked')}
+                        initialNotes={item.qc_notes ?? ''}
+                        initialImages={(item as any).qc_images ?? []}
+                        checkpoint="customer"
+                        itemId={item.id}
+                        isLocked={!isCustomerPickupUnlocked}
+                        onSuccess={load}
+                        showToast={showToast}
+                      />
                     </div>
                   </div>
                 );
@@ -867,5 +789,182 @@ export default function BoxDetailPage(): React.ReactElement {
         )}
       </div>
     </>
+  );
+}
+
+interface QcCheckpointCardProps {
+  title: string;
+  description: string;
+  status: string;
+  initialNotes: string;
+  initialImages: string[];
+  checkpoint: 'brand' | 'customer';
+  itemId: string;
+  isLocked: boolean;
+  onSuccess: () => Promise<void>;
+  showToast: (type: 'success' | 'error', msg: string) => void;
+}
+
+function QcCheckpointCard({
+  title,
+  description,
+  status,
+  initialNotes,
+  initialImages,
+  checkpoint,
+  itemId,
+  isLocked,
+  onSuccess,
+  showToast,
+}: QcCheckpointCardProps) {
+  const [notes, setNotes] = useState(initialNotes);
+  const [images, setImages] = useState<string[]>(initialImages);
+  const [submitting, setSubmitting] = useState<string | null>(null);
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newImages: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      const promise = new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const dataUrl = await promise;
+      newImages.push(dataUrl);
+    }
+    setImages((prev) => [...prev, ...newImages]);
+    e.target.value = '';
+  }
+
+  function handleRemoveImage(index: number) {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleSave(result: 'passed' | 'failed') {
+    setSubmitting(result);
+    try {
+      await request(`/api/admin/returns/items/${itemId}/qc`, {
+        method: 'POST',
+        body: JSON.stringify({
+          checkpoint,
+          result,
+          notes,
+          images,
+        }),
+      });
+      showToast('success', `${title} marked ${result === 'passed' ? 'Pass' : 'Fail'}`);
+      await onSuccess();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'QC update failed');
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
+  const isPassed = status === 'passed';
+  const isFailed = status === 'failed';
+
+  return (
+    <div
+      className={`rounded-lg border p-3 space-y-3 ${
+        isLocked ? 'border-neutral-200 bg-neutral-100 opacity-60' : 'border-neutral-200 bg-neutral-50'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-neutral-800">{title}</span>
+        <span
+          className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+            isPassed ? 'bg-green-100 text-green-700' :
+            isFailed ? 'bg-red-100 text-red-700' :
+            'bg-amber-100 text-amber-700'
+          }`}
+        >
+          {status}
+        </span>
+      </div>
+
+      {isLocked ? (
+        <p className="text-xs text-neutral-400 italic">Locked until customer return/rental pickup is confirmed.</p>
+      ) : (
+        <>
+          <p className="text-xs text-neutral-500">{description}</p>
+
+          {/* Condition Notes */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-neutral-600">Condition Notes</label>
+            <input
+              type="text"
+              placeholder="Add inspection notes (e.g. slight stain on sleeve, zipper intact)..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full text-xs border border-neutral-300 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-black"
+            />
+          </div>
+
+          {/* QC Inspection Photos */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-medium text-neutral-600">
+                QC Inspection Photos ({images.length})
+              </label>
+              <label className="cursor-pointer inline-flex items-center gap-1 text-xs font-medium text-neutral-700 hover:text-black bg-white border border-neutral-300 px-2 py-1 rounded shadow-xs">
+                <span>📷 Add Photos</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Photos Preview Grid */}
+            {images.length > 0 ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {images.map((imgUrl, idx) => (
+                  <div key={idx} className="relative group w-14 h-14 rounded border border-neutral-200 overflow-hidden bg-white shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imgUrl} alt={`QC photo ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-0.5 right-0.5 bg-black/70 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-red-600 transition-colors"
+                      title="Remove photo"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-neutral-400 italic">No QC photos attached yet.</p>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
+            <button
+              disabled={submitting !== null}
+              onClick={() => handleSave('passed')}
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold py-1.5 px-3 rounded transition-colors"
+            >
+              {submitting === 'passed' ? 'Saving…' : '✓ Pass'}
+            </button>
+            <button
+              disabled={submitting !== null}
+              onClick={() => handleSave('failed')}
+              className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-semibold py-1.5 px-3 rounded transition-colors"
+            >
+              {submitting === 'failed' ? 'Saving…' : '✕ Fail'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

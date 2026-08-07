@@ -45,8 +45,10 @@ export interface BoxItemDetail {
   return_reason: string | null;
   qc_status: 'pending' | 'passed' | 'failed' | null;
   qc_notes?: string | null;
+  qc_images?: string[];
   received_from_brand_qc_status?: 'pending' | 'passed' | 'failed' | null;
   received_from_brand_qc_notes?: string | null;
+  received_from_brand_qc_images?: string[];
   product: {
     id: string;
     name: string;

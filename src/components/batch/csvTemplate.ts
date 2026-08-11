@@ -147,10 +147,11 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
     if (productMap.has(key)) {
       const existing = productMap.get(key)!;
       if (variants.length > 0) {
+        if (!existing.variants) existing.variants = [];
         existing.variants.push(...variants);
       }
       if (imageUrls.length > 0) {
-        const set = new Set([...existing.image_urls, ...imageUrls]);
+        const set = new Set([...(existing.image_urls || []), ...imageUrls]);
         existing.image_urls = Array.from(set);
       }
     } else {

@@ -19,13 +19,7 @@ export function parseCsvText(text: string): CsvParseResult {
     header: true,
     skipEmptyLines: true,
   });
-  const rows: CsvRow[] = (parsed.data ?? []).map((raw) => {
-    const row = {} as CsvRow;
-    for (const col of CSV_COLUMNS) {
-      row[col] = (raw[col] ?? '').toString();
-    }
-    return row;
-  });
+  const rows = (parsed.data ?? []).filter((r) => r && typeof r === 'object');
   const grouped = groupRowsIntoProducts(rows);
   return { ...grouped, rowCount: rows.length };
 }

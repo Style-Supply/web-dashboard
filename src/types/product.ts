@@ -38,6 +38,8 @@ export interface Product {
   retail_price_minor: number;
   rent_price_minor: number | null;
   currency: string;
+  is_rentable?: boolean;
+  is_buyable?: boolean;
   created_at: string;
   updated_at: string;
 

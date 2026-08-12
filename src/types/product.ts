@@ -1,6 +1,6 @@
 export interface ProductVariant {
   id?: string;
-  size: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'Free';
+  size: string;
   colour_id: string | null;
   custom_colour: string | null;
   quantity: number;
@@ -123,7 +123,7 @@ export interface BatchRowPayload {
   currency?: string;
   look_slugs?: string[];
   variants?: Array<{
-    size: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'Free';
+    size: string;
     colour_slug?: string | null;
     custom_colour?: string | null;
     quantity: number;

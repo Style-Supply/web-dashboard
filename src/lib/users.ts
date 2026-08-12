@@ -240,6 +240,7 @@ export async function deleteUser(id: string): Promise<void> {
   try {
     await request<void>(`/api/admin/access-requests/${id}`, { method: 'DELETE' });
   } catch (_err) {
+    await supabase.from('profiles').delete().eq('id', id);
     const { error } = await supabase.from('onboarding_submissions').delete().eq('id', id);
     if (error) throw new Error(error.message);
   }
@@ -252,6 +253,7 @@ export async function bulkDeleteUsers(ids: string[]): Promise<{ deleted: number 
       body: JSON.stringify({ ids }),
     });
   } catch (_err) {
+    await supabase.from('profiles').delete().in('id', ids);
     const { error, count } = await supabase
       .from('onboarding_submissions')
       .delete({ count: 'exact' })

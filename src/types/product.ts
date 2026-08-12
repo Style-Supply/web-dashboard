@@ -72,6 +72,8 @@ export interface ProductPayload {
   retail_price_minor: number;
   rent_price_minor: number | null;
   currency: string;
+  is_rentable?: boolean;
+  is_buyable?: boolean;
   status: 'draft' | 'published';
   variants: ProductVariant[];
   look_ids: string[];
@@ -121,6 +123,8 @@ export interface BatchRowPayload {
   retail_price_minor: number;
   rent_price_minor?: number | null;
   currency?: string;
+  is_rentable?: boolean;
+  is_buyable?: boolean;
   look_slugs?: string[];
   variants?: Array<{
     size: string;

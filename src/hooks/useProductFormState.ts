@@ -21,6 +21,8 @@ function defaultState(): ProductPayload {
     retail_price_minor: 0,
     rent_price_minor: null,
     currency: 'INR',
+    is_rentable: true,
+    is_buyable: true,
     status: 'draft',
     variants: [emptyVariant()],
     look_ids: [],

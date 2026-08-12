@@ -112,6 +112,25 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
     const rentPriceStr = getVal(r, ['rent_price_minor', 'rent_price', 'rent_price_inr', 'rent', 'rental_price', 'rental']);
     const currency = getVal(r, ['currency', 'curr']) || 'INR';
 
+    const isRentableStr = getVal(r, ['is_rentable', 'allow_rent', 'rentable', 'mode', 'fulfillment_type']);
+    const isBuyableStr = getVal(r, ['is_buyable', 'allow_buy', 'buyable', 'sellable']);
+
+    let isRentable = true;
+    let isBuyable = true;
+
+    if (isRentableStr) {
+      const lower = isRentableStr.toLowerCase();
+      if (['false', 'no', '0', 'buy_only', 'buy'].includes(lower)) {
+        isRentable = false;
+      }
+    }
+    if (isBuyableStr) {
+      const lower = isBuyableStr.toLowerCase();
+      if (['false', 'no', '0', 'rent_only', 'rent'].includes(lower)) {
+        isBuyable = false;
+      }
+    }
+
     const lookSlugsStr = getVal(r, ['look_slugs', 'looks', 'look', 'collection', 'look_names', 'collections']);
     const lookSlugs = lookSlugsStr ? lookSlugsStr.split(/[|;]/).map((s) => s.trim()).filter(Boolean) : [];
 
@@ -192,6 +211,8 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
         retail_price_minor: parsePriceMinor(retailPriceStr),
         rent_price_minor: rentPriceStr ? parsePriceMinor(rentPriceStr) : null,
         currency,
+        is_rentable: isRentable,
+        is_buyable: isBuyable,
         look_slugs: lookSlugs,
         variants,
         image_urls: imageUrls,

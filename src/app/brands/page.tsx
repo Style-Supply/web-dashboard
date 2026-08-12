@@ -32,6 +32,27 @@ async function uploadBrandLogo(file: File): Promise<string> {
   return result.url;
 }
 
+async function uploadBrandHero(file: File): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers: Record<string, string> = {};
+  if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${API_BASE}/api/admin/brands/hero-upload`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: { message: res.statusText } }));
+    throw new ApiError(body?.error?.message ?? res.statusText, res.status, body?.error?.code ?? null);
+  }
+  const result = await res.json() as { url: string };
+  return result.url;
+}
+
 /* ─── logo uploader component ─────────────────────────────── */
 interface LogoUploaderProps {
   value: string | null;
@@ -140,6 +161,141 @@ function LogoUploader({ value, onChange }: LogoUploaderProps) {
                 {dragOver ? 'Drop image here' : 'Click or drag to upload logo'}
               </p>
               <p className="mt-1 text-[11px] text-neutral-400">PNG, JPG, WEBP, GIF · max 4 MB</p>
+            </>
+          )}
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void handleFile(file);
+          e.target.value = '';
+        }}
+      />
+    </div>
+  );
+}
+
+/* ─── hero cover uploader component ───────────────────────── */
+interface HeroUploaderProps {
+  value: string | null;
+  onChange: (url: string | null) => void;
+}
+
+function HeroUploader({ value, onChange }: HeroUploaderProps) {
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
+
+  async function handleFile(file: File) {
+    if (!file.type.startsWith('image/')) {
+      showToast('error', 'Please select an image file');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      showToast('error', 'Cover image must be smaller than 8 MB');
+      return;
+    }
+    setUploading(true);
+    try {
+      const url = await uploadBrandHero(file);
+      onChange(url);
+      showToast('success', 'Cover image uploaded');
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) void handleFile(file);
+  }
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-medium text-neutral-500">
+        Cover Image (Hero Banner Background)
+      </label>
+
+      {value ? (
+        /* ── preview with replace and delete ── */
+        <div className="relative rounded-xl border border-neutral-200 bg-white p-3">
+          <div className="relative h-28 w-full overflow-hidden rounded-lg bg-neutral-100 border border-neutral-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt="Brand cover image"
+              className="h-full w-full object-cover"
+              onError={(e) => { e.currentTarget.src = ''; }}
+            />
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#FDF8F4] border border-[#7A021D]/20 px-3 py-1.5 text-xs font-medium text-[#7A021D] hover:bg-[#f5e8e8] transition-colors disabled:opacity-50"
+            >
+              {uploading ? (
+                <><span className="h-3 w-3 animate-spin rounded-full border-2 border-[#7A021D] border-t-transparent" /> Uploading…</>
+              ) : (
+                <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg> Replace Cover</>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete Cover
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ── drop zone ── */
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => !uploading && inputRef.current?.click()}
+          className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-6 transition-all cursor-pointer ${
+            dragOver
+              ? 'border-[#7A021D] bg-[#FDF8F4] scale-[1.01]'
+              : 'border-neutral-200 bg-neutral-50 hover:border-[#7A021D]/40 hover:bg-[#FDF8F4]/50'
+          }`}
+        >
+          {uploading ? (
+            <>
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-[#FDF8F4]">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#7A021D] border-t-transparent" />
+              </div>
+              <p className="text-xs font-medium text-[#7A021D]">Uploading cover image…</p>
+            </>
+          ) : (
+            <>
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100">
+                <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="text-xs font-semibold text-neutral-600">
+                {dragOver ? 'Drop cover image here' : 'Click or drag to add cover image'}
+              </p>
+              <p className="mt-0.5 text-[11px] text-neutral-400">PNG, JPG, WEBP · max 8 MB</p>
             </>
           )}
         </div>
@@ -345,6 +501,11 @@ function BrandModal({
           <LogoUploader
             value={(brand as Brand).logo_url ?? null}
             onChange={(url) => onChange({ logo_url: url })}
+          />
+
+          <HeroUploader
+            value={(brand as Brand).hero_url ?? null}
+            onChange={(url) => onChange({ hero_url: url })}
           />
 
           <div>

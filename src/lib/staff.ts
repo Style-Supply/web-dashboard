@@ -44,7 +44,7 @@ export const RESOURCE_LABELS: Record<ManagedResource, string> = {
   returns:     '↩️ Returns & QC',
   reviews:     '⭐ Reviews',
   memberships: '💎 Memberships',
-  codes:       '🔑 Access Codes',
+  codes:       '🔑 Referral Codes',
   users:       '👤 Users',
   brands:      '🏷️ Brands',
   collections: '🗂️ Collections',

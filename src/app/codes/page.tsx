@@ -194,9 +194,9 @@ export default function CodesPage(): React.ReactElement {
         {/* ── Header ── */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#2C0505]">Access & Promo Codes</h1>
+            <h1 className="text-2xl font-bold text-[#2C0505]">Referral &amp; Promo Codes</h1>
             <p className="mt-0.5 text-sm text-neutral-500">
-              Manage invitation codes, discount vouchers, and member access passes
+              Manage referral codes, discount vouchers, and member access passes
             </p>
           </div>
 
@@ -228,7 +228,7 @@ export default function CodesPage(): React.ReactElement {
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              New Access Code
+              New Referral Code
             </button>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function CodesPage(): React.ReactElement {
             <p className="mt-1 text-xs text-neutral-500">Configured vouchers & passes</p>
           </div>
           <div className="rounded-2xl border border-[#7A021D]/20 bg-[#FDF8F4] p-5 shadow-xs">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#7A021D]">Access Invite Codes</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#7A021D]">Referral &amp; Invite Codes</p>
             <p className="mt-2 text-2xl font-extrabold text-[#7A021D]">{inviteCount}</p>
             <p className="mt-1 text-xs text-neutral-500">Grant waitlist bypass access</p>
           </div>
@@ -535,7 +535,7 @@ export default function CodesPage(): React.ReactElement {
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-white">
-                    {editingId ? 'Edit Access Code' : 'Create Access Code'}
+                    {editingId ? 'Edit Referral Code' : 'Create Referral Code'}
                   </h2>
                   <p className="text-xs text-white/50 mt-0.5">Configure invite permissions & discounts</p>
                 </div>
@@ -672,7 +672,7 @@ export default function CodesPage(): React.ReactElement {
                 disabled={submitting}
                 className="flex items-center gap-2 rounded-xl bg-[#7A021D] px-5 py-2 text-xs font-bold text-white hover:bg-[#5a0115] disabled:opacity-50 transition-all shadow-md"
               >
-                {submitting ? 'Saving…' : editingId ? 'Save Changes' : 'Create Access Code'}
+                {submitting ? 'Saving…' : editingId ? 'Save Changes' : 'Create Referral Code'}
               </button>
             </div>
           </div>

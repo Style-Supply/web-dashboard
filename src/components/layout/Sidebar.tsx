@@ -185,7 +185,7 @@ const NAV: NavGroup[] = [
   { href: '/payments', label: 'Payments', icon: Icon.Payments, children: [] },
   { href: '/reviews', label: 'Reviews', icon: Icon.Reviews, children: [] },
   { href: '/memberships', label: 'Memberships', icon: Icon.Memberships, children: [] },
-  { href: '/codes', label: 'Access Codes', icon: Icon.AccessCodes, children: [] },
+  { href: '/codes', label: 'Referral Codes', icon: Icon.AccessCodes, children: [] },
 ];
 
 function isPathInGroup(group: NavGroup, pathname: string): boolean {

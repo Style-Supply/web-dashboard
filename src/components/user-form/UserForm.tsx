@@ -280,10 +280,24 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
         <>
           <Section title="Fit profile & Measurements">
             <LabeledInput
-              label="Date of Birth"
+              label="Date of Birth (D.O.B)"
               type="date"
               value={dob}
-              onChange={setDob}
+              onChange={(val) => {
+                setDob(val);
+                if (val) {
+                  const birthDate = new Date(val);
+                  const today = new Date();
+                  let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+                  const m = today.getMonth() - birthDate.getMonth();
+                  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    calculatedAge--;
+                  }
+                  if (calculatedAge >= 0 && calculatedAge <= 120) {
+                    setAge(calculatedAge.toString());
+                  }
+                }
+              }}
             />
             <MeasurementField
               label="Age"

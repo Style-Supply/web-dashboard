@@ -25,6 +25,17 @@ function formatMeasurement(value: number | null, unit: string | null): string {
   return unit ? `${value} ${unit}` : `${value}`;
 }
 
+function formatDobDate(dateStr?: string | null): string {
+  if (!dateStr || dateStr.trim() === '') return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
 function Field({ label, value }: { label: string; value: React.ReactNode }): React.ReactElement {
   return (
     <div>
@@ -133,7 +144,7 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
           </Section>
 
           <Section title="Fit Profile">
-            <Field label="Date of Birth" value={user.dob} />
+            <Field label="D.O.B" value={formatDobDate(user.dob)} />
             <Field label="Age" value={formatMeasurement(user.age_value, user.age_unit)} />
             <Field label="Height" value={formatMeasurement(user.height_value, user.height_unit)} />
             <Field label="Shoulder" value={formatMeasurement(user.shoulder_width_value, user.shoulder_width_unit)} />

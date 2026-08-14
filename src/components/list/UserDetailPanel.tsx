@@ -141,57 +141,71 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
             <Field label="Hips" value={formatMeasurement(user.hips_size_value, user.hips_size_unit)} />
           </Section>
 
-          <section>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#7A021D]">
-              Usual Sizes
-            </h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Top</div>
-                {user.top_sizes && user.top_sizes.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {user.top_sizes.map((s) => (
-                      <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-neutral-400">—</div>
-                )}
-              </div>
+          {(() => {
+            const topList = (user.top_sizes && user.top_sizes.length > 0)
+              ? user.top_sizes
+              : (user.morning_routine_selections || []).filter((s) => s.startsWith('top:')).map((s) => s.replace('top:', ''));
+            const bottomList = (user.bottom_sizes && user.bottom_sizes.length > 0)
+              ? user.bottom_sizes
+              : (user.morning_routine_selections || []).filter((s) => s.startsWith('bottom:')).map((s) => s.replace('bottom:', ''));
+            const dressList = (user.dress_sizes && user.dress_sizes.length > 0)
+              ? user.dress_sizes
+              : (user.morning_routine_selections || []).filter((s) => s.startsWith('dress:')).map((s) => s.replace('dress:', ''));
 
-              <div>
-                <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Bottom</div>
-                {user.bottom_sizes && user.bottom_sizes.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {user.bottom_sizes.map((s) => (
-                      <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
-                        {s}
-                      </span>
-                    ))}
+            return (
+              <section>
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#7A021D]">
+                  Usual Sizes
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Top</div>
+                    {topList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {topList.map((s) => (
+                          <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-neutral-400">—</div>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-sm text-neutral-400">—</div>
-                )}
-              </div>
 
-              <div>
-                <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Dress</div>
-                {user.dress_sizes && user.dress_sizes.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {user.dress_sizes.map((s) => (
-                      <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
-                        {s}
-                      </span>
-                    ))}
+                  <div>
+                    <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Bottom</div>
+                    {bottomList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {bottomList.map((s) => (
+                          <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-neutral-400">—</div>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-sm text-neutral-400">—</div>
-                )}
-              </div>
-            </div>
-          </section>
+
+                  <div>
+                    <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Dress</div>
+                    {dressList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {dressList.map((s) => (
+                          <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-neutral-400">—</div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
 
           <section>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#7A021D]">

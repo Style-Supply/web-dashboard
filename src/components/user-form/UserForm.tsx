@@ -86,9 +86,24 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [hipsUnit, setHipsUnit] = useState(initial?.hips_size_unit ?? 'in');
 
   // Sizes
-  const [topSizes, setTopSizes] = useState<string[]>(initial?.top_sizes ?? []);
-  const [bottomSizes, setBottomSizes] = useState<string[]>(initial?.bottom_sizes ?? []);
-  const [dressSizes, setDressSizes] = useState<string[]>(initial?.dress_sizes ?? []);
+  const [topSizes, setTopSizes] = useState<string[]>(() => {
+    if (initial?.top_sizes && initial.top_sizes.length > 0) return initial.top_sizes;
+    return (initial?.morning_routine_selections || [])
+      .filter((s) => s.startsWith('top:'))
+      .map((s) => s.replace('top:', ''));
+  });
+  const [bottomSizes, setBottomSizes] = useState<string[]>(() => {
+    if (initial?.bottom_sizes && initial.bottom_sizes.length > 0) return initial.bottom_sizes;
+    return (initial?.morning_routine_selections || [])
+      .filter((s) => s.startsWith('bottom:'))
+      .map((s) => s.replace('bottom:', ''));
+  });
+  const [dressSizes, setDressSizes] = useState<string[]>(() => {
+    if (initial?.dress_sizes && initial.dress_sizes.length > 0) return initial.dress_sizes;
+    return (initial?.morning_routine_selections || [])
+      .filter((s) => s.startsWith('dress:'))
+      .map((s) => s.replace('dress:', ''));
+  });
 
   // Discovery & Clubs
   const [hearAboutUs, setHearAboutUs] = useState(initial?.hear_about_us ?? '');

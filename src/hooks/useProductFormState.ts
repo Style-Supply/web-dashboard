@@ -33,6 +33,7 @@ export interface UseProductFormState {
   state: ProductPayload;
   set: (next: ProductPayload) => void;
   setField: <K extends keyof ProductPayload>(key: K, value: ProductPayload[K]) => void;
+  setPatch: (patch: Partial<ProductPayload>) => void;
 }
 
 export function useProductFormState(initial?: Partial<ProductPayload>): UseProductFormState {
@@ -49,5 +50,9 @@ export function useProductFormState(initial?: Partial<ProductPayload>): UseProdu
     [],
   );
 
-  return { state, set, setField };
+  const setPatch = useCallback((patch: Partial<ProductPayload>): void => {
+    setState((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  return { state, set, setField, setPatch };
 }

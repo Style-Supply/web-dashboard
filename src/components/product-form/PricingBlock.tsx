@@ -7,15 +7,33 @@ import { fromMinor, toMinor, calculateTierRentalFee } from '@/lib/price';
 interface PricingBlockProps {
   state: ProductPayload;
   setField: <K extends keyof ProductPayload>(key: K, value: ProductPayload[K]) => void;
+  setPatch?: (patch: Partial<ProductPayload>) => void;
 }
 
-export default function PricingBlock({ state, setField }: PricingBlockProps): React.ReactElement {
+export default function PricingBlock({ state, setField, setPatch }: PricingBlockProps): React.ReactElement {
   const retail = fromMinor(state.retail_price_minor);
   const calculatedRental = calculateTierRentalFee(retail);
   const customRent = state.rent_price_minor != null ? fromMinor(state.rent_price_minor) : '';
 
   const isRentable = state.is_rentable ?? true;
   const isBuyable = state.is_buyable ?? true;
+
+  const handleSetMode = (rentable: boolean, buyable: boolean) => {
+    const patch: Partial<ProductPayload> = {
+      is_rentable: rentable,
+      is_buyable: buyable,
+    };
+    if (!rentable) {
+      patch.rent_price_minor = null;
+    }
+    if (setPatch) {
+      setPatch(patch);
+    } else {
+      setField('is_rentable', rentable);
+      setField('is_buyable', buyable);
+      if (!rentable) setField('rent_price_minor', null);
+    }
+  };
 
   return (
     <section className="space-y-4">
@@ -27,10 +45,7 @@ export default function PricingBlock({ state, setField }: PricingBlockProps): Re
         <div className="grid grid-cols-3 gap-2.5">
           <button
             type="button"
-            onClick={() => {
-              setField('is_rentable', true);
-              setField('is_buyable', true);
-            }}
+            onClick={() => handleSetMode(true, true)}
             className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
               isRentable && isBuyable
                 ? 'border-[#7A021D] bg-[#FDF8F4] text-[#7A021D] shadow-xs'
@@ -41,10 +56,7 @@ export default function PricingBlock({ state, setField }: PricingBlockProps): Re
           </button>
           <button
             type="button"
-            onClick={() => {
-              setField('is_rentable', true);
-              setField('is_buyable', false);
-            }}
+            onClick={() => handleSetMode(true, false)}
             className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
               isRentable && !isBuyable
                 ? 'border-[#7A021D] bg-[#FDF8F4] text-[#7A021D] shadow-xs'
@@ -55,10 +67,7 @@ export default function PricingBlock({ state, setField }: PricingBlockProps): Re
           </button>
           <button
             type="button"
-            onClick={() => {
-              setField('is_rentable', false);
-              setField('is_buyable', true);
-            }}
+            onClick={() => handleSetMode(false, true)}
             className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
               !isRentable && isBuyable
                 ? 'border-[#7A021D] bg-[#FDF8F4] text-[#7A021D] shadow-xs'

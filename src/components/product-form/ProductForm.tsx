@@ -117,7 +117,7 @@ export default function ProductForm({
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-8 overflow-auto p-6">
         <BasicFieldsBlock value={state} onChange={(patch) => { for (const [k, v] of Object.entries(patch)) setField(k as keyof typeof state, v); }} />
-        <PricingBlock state={state} setField={setField} />
+        <PricingBlock state={state} setField={setField} setPatch={form.setPatch} />
         <VariantEditor
           value={state.variants}
           onChange={(next) => setField('variants', next)}

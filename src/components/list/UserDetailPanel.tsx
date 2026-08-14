@@ -241,20 +241,28 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#7A021D]">
               Style Preferences
             </h3>
-            {user.morning_routine_selections && user.morning_routine_selections.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {user.morning_routine_selections.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-[#FDF8F4] px-3 py-1 text-xs font-medium text-[#7A021D]"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-neutral-500">None selected</div>
-            )}
+            {(() => {
+              const prefList = (user.dressing_preferences && user.dressing_preferences.length > 0)
+                ? user.dressing_preferences
+                : (user.morning_routine_selections || []).filter((s) => !s.startsWith('top:') && !s.startsWith('bottom:') && !s.startsWith('dress:'));
+
+              if (prefList.length === 0) {
+                return <div className="text-sm text-neutral-500">None selected</div>;
+              }
+
+              return (
+                <div className="flex flex-wrap gap-2">
+                  {prefList.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-[#FDF8F4] px-3 py-1 text-xs font-medium text-[#7A021D]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              );
+            })()}
           </section>
         </div>
       </aside>

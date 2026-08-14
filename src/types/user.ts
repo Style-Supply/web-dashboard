@@ -28,6 +28,7 @@ export interface OnboardingSubmission {
   dress_sizes?: string[] | null;
 
   morning_routine_selections: string[] | null;
+  dressing_preferences?: string[] | null;
 
   referral_code?: string | null;
   hear_about_us?: string | null;

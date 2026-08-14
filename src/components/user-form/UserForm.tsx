@@ -112,7 +112,14 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [otherClub, setOtherClub] = useState(initial?.other_club ?? '');
 
   // Style Preferences & Admin Notes
-  const [styles, setStyles] = useState<string[]>(initial?.morning_routine_selections ?? []);
+  const [styles, setStyles] = useState<string[]>(() => {
+    if (initial?.dressing_preferences && initial.dressing_preferences.length > 0) {
+      return initial.dressing_preferences;
+    }
+    return (initial?.morning_routine_selections || []).filter(
+      (s) => !s.startsWith('top:') && !s.startsWith('bottom:') && !s.startsWith('dress:')
+    );
+  });
   const [adminNotes, setAdminNotes] = useState(initial?.admin_notes ?? '');
 
   const [saving, setSaving] = useState(false);

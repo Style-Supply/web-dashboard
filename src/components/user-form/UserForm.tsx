@@ -29,6 +29,9 @@ interface UserFormProps {
 const STATUS_OPTIONS = ['pending', 'approved', 'waitlisted', 'rejected'] as const;
 const HEIGHT_UNITS = ['cm', 'ft'] as const;
 const BODY_UNITS = ['cm', 'in'] as const;
+const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const;
+const CLUB_OPTIONS = ['Soho House', 'Bastian', 'The Chambers', 'Willingdon Club', 'Bay Club', 'Other'] as const;
+
 const STYLE_TAGS = [
   'plan',
   'instinct',
@@ -59,6 +62,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [email, setEmail] = useState(initial?.email ?? '');
   const [phone, setPhone] = useState(initial?.phone_number ?? '');
   const [instagram, setInstagram] = useState(initial?.instagram_handle ?? '');
+  const [referralCode, setReferralCode] = useState(initial?.referral_code ?? '');
   const [approvalStatus, setApprovalStatus] = useState<string>(
     initial?.approval_status ?? 'pending',
   );
@@ -81,15 +85,26 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [hips, setHips] = useState(fromNum(initial?.hips_size_value));
   const [hipsUnit, setHipsUnit] = useState(initial?.hips_size_unit ?? 'in');
 
+  // Sizes
+  const [topSizes, setTopSizes] = useState<string[]>(initial?.top_sizes ?? []);
+  const [bottomSizes, setBottomSizes] = useState<string[]>(initial?.bottom_sizes ?? []);
+  const [dressSizes, setDressSizes] = useState<string[]>(initial?.dress_sizes ?? []);
+
+  // Discovery & Clubs
+  const [hearAboutUs, setHearAboutUs] = useState(initial?.hear_about_us ?? '');
+  const [eventFrequency, setEventFrequency] = useState(initial?.event_frequency ?? '');
+  const [privateClubs, setPrivateClubs] = useState<string[]>(initial?.private_clubs ?? []);
+  const [otherClub, setOtherClub] = useState(initial?.other_club ?? '');
+
+  // Style Preferences & Admin Notes
   const [styles, setStyles] = useState<string[]>(initial?.morning_routine_selections ?? []);
+  const [adminNotes, setAdminNotes] = useState(initial?.admin_notes ?? '');
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const toggleStyle = (tag: string): void => {
-    setStyles((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
+  const toggleArrayItem = (list: string[], item: string, setter: (val: string[]) => void) => {
+    setter(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
   };
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -107,6 +122,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       city: city.trim() || '',
       zip_code: zip.trim() || '',
       instagram_handle: instagram.trim() || '',
+      referral_code: referralCode.trim() || '',
       height_value: toNum(height),
       height_unit: heightUnit || null,
       shoulder_width_value: toNum(shoulder),
@@ -119,9 +135,16 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       hips_size_unit: hipsUnit || null,
       age_value: toNum(age),
       age_unit: ageUnit || null,
+      top_sizes: topSizes,
+      bottom_sizes: bottomSizes,
+      dress_sizes: dressSizes,
+      hear_about_us: hearAboutUs.trim() || '',
+      event_frequency: eventFrequency.trim() || '',
+      private_clubs: privateClubs,
+      other_club: otherClub.trim() || '',
       morning_routine_selections: styles,
       approval_status: initial?.approval_status ?? (role === 'admin' ? 'approved' : 'pending'),
-      admin_notes: role === 'admin' ? 'Administrator Account' : (initial?.admin_notes ?? ''),
+      admin_notes: adminNotes.trim() || (role === 'admin' ? 'Administrator Account' : ''),
       role,
     };
 
@@ -144,10 +167,10 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
                 : `User approved — invite NOT sent. Share code manually: ${res.access_code}`,
             );
           } else if (approvalStatus === 'rejected') {
-            await rejectAccessRequest(initial.id);
+            await rejectAccessRequest(initial.id, adminNotes);
             showToast('success', 'User updated & rejected');
           } else if (approvalStatus === 'waitlisted') {
-            await waitlistAccessRequest(initial.id);
+            await waitlistAccessRequest(initial.id, adminNotes);
             showToast('success', 'User updated & waitlisted');
           } else {
             showToast('success', 'User updated');
@@ -196,6 +219,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
         <LabeledInput label="Email *" value={email} onChange={setEmail} type="email" />
         <LabeledInput label="Phone" value={phone} onChange={setPhone} />
         <LabeledInput label="Instagram handle" value={instagram} onChange={setInstagram} />
+        <LabeledInput label="Referral code" value={referralCode} onChange={setReferralCode} />
         <LabeledSelect
           label="Account role"
           value={role}
@@ -208,6 +232,14 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
           onChange={setApprovalStatus}
           options={[...STATUS_OPTIONS]}
         />
+        {initial?.invite_code && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-[#2C0505]/70">Invite Code</span>
+            <div className="h-10 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-mono font-semibold text-[#7A021D]">
+              {initial.invite_code}
+            </div>
+          </div>
+        )}
       </Section>
 
       <Section title="Location & Address">
@@ -222,7 +254,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
 
       {role !== 'admin' && (
         <>
-          <Section title="Fit profile">
+          <Section title="Fit profile & Measurements">
             <MeasurementField
               label="Age"
               value={age}
@@ -273,6 +305,127 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
             />
           </Section>
 
+          {/* Usual Sizes */}
+          <section>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#7A021D]">
+              Usual Sizes
+            </h2>
+            <div className="flex flex-col gap-3">
+              <div>
+                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Top</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {SIZE_OPTIONS.map((sz) => {
+                    const active = topSizes.includes(sz);
+                    return (
+                      <button
+                        key={`top-${sz}`}
+                        type="button"
+                        onClick={() => toggleArrayItem(topSizes, sz, setTopSizes)}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                          active
+                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
+                            : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
+                        }`}
+                      >
+                        {sz}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Bottom</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {SIZE_OPTIONS.map((sz) => {
+                    const active = bottomSizes.includes(sz);
+                    return (
+                      <button
+                        key={`bottom-${sz}`}
+                        type="button"
+                        onClick={() => toggleArrayItem(bottomSizes, sz, setBottomSizes)}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                          active
+                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
+                            : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
+                        }`}
+                      >
+                        {sz}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Dress</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {SIZE_OPTIONS.map((sz) => {
+                    const active = dressSizes.includes(sz);
+                    return (
+                      <button
+                        key={`dress-${sz}`}
+                        type="button"
+                        onClick={() => toggleArrayItem(dressSizes, sz, setDressSizes)}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                          active
+                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
+                            : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
+                        }`}
+                      >
+                        {sz}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Discovery & Social Profile */}
+          <Section title="Discovery & Memberships">
+            <LabeledInput
+              label="How did they hear about us?"
+              value={hearAboutUs}
+              onChange={setHearAboutUs}
+            />
+            <LabeledInput
+              label="Event frequency"
+              value={eventFrequency}
+              onChange={setEventFrequency}
+            />
+            <div className="col-span-2">
+              <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Private Clubs</span>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {CLUB_OPTIONS.map((club) => {
+                  const active = privateClubs.includes(club);
+                  return (
+                    <button
+                      key={club}
+                      type="button"
+                      onClick={() => toggleArrayItem(privateClubs, club, setPrivateClubs)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        active
+                          ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
+                          : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
+                      }`}
+                    >
+                      {club}
+                    </button>
+                  );
+                })}
+              </div>
+              {privateClubs.includes('Other') && (
+                <LabeledInput
+                  label="Other club details"
+                  value={otherClub}
+                  onChange={setOtherClub}
+                />
+              )}
+            </div>
+          </Section>
+
+          {/* Style Preferences */}
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#7A021D]">
               Style preferences
@@ -284,10 +437,10 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
                   <button
                     key={tag}
                     type="button"
-                    onClick={() => toggleStyle(tag)}
+                    onClick={() => toggleArrayItem(styles, tag, setStyles)}
                     className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                       active
-                        ? 'border-[#7A021D] bg-[#7A021D] text-white'
+                        ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
                         : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D] hover:text-[#7A021D]'
                     }`}
                   >
@@ -299,6 +452,18 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
           </section>
         </>
       )}
+
+      {/* Admin Notes */}
+      <section className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-[#2C0505]/70">Admin Notes</span>
+        <textarea
+          value={adminNotes}
+          onChange={(e) => setAdminNotes(e.target.value)}
+          placeholder="Internal admin notes regarding this user..."
+          rows={3}
+          className="w-full rounded-lg border border-neutral-300 bg-white p-3 text-sm outline-none focus:border-[#7A021D] focus:ring-1 focus:ring-[#7A021D]"
+        />
+      </section>
     </div>
   );
 

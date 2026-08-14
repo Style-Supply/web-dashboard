@@ -143,6 +143,58 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
 
           <section>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#7A021D]">
+              Usual Sizes
+            </h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Top</div>
+                {user.top_sizes && user.top_sizes.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {user.top_sizes.map((s) => (
+                      <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-neutral-400">—</div>
+                )}
+              </div>
+
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Bottom</div>
+                {user.bottom_sizes && user.bottom_sizes.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {user.bottom_sizes.map((s) => (
+                      <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-neutral-400">—</div>
+                )}
+              </div>
+
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1">Dress</div>
+                {user.dress_sizes && user.dress_sizes.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {user.dress_sizes.map((s) => (
+                      <span key={s} className="rounded-full bg-[#FDF8F4] px-2.5 py-0.5 text-xs font-semibold text-[#7A021D]">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-neutral-400">—</div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#7A021D]">
               Discovery & Social Profile
             </h3>
             <div className="grid grid-cols-2 gap-4 mb-4">

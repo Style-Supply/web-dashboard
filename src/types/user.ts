@@ -23,6 +23,10 @@ export interface OnboardingSubmission {
   age_value: number | null;
   age_unit: string | null;
 
+  top_sizes?: string[] | null;
+  bottom_sizes?: string[] | null;
+  dress_sizes?: string[] | null;
+
   morning_routine_selections: string[] | null;
 
   referral_code?: string | null;

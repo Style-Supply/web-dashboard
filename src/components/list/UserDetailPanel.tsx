@@ -36,6 +36,15 @@ function formatDobDate(dateStr?: string | null): string {
   }
 }
 
+function getDobValue(user: OnboardingSubmission): string | null {
+  if (user.dob && user.dob.trim()) return user.dob.trim();
+  if (user.admin_notes) {
+    const match = user.admin_notes.match(/\[DOB:\s*([^\]]+)\]/i);
+    if (match) return match[1].trim();
+  }
+  return null;
+}
+
 function Field({ label, value }: { label: string; value: React.ReactNode }): React.ReactElement {
   return (
     <div>
@@ -144,7 +153,7 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
           </Section>
 
           <Section title="Fit Profile">
-            <Field label="D.O.B" value={formatDobDate(user.dob)} />
+            <Field label="D.O.B" value={formatDobDate(getDobValue(user))} />
             <Field label="Age" value={formatMeasurement(user.age_value, user.age_unit)} />
             <Field label="Height" value={formatMeasurement(user.height_value, user.height_unit)} />
             <Field label="Shoulder" value={formatMeasurement(user.shoulder_width_value, user.shoulder_width_unit)} />

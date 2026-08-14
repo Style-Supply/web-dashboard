@@ -71,7 +71,14 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [apartment, setApartment] = useState(initial?.floor_apartment ?? '');
   const [city, setCity] = useState(initial?.city ?? 'Mumbai');
   const [zip, setZip] = useState(initial?.zip_code ?? '');
-  const [dob, setDob] = useState(initial?.dob ?? '');
+  const [dob, setDob] = useState(() => {
+    if (initial?.dob && initial.dob.trim()) return initial.dob.trim();
+    if (initial?.admin_notes) {
+      const match = initial.admin_notes.match(/\[DOB:\s*([^\]]+)\]/i);
+      if (match) return match[1].trim();
+    }
+    return '';
+  });
 
   const [age, setAge] = useState(fromNum(initial?.age_value));
   const [ageUnit, setAgeUnit] = useState(initial?.age_unit ?? 'years');
@@ -121,7 +128,10 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       (s) => !s.startsWith('top:') && !s.startsWith('bottom:') && !s.startsWith('dress:')
     );
   });
-  const [adminNotes, setAdminNotes] = useState(initial?.admin_notes ?? '');
+  const [adminNotes, setAdminNotes] = useState(() => {
+    const raw = initial?.admin_notes ?? '';
+    return raw.replace(/\[DOB:\s*[^\]]+\]/gi, '').trim();
+  });
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -133,20 +143,25 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!fullName.trim() || !email.trim()) {
-      showToast('error', 'Full name and email are required');
+      showToast('error', 'Name and email are required');
       return;
     }
 
+    const dobValue = dob.trim();
+    const dobTag = dobValue ? `[DOB: ${dobValue}]` : '';
+    const cleanAdminNotes = adminNotes.replace(/\[DOB:\s*[^\]]+\]/gi, '').trim();
+    const finalAdminNotes = [cleanAdminNotes, dobTag].filter(Boolean).join(' ').trim();
+
     const payload: UserPayload = {
       full_name: fullName.trim(),
-      email: email.trim(),
-      phone_number: phone.trim() || '',
+      email: email.trim().toLowerCase(),
+      phone_number: phone.trim() || null,
       floor_apartment: apartment.trim() || '',
       city: city.trim() || '',
       zip_code: zip.trim() || '',
       instagram_handle: instagram.trim() || '',
       referral_code: referralCode.trim() || '',
-      dob: dob.trim() || '',
+      dob: dobValue,
       height_value: toNum(height),
       height_unit: heightUnit || null,
       shoulder_width_value: toNum(shoulder),
@@ -168,7 +183,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       other_club: otherClub.trim() || '',
       morning_routine_selections: styles,
       approval_status: initial?.approval_status ?? (role === 'admin' ? 'approved' : 'pending'),
-      admin_notes: adminNotes.trim() || (role === 'admin' ? 'Administrator Account' : ''),
+      admin_notes: finalAdminNotes || (role === 'admin' ? 'Administrator Account' : ''),
       role,
     };
 

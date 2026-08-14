@@ -133,6 +133,7 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
           </Section>
 
           <Section title="Fit Profile">
+            <Field label="Date of Birth" value={user.dob} />
             <Field label="Age" value={formatMeasurement(user.age_value, user.age_unit)} />
             <Field label="Height" value={formatMeasurement(user.height_value, user.height_unit)} />
             <Field label="Shoulder" value={formatMeasurement(user.shoulder_width_value, user.shoulder_width_unit)} />

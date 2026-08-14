@@ -71,6 +71,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [apartment, setApartment] = useState(initial?.floor_apartment ?? '');
   const [city, setCity] = useState(initial?.city ?? 'Mumbai');
   const [zip, setZip] = useState(initial?.zip_code ?? '');
+  const [dob, setDob] = useState(initial?.dob ?? '');
 
   const [age, setAge] = useState(fromNum(initial?.age_value));
   const [ageUnit, setAgeUnit] = useState(initial?.age_unit ?? 'years');
@@ -145,6 +146,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       zip_code: zip.trim() || '',
       instagram_handle: instagram.trim() || '',
       referral_code: referralCode.trim() || '',
+      dob: dob.trim() || '',
       height_value: toNum(height),
       height_unit: heightUnit || null,
       shoulder_width_value: toNum(shoulder),
@@ -277,6 +279,12 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       {role !== 'admin' && (
         <>
           <Section title="Fit profile & Measurements">
+            <LabeledInput
+              label="Date of Birth"
+              type="date"
+              value={dob}
+              onChange={setDob}
+            />
             <MeasurementField
               label="Age"
               value={age}

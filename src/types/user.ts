@@ -9,6 +9,7 @@ export interface OnboardingSubmission {
   city: string | null;
   zip_code: string | null;
   instagram_handle: string | null;
+  dob?: string | null;
 
   height_value: number | null;
   height_unit: string | null;

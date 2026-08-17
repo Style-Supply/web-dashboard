@@ -56,6 +56,19 @@ function getDobValue(user: OnboardingSubmission): string | null {
   return null;
 }
 
+function calculateAgeFromDob(dobStr?: string | null): number | null {
+  if (!dobStr || !dobStr.trim()) return null;
+  const birthDate = new Date(dobStr.trim());
+  if (isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : null;
+}
+
 function Field({ label, value }: { label: string; value: React.ReactNode }): React.ReactElement {
   return (
     <div>
@@ -164,8 +177,17 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
           </Section>
 
           <Section title="Fit Profile">
-            <Field label="D.O.B" value={formatDobDate(getDobValue(user))} />
-            <Field label="Age" value={formatMeasurement(user.age_value, user.age_unit)} />
+            {(() => {
+              const dobVal = getDobValue(user);
+              const computedAge = calculateAgeFromDob(dobVal);
+              const finalAge = (computedAge !== null) ? computedAge : (user.age_value && user.age_value > 0 ? user.age_value : null);
+              return (
+                <>
+                  <Field label="D.O.B" value={formatDobDate(dobVal)} />
+                  <Field label="Age" value={formatMeasurement(finalAge, user.age_unit || 'years')} />
+                </>
+              );
+            })()}
             <Field label="Height" value={formatMeasurement(user.height_value, user.height_unit)} />
             <Field label="Shoulder" value={formatMeasurement(user.shoulder_width_value, user.shoulder_width_unit)} />
             <Field label="Bust" value={formatMeasurement(user.bust_size_value, user.bust_size_unit)} />

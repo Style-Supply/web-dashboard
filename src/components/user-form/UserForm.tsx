@@ -54,6 +54,19 @@ const STYLE_MAP: Record<string, string> = {
   rewear: 'I rewear faithfully',
 };
 
+function calculateAgeFromDob(dobStr?: string | null): number | null {
+  if (!dobStr || !dobStr.trim()) return null;
+  const birthDate = new Date(dobStr.trim());
+  if (isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : null;
+}
+
 function toNum(value: string): number | null {
   const trimmed = value.trim();
   if (trimmed === '') return null;
@@ -91,7 +104,11 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
     return '';
   });
 
-  const [age, setAge] = useState(fromNum(initial?.age_value));
+  const [age, setAge] = useState(() => {
+    const computed = calculateAgeFromDob(dob);
+    if (computed !== null) return String(computed);
+    return fromNum(initial?.age_value);
+  });
   const [ageUnit, setAgeUnit] = useState(initial?.age_unit ?? 'years');
   const [height, setHeight] = useState(fromNum(initial?.height_value));
   const [heightUnit, setHeightUnit] = useState(initial?.height_unit ?? 'cm');
@@ -311,17 +328,9 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
               value={dob}
               onChange={(val) => {
                 setDob(val);
-                if (val) {
-                  const birthDate = new Date(val);
-                  const today = new Date();
-                  let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-                  const m = today.getMonth() - birthDate.getMonth();
-                  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                    calculatedAge--;
-                  }
-                  if (calculatedAge >= 0 && calculatedAge <= 120) {
-                    setAge(calculatedAge.toString());
-                  }
+                const computed = calculateAgeFromDob(val);
+                if (computed !== null) {
+                  setAge(String(computed));
                 }
               }}
             />

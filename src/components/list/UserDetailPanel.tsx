@@ -4,6 +4,17 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import type { OnboardingSubmission } from '@/types/user';
 
+const STYLE_MAP: Record<string, string> = {
+  plan: 'I plan ahead',
+  instinct: 'I go on instinct',
+  uniform: 'I have a uniform',
+  guide: 'I need a guide',
+  occasion: 'Occasion decides',
+  scroll: 'I scroll, then decide',
+  chaos: 'Organised chaos',
+  rewear: 'I rewear faithfully',
+};
+
 interface UserDetailPanelProps {
   user: OnboardingSubmission;
   onClose: () => void;
@@ -263,9 +274,10 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
               Style Preferences
             </h3>
             {(() => {
-              const prefList = (user.dressing_preferences && user.dressing_preferences.length > 0)
+              const rawPrefs = (user.dressing_preferences && user.dressing_preferences.length > 0)
                 ? user.dressing_preferences
-                : (user.morning_routine_selections || []).filter((s) => !s.startsWith('top:') && !s.startsWith('bottom:') && !s.startsWith('dress:'));
+                : (user.morning_routine_selections || []);
+              const prefList = rawPrefs.filter((s) => !s.startsWith('top:') && !s.startsWith('bottom:') && !s.startsWith('dress:'));
 
               if (prefList.length === 0) {
                 return <div className="text-sm text-neutral-500">None selected</div>;
@@ -278,7 +290,7 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
                       key={tag}
                       className="rounded-full bg-[#FDF8F4] px-3 py-1 text-xs font-medium text-[#7A021D]"
                     >
-                      {tag}
+                      {STYLE_MAP[tag] || tag}
                     </span>
                   ))}
                 </div>

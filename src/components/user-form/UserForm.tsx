@@ -43,6 +43,17 @@ const STYLE_TAGS = [
   'rewear',
 ] as const;
 
+const STYLE_MAP: Record<string, string> = {
+  plan: 'I plan ahead',
+  instinct: 'I go on instinct',
+  uniform: 'I have a uniform',
+  guide: 'I need a guide',
+  occasion: 'Occasion decides',
+  scroll: 'I scroll, then decide',
+  chaos: 'Organised chaos',
+  rewear: 'I rewear faithfully',
+};
+
 function toNum(value: string): number | null {
   const trimmed = value.trim();
   if (trimmed === '') return null;
@@ -503,7 +514,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
                         : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D] hover:text-[#7A021D]'
                     }`}
                   >
-                    {tag}
+                    {STYLE_MAP[tag] || tag}
                   </button>
                 );
               })}

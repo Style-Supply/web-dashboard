@@ -402,7 +402,15 @@ export default function BoxesPage(): React.ReactElement {
                       <button onClick={() => void handleEndSession(box.id)} className="rounded-md bg-pink-50 px-2.5 py-1 text-xs font-semibold text-pink-700 ring-1 ring-inset ring-pink-200 hover:bg-pink-100 transition-colors">End</button>
                     </div>
                   )}
-                  {!['confirmed','packing','out_for_delivery','delivered','boutique_session_active'].includes(box.status) && (
+                  {box.status === 'returns_review' && (
+                    <button
+                      onClick={() => router.push(`/returns?search=${box.id}`)}
+                      className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 transition-colors"
+                    >
+                      Returns &amp; QC
+                    </button>
+                  )}
+                  {!['confirmed','packing','out_for_delivery','delivered','boutique_session_active','returns_review'].includes(box.status) && (
                     <span className="text-neutral-300 text-xs">—</span>
                   )}
                 </td>

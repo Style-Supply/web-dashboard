@@ -20,6 +20,7 @@ import {
   addBoxItem,
 } from '@/lib/boxes';
 import { request } from '@/lib/api';
+import { markReceived, setPickupStatus } from '@/lib/returns';
 import type { BoxDetail } from '@/types/box';
 import type { ProductListResponse, Product } from '@/types/product';
 
@@ -570,6 +571,34 @@ export default function BoxDetailPage(): React.ReactElement {
               <button onClick={() => { const h = parseInt(prompt('Extend by hours:', '24') ?? '24', 10); if (h > 0) void doAction(() => extendSession(box.id, h), `Session extended ${h}h`); }} disabled={actionLoading} className="rounded-lg bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700 hover:bg-purple-200 disabled:opacity-50">Extend</button>
               <button onClick={() => void doAction(() => endSession(box.id), 'Session ended')} disabled={actionLoading} className="rounded-lg bg-pink-100 px-3 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 disabled:opacity-50">End Session</button>
             </>
+          )}
+          {box.status === 'returns_review' && (
+            <div className="flex flex-wrap items-center gap-2">
+              {box.pickup_status !== 'picked_up' && (
+                <button
+                  onClick={() => void doAction(() => setPickupStatus(box.id, 'picked_up'), 'Pickup marked as Picked Up')}
+                  disabled={actionLoading}
+                  className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                >
+                  Mark Picked Up
+                </button>
+              )}
+              {!box.received_at && (
+                <button
+                  onClick={() => void doAction(() => markReceived(box.id), 'Returns marked as received at warehouse')}
+                  disabled={actionLoading}
+                  className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Receive at Warehouse
+                </button>
+              )}
+              <Link
+                href={`/returns?search=${box.id}`}
+                className="rounded-lg bg-neutral-100 border border-neutral-200 px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-200"
+              >
+                Inspect &amp; QC Returns →
+              </Link>
+            </div>
           )}
         </div>
 

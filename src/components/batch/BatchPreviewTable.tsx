@@ -54,6 +54,16 @@ export default function BatchPreviewTable({
               {expanded === i && (
                 <tr className="bg-neutral-50">
                   <td colSpan={6} className="px-6 py-3 text-xs">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-neutral-700">
+                      {p.sku && <div><span className="font-semibold">SKU:</span> {p.sku}</div>}
+                      {p.category_type_slug && <div><span className="font-semibold">Category:</span> {p.category_type_slug}</div>}
+                      {p.subcategory_slug && <div><span className="font-semibold">Subcategory:</span> {p.subcategory_slug}</div>}
+                      {p.material_slug && <div><span className="font-semibold">Material:</span> {p.material_slug}</div>}
+                      {p.rent_price_minor != null && <div><span className="font-semibold">Rent:</span> {formatINR(p.rent_price_minor)}</div>}
+                      <div><span className="font-semibold">Rentable:</span> {p.is_rentable !== false ? 'Yes' : 'No'} | <span className="font-semibold">Buyable:</span> {p.is_buyable !== false ? 'Yes' : 'No'}</div>
+                      {p.look_slugs && p.look_slugs.length > 0 && <div><span className="font-semibold">Collection:</span> {p.look_slugs.join(', ')}</div>}
+                      {p.fabric_details && <div className="col-span-2"><span className="font-semibold">Fabric:</span> {p.fabric_details}</div>}
+                    </div>
                     <div className="font-semibold">Variants</div>
                     <ul className="mt-1 space-y-0.5">
                       {(p.variants ?? []).map((v, vi) => (

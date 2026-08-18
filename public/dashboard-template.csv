@@ -1,7 +1,12 @@
-name,brand,retail_price_inr,rent_price_inr,currency,category,collection,fabric,description,status,variant_size,variant_colour,variant_quantity,variant_location,image_urls
-Ursula Black Wrap Maxi Dress,Finesse,640000,18000,INR,Dresses,SS26,Stretch blend,"Crafted in a soft stretch blend with a flattering wrap construction and fluid drape.",draft,XS,Black,2,Mumbai,https://example.com/ursula-1.jpg|https://example.com/ursula-2.jpg
-,,,,,,,,,,S,Black,3,Mumbai,
-,,,,,,,,,,M,Black,4,Mumbai,
-,,,,,,,,,,L,Black,2,Delhi,
-,,,,,,,,,,XL,Black,1,Delhi,
-,,,,,,,,,,XXL,Black,0,Delhi,
+name,sku,brand,category_type,subcategory,sub_subcategory,material,fabric_details,description,retail_price_inr,rent_price_inr,currency,is_rentable,is_buyable,collection,status,variant_size,variant_colour,variant_quantity,variant_location,image_urls
+Ursula Black Wrap Maxi Dress,FIN-DRS-001,Finesse,Women,Dresses,Maxi Dresses,Stretch blend,95% Viscose 5% Elastane. Dry clean only.,"Crafted in a soft stretch blend with a flattering wrap construction and fluid drape.",64000,1800,INR,true,true,SS26|Evening Glamour,draft,XS,Black,2,Mumbai,https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800|https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=800
+,,,,,,,,,,,,,,,,S,Black,3,Mumbai,
+,,,,,,,,,,,,,,,,M,Black,4,Mumbai,
+,,,,,,,,,,,,,,,,L,Black,2,Delhi,
+,,,,,,,,,,,,,,,,XL,Black,1,Delhi,
+,,,,,,,,,,,,,,,,XXL,Black,0,Delhi,
+Aurelia Silk Evening Blazer,FIN-BLZ-002,Finesse,Women,Outerwear,Blazers,Silk,100% Mulberry Silk with cupro lining.,"Tailored single-breasted blazer featuring peaked lapels and structured padded shoulders.",42000,1200,INR,true,true,SS26,draft,S,Ivory,3,Mumbai,https://images.unsplash.com/photo-1584273143981-41c073dfe8f8?w=800
+,,,,,,,,,,,,,,,,M,Ivory,2,Mumbai,
+,,,,,,,,,,,,,,,,L,Ivory,1,Delhi,
+,,,,,,,,,,,,,,,,S,Emerald,2,Mumbai,
+,,,,,,,,,,,,,,,,M,Emerald,1,Mumbai,

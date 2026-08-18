@@ -10,11 +10,17 @@ export const CSV_COLUMNS = [
   'material',
   'fabric_details',
   'description',
-  'retail_price_minor',
-  'rent_price_minor',
+  'retail_price_inr',
+  'rent_price_inr',
   'currency',
-  'look_slugs',
-  'variants_json',
+  'is_rentable',
+  'is_buyable',
+  'collection',
+  'status',
+  'variant_size',
+  'variant_colour',
+  'variant_quantity',
+  'variant_location',
   'image_urls',
 ] as const;
 
@@ -32,10 +38,27 @@ export interface GroupingResult {
 }
 
 export const EXPECTED_COLUMNS = [
-  'name', 'sku', 'brand', 'category_type', 'subcategory', 'sub_subcategory',
-  'material', 'fabric_details', 'description',
-  'retail_price_minor', 'rent_price_minor', 'currency',
-  'look_slugs', 'variants_json', 'image_urls',
+  'name',
+  'sku',
+  'brand',
+  'category_type',
+  'subcategory',
+  'sub_subcategory',
+  'material',
+  'fabric_details',
+  'description',
+  'retail_price_inr',
+  'rent_price_inr',
+  'currency',
+  'is_rentable',
+  'is_buyable',
+  'collection',
+  'status',
+  'variant_size',
+  'variant_colour',
+  'variant_quantity',
+  'variant_location',
+  'image_urls',
 ];
 
 function getVal(row: Record<string, string>, keys: string[]): string {
@@ -57,14 +80,17 @@ function getVal(row: Record<string, string>, keys: string[]): string {
   return '';
 }
 
-function parsePriceMinor(rawVal: string): number {
+function parsePriceMinor(rawVal: string, isExplicitMinor = false): number {
   if (!rawVal) return 0;
   const clean = rawVal.replace(/[^0-9.]/g, '');
   if (!clean) return 0;
   const num = parseFloat(clean);
   if (isNaN(num) || num <= 0) return 0;
-  // If price is in Rupees (e.g. 54600 or 43200 or 1500), convert to minor units (paise)
-  if (num < 100000) {
+  if (isExplicitMinor) {
+    return Math.round(num);
+  }
+  // Standard prices in Rupees (e.g. ₹1,800, ₹64,000, ₹1,50,000) converted to paise (* 100)
+  if (num < 1000000) {
     return Math.round(num * 100);
   }
   return Math.round(num);
@@ -82,7 +108,7 @@ function normalizeSize(rawSize: string): string {
   if (['XXL', '2XL', 'DOUBLE EXTRA LARGE'].includes(upper)) return 'XXL';
   if (['XXS', 'DOUBLE EXTRA SMALL'].includes(upper)) return 'XXS';
   if (['3XL', 'XXXL'].includes(upper)) return '3XL';
-  if (['FREE SIZE', 'ONE SIZE', 'O/S', 'FS', 'STANDARD', 'ONESIZE'].includes(upper)) return 'Free';
+  if (['FREE SIZE', 'ONE SIZE', 'O/S', 'FS', 'STANDARD', 'ONESIZE', 'FREE'].includes(upper)) return 'Free';
   return trimmed;
 }
 
@@ -101,15 +127,27 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
     const key = sku ? sku.toLowerCase() : name.toLowerCase();
 
     const brand = getVal(r, ['brand', 'brand_slug', 'brand_name', 'designer', 'vendor', 'manufacturer']);
-    const catType = getVal(r, ['category_type', 'category', 'category_slug', 'category_type_slug', 'main_category', 'gender', 'type']);
+    const catType = getVal(r, ['category_type', 'category', 'category_slug', 'category_type_slug', 'main_category', 'gender', 'department', 'type']);
     const subCat = getVal(r, ['subcategory', 'sub_category', 'subcategory_slug', 'cat2', 'category2', 'sub_cat']);
     const subSubCat = getVal(r, ['sub_subcategory', 'sub_sub_category', 'sub_subcategory_slug', 'cat3', 'category3', 'sub_sub_cat', 'style']);
     const material = getVal(r, ['material', 'fabric', 'material_slug', 'material_name', 'composition', 'content']);
     const fabricDetails = getVal(r, ['fabric_details', 'fabric_detail', 'fabric_info', 'material_details', 'care', 'care_instructions']);
     const description = getVal(r, ['description', 'desc', 'details', 'product_description', 'about', 'body']);
 
-    const retailPriceStr = getVal(r, ['retail_price_minor', 'retail_price', 'retail_price_inr', 'retail', 'mrp', 'price', 'original_price', 'retail_mrp']);
-    const rentPriceStr = getVal(r, ['rent_price_minor', 'rent_price', 'rent_price_inr', 'rent', 'rental_price', 'rental']);
+    const retailMinorStr = getVal(r, ['retail_price_minor', 'retail_minor', 'price_minor']);
+    const retailInrStr = getVal(r, ['retail_price_inr', 'retail_price', 'retail', 'mrp', 'price', 'original_price', 'retail_mrp']);
+    const retailPriceMinor = retailMinorStr
+      ? parsePriceMinor(retailMinorStr, true)
+      : parsePriceMinor(retailInrStr, false);
+
+    const rentMinorStr = getVal(r, ['rent_price_minor', 'rent_minor']);
+    const rentInrStr = getVal(r, ['rent_price_inr', 'rent_price', 'rent', 'rental_price', 'rental']);
+    const rentPriceMinor = rentMinorStr
+      ? parsePriceMinor(rentMinorStr, true)
+      : rentInrStr
+      ? parsePriceMinor(rentInrStr, false)
+      : null;
+
     const currency = getVal(r, ['currency', 'curr']) || 'INR';
 
     const isRentableStr = getVal(r, ['is_rentable', 'allow_rent', 'rentable', 'mode', 'fulfillment_type']);
@@ -131,8 +169,8 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
       }
     }
 
-    const lookSlugsStr = getVal(r, ['look_slugs', 'looks', 'look', 'collection', 'look_names', 'collections']);
-    const lookSlugs = lookSlugsStr ? lookSlugsStr.split(/[|;]/).map((s) => s.trim()).filter(Boolean) : [];
+    const lookSlugsStr = getVal(r, ['collection', 'collections', 'look_slugs', 'looks', 'look', 'look_names']);
+    const lookSlugs = lookSlugsStr ? lookSlugsStr.split(/[|;,]/).map((s) => s.trim()).filter(Boolean) : [];
 
     const imageUrlsStr = getVal(r, ['image_urls', 'images', 'image_url', 'image', 'photos', 'picture_urls', 'urls', 'img']);
     const imageUrls = imageUrlsStr ? imageUrlsStr.split(/[|;,]/).map((s) => s.trim()).filter(Boolean) : [];
@@ -148,7 +186,7 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
             size: normalizeSize(v.size || 'Free'),
             colour_slug: v.colour_slug || v.colour || v.color || null,
             custom_colour: v.custom_colour || v.colour || v.color || null,
-            quantity: Number(v.quantity || 1),
+            quantity: Number(v.quantity ?? 1),
             location_slug: v.location_slug || v.location || null,
           }));
         }
@@ -168,7 +206,7 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
           size: normalizeSize(vSize || 'Free'),
           colour_slug: vColour || null,
           custom_colour: vColour || null,
-          quantity: vQtyStr ? parseInt(vQtyStr, 10) || 1 : 1,
+          quantity: vQtyStr ? parseInt(vQtyStr, 10) || 0 : 1,
           location_slug: vLoc || null,
         });
       }
@@ -191,8 +229,8 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
       if (!existing.material_slug && material) existing.material_slug = material;
       if (!existing.fabric_details && fabricDetails) existing.fabric_details = fabricDetails;
       if (!existing.description && description) existing.description = description;
-      if (!existing.retail_price_minor && retailPriceStr) existing.retail_price_minor = parsePriceMinor(retailPriceStr);
-      if (!existing.rent_price_minor && rentPriceStr) existing.rent_price_minor = parsePriceMinor(rentPriceStr);
+      if (!existing.retail_price_minor && retailPriceMinor) existing.retail_price_minor = retailPriceMinor;
+      if (!existing.rent_price_minor && rentPriceMinor) existing.rent_price_minor = rentPriceMinor;
       if (lookSlugs.length > 0) {
         const set = new Set([...(existing.look_slugs || []), ...lookSlugs]);
         existing.look_slugs = Array.from(set);
@@ -208,8 +246,8 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
         material_slug: material || undefined,
         fabric_details: fabricDetails || null,
         description: description || null,
-        retail_price_minor: parsePriceMinor(retailPriceStr),
-        rent_price_minor: rentPriceStr ? parsePriceMinor(rentPriceStr) : null,
+        retail_price_minor: retailPriceMinor,
+        rent_price_minor: rentPriceMinor,
         currency,
         is_rentable: isRentable,
         is_buyable: isBuyable,

@@ -103,8 +103,14 @@ export default function CodesPage(): React.ReactElement {
 
   // KPI Metrics
   const totalUses = useMemo(() => codes.reduce((acc, c) => acc + (c.used_count || 0), 0), [codes]);
-  const inviteCount = useMemo(() => codes.filter((c) => c.grants_access).length, [codes]);
-  const promoCount = useMemo(() => codes.filter((c) => c.discount_minor > 0).length, [codes]);
+  const inviteCount = useMemo(
+    () => codes.filter((c) => c.type === 'invite' || c.type === 'both' || c.grants_access).length,
+    [codes],
+  );
+  const promoCount = useMemo(
+    () => codes.filter((c) => c.type === 'promo' || c.type === 'both' || c.discount_minor > 0).length,
+    [codes],
+  );
 
   function openCreate(): void {
     setEditingId(null);

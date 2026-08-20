@@ -733,6 +733,40 @@ function LabeledSelect({
   );
 }
 
+function convertHeight(value: string, fromUnit: string, toUnit: string): string {
+  const trimmed = (value || '').trim();
+  if (!trimmed || isNaN(parseFloat(trimmed))) return value;
+  const num = parseFloat(trimmed);
+  if (fromUnit === toUnit) return value;
+  if (fromUnit === 'cm' && toUnit === 'ft') {
+    const ft = num / 30.48;
+    return String(Math.round(ft * 10) / 10);
+  }
+  if (fromUnit === 'ft' && toUnit === 'cm') {
+    const cm = num * 30.48;
+    return String(Math.round(cm));
+  }
+  return value;
+}
+
+function convertMeasurement(value: string, fromUnit: string, toUnit: string): string {
+  const trimmed = (value || '').trim();
+  if (!trimmed || isNaN(parseFloat(trimmed))) return value;
+  const num = parseFloat(trimmed);
+  if (fromUnit === toUnit) return value;
+  if (fromUnit === 'cm' && toUnit === 'in') {
+    const inches = num / 2.54;
+    const rounded = Math.round(inches * 10) / 10;
+    return String(Number.isInteger(rounded) ? Math.round(rounded) : rounded);
+  }
+  if (fromUnit === 'in' && toUnit === 'cm') {
+    const cm = num * 2.54;
+    const rounded = Math.round(cm * 10) / 10;
+    return String(Number.isInteger(rounded) ? Math.round(rounded) : rounded);
+  }
+  return value;
+}
+
 function MeasurementField({
   label,
   value,
@@ -748,6 +782,18 @@ function MeasurementField({
   onUnitChange: (v: string) => void;
   units: string[];
 }): React.ReactElement {
+  const handleUnitChange = (nextUnit: string) => {
+    if (nextUnit === unit) return;
+    let nextVal = value;
+    if ((unit === 'cm' || unit === 'ft') && (nextUnit === 'cm' || nextUnit === 'ft')) {
+      nextVal = convertHeight(value, unit, nextUnit);
+    } else if ((unit === 'cm' || unit === 'in') && (nextUnit === 'cm' || nextUnit === 'in')) {
+      nextVal = convertMeasurement(value, unit, nextUnit);
+    }
+    onValueChange(nextVal);
+    onUnitChange(nextUnit);
+  };
+
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs font-medium text-[#2C0505]/70">{label}</span>
@@ -761,7 +807,7 @@ function MeasurementField({
         />
         <select
           value={unit}
-          onChange={(e) => onUnitChange(e.target.value)}
+          onChange={(e) => handleUnitChange(e.target.value)}
           className="h-10 w-20 rounded-lg border border-neutral-300 bg-white px-2 text-sm outline-none focus:border-[#7A021D] focus:ring-1 focus:ring-[#7A021D]"
         >
           {units.map((u) => (

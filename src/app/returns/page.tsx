@@ -65,20 +65,20 @@ export default function ReturnsPage(): React.ReactElement {
     return returns.find((b) => b.id === editingBoxId) ?? null;
   }, [editingBoxId, returns]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const { returns } = await listReturns();
       setReturns(returns);
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to load returns pipeline');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    void load();
+    void load(true);
   }, [load]);
 
   const filteredReturns = useMemo(() => {
@@ -117,12 +117,17 @@ export default function ReturnsPage(): React.ReactElement {
 
   async function handlePickup(boxId: string, status: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse'): Promise<void> {
     setBusy(boxId);
+    // Live in-place optimistic update
+    setReturns((prev) =>
+      prev.map((box) => (box.id === boxId ? { ...box, pickup_status: status } : box))
+    );
     try {
       await setPickupStatus(boxId, status);
       showToast('success', `Pickup status updated to ${status.replace('_', ' ')}`);
-      await load();
+      await load(false);
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to update pickup');
+      await load(false);
     } finally {
       setBusy(null);
     }
@@ -130,12 +135,22 @@ export default function ReturnsPage(): React.ReactElement {
 
   async function handleReceive(boxId: string): Promise<void> {
     setBusy(boxId);
+    const now = new Date().toISOString();
+    // Live in-place optimistic update
+    setReturns((prev) =>
+      prev.map((box) =>
+        box.id === boxId
+          ? { ...box, received_at: now, pickup_status: 'received_at_warehouse' }
+          : box
+      )
+    );
     try {
       await markReceived(boxId);
       showToast('success', 'Returned items marked as received at warehouse');
-      await load();
+      await load(false);
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to mark received');
+      await load(false);
     } finally {
       setBusy(null);
     }
@@ -147,16 +162,17 @@ export default function ReturnsPage(): React.ReactElement {
       notes = prompt('QC failure notes (optional):') ?? undefined;
     }
     setBusy(itemId);
+    // Live in-place optimistic update
+    setReturns((prev) =>
+      prev.map((box) => ({
+        ...box,
+        returned_items: box.returned_items.map((it) =>
+          it.id === itemId ? { ...it, qc_status: result } : it
+        ),
+      }))
+    );
     try {
       const res = await qcItem(itemId, result, notes);
-      setReturns((prev) =>
-        prev.map((box) => ({
-          ...box,
-          returned_items: box.returned_items.map((it) =>
-            it.id === itemId ? { ...it, qc_status: result } : it
-          ),
-        }))
-      );
       showToast(
         'success',
         result === 'passed'
@@ -166,9 +182,10 @@ export default function ReturnsPage(): React.ReactElement {
       if (res.box_status === 'completed') {
         showToast('success', '🎉 All return items inspected — Box completed!');
       }
-      await load();
+      await load(false);
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'QC inspection failed');
+      await load(false);
     } finally {
       setBusy(null);
     }

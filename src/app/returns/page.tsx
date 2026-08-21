@@ -324,7 +324,7 @@ export default function ReturnsPage(): React.ReactElement {
           {filteredReturns.map((box) => {
             const currentStepIdx = box.status === 'completed'
               ? 4
-              : box.pickup_status === 'received_at_warehouse'
+              : box.received_at
               ? 3
               : box.pickup_status === 'picked_up'
               ? 2
@@ -533,7 +533,9 @@ export default function ReturnsPage(): React.ReactElement {
                     const active =
                       step.key === 'completed'
                         ? editingBox.status === 'completed'
-                        : editingBox.status !== 'completed' && editingBox.pickup_status === step.key;
+                        : step.key === 'received_at_warehouse'
+                        ? Boolean(editingBox.received_at) && editingBox.status !== 'completed'
+                        : editingBox.status !== 'completed' && editingBox.pickup_status === step.key && (step.key !== 'picked_up' || !editingBox.received_at);
                     return (
                       <button
                         key={step.key}

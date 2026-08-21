@@ -149,6 +149,14 @@ export default function ReturnsPage(): React.ReactElement {
     setBusy(itemId);
     try {
       const res = await qcItem(itemId, result, notes);
+      setReturns((prev) =>
+        prev.map((box) => ({
+          ...box,
+          returned_items: box.returned_items.map((it) =>
+            it.id === itemId ? { ...it, qc_status: result } : it
+          ),
+        }))
+      );
       showToast(
         'success',
         result === 'passed'

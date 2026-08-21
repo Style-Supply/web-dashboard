@@ -11,11 +11,16 @@ import {
   type ReturnedItem,
 } from '@/lib/returns';
 
-const PICKUP_STEPS: Array<{ key: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse'; label: string; icon: string }> = [
-  { key: 'scheduled', label: '1. Courier Scheduled', icon: '📅' },
-  { key: 'in_transit', label: '2. Courier In Transit', icon: '🚚' },
-  { key: 'picked_up', label: '3. Picked Up', icon: '📦' },
-  { key: 'received_at_warehouse', label: '4. Received at Warehouse', icon: '🏢' },
+const PICKUP_STEPS: Array<{
+  key: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse' | 'completed';
+  label: string;
+  icon: string;
+}> = [
+  { key: 'scheduled', label: '1. Pickup Scheduled', icon: '📅' },
+  { key: 'in_transit', label: '2. Pickup In Transit', icon: '🚚' },
+  { key: 'picked_up', label: '3. Pickup Completed', icon: '📦' },
+  { key: 'received_at_warehouse', label: '4. Received at Style Supply', icon: '🏢' },
+  { key: 'completed', label: '5. Completed', icon: '✨' },
 ];
 
 function qcBadge(status: string | null): string {
@@ -115,11 +120,19 @@ export default function ReturnsPage(): React.ReactElement {
     [returns],
   );
 
-  async function handlePickup(boxId: string, status: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse'): Promise<void> {
+  async function handlePickup(boxId: string, status: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse' | 'completed'): Promise<void> {
     setBusy(boxId);
     // Live in-place optimistic update
     setReturns((prev) =>
-      prev.map((box) => (box.id === boxId ? { ...box, pickup_status: status } : box))
+      prev.map((box) =>
+        box.id === boxId
+          ? {
+              ...box,
+              pickup_status: status === 'completed' ? 'received_at_warehouse' : status,
+              status: status === 'completed' ? 'completed' : box.status,
+            }
+          : box
+      )
     );
     try {
       await setPickupStatus(boxId, status);
@@ -204,7 +217,7 @@ export default function ReturnsPage(): React.ReactElement {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => void load()}
+            onClick={() => void load(true)}
             disabled={loading}
             className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 shadow-xs cursor-pointer"
           >
@@ -221,7 +234,7 @@ export default function ReturnsPage(): React.ReactElement {
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            {loading ? 'Loading…' : 'Refresh Pipeline'}
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -309,8 +322,16 @@ export default function ReturnsPage(): React.ReactElement {
       ) : (
         <div className="flex flex-col gap-6">
           {filteredReturns.map((box) => {
-            const currentStepIdx = box.pickup_status
-              ? PICKUP_STEPS.findIndex((s) => s.key === box.pickup_status)
+            const currentStepIdx = box.status === 'completed'
+              ? 4
+              : box.pickup_status === 'received_at_warehouse'
+              ? 3
+              : box.pickup_status === 'picked_up'
+              ? 2
+              : box.pickup_status === 'in_transit'
+              ? 1
+              : box.pickup_status === 'scheduled'
+              ? 0
               : -1;
 
             return (
@@ -335,11 +356,11 @@ export default function ReturnsPage(): React.ReactElement {
                   <div className="flex items-center gap-3">
                     {box.received_at ? (
                       <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 shadow-2xs">
-                        🏢 Received at Warehouse ({new Date(box.received_at).toLocaleDateString('en-IN')})
+                        🏢 Received at Style Supply ({new Date(box.received_at).toLocaleDateString('en-IN')})
                       </span>
                     ) : (
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
-                        ⏳ Awaiting Warehouse Delivery
+                        ⏳ Awaiting Style Supply Receipt
                       </span>
                     )}
 
@@ -401,7 +422,7 @@ export default function ReturnsPage(): React.ReactElement {
                           onClick={() => void handleReceive(box.id)}
                           className="ml-auto flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-sky-700 disabled:opacity-50 transition-all cursor-pointer"
                         >
-                          🏢 Mark Received at Warehouse
+                          🏢 Mark Received at Style Supply
                         </button>
                       )}
                     </div>
@@ -418,87 +439,50 @@ export default function ReturnsPage(): React.ReactElement {
                       </span>
                     </div>
 
-                    <div className="overflow-hidden rounded-xl border border-neutral-200">
-                      <table className="w-full text-sm">
-                        <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                    <div className="overflow-x-auto rounded-xl border border-neutral-200">
+                      <table className="w-full text-left text-sm">
+                        <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase text-neutral-500">
                           <tr>
-                            <th className="px-4 py-3">Returned Product</th>
-                            <th className="px-4 py-3">Size Variant</th>
-                            <th className="px-4 py-3">Return Reason</th>
-                            <th className="px-4 py-3">QC Status</th>
-                            <th className="px-4 py-3 text-right">Inspection Action</th>
+                            <th className="py-3 px-4">Returned Product</th>
+                            <th className="py-3 px-4">Size Variant</th>
+                            <th className="py-3 px-4">Return Reason</th>
+                            <th className="py-3 px-4">QC Status</th>
+                            <th className="py-3 px-4 text-right">Inspection Action</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-100">
-                          {box.returned_items.map((item) => {
-                            const decided = item.qc_status === 'passed' || item.qc_status === 'failed';
-                            const canQc = Boolean(box.received_at) && !decided;
-
-                            return (
-                              <tr key={item.id} className="hover:bg-neutral-50/70 transition-colors">
-                                <td className="px-4 py-3.5 font-bold text-[#2C0505]">
-                                  {item.product_name}
-                                </td>
-                                <td className="px-4 py-3.5 font-medium text-neutral-600">
-                                  {item.variant_size}
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  {formatReturnReason(item.return_reason)}
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${qcBadge(item.qc_status)}`}>
-                                    {item.qc_status ?? 'Pending QC'}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                                  {canQc ? (
-                                    <div className="inline-flex gap-2">
-                                      <button
-                                        disabled={busy === item.id}
-                                        onClick={() => void handleQc(item.id, 'passed')}
-                                        className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
-                                      >
-                                        ✓ QC Pass &amp; Restock (+1)
-                                      </button>
-                                      <button
-                                        disabled={busy === item.id}
-                                        onClick={() => void handleQc(item.id, 'failed')}
-                                        className="rounded-xl bg-red-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
-                                      >
-                                        ✕ QC Fail (Damage)
-                                      </button>
-                                    </div>
-                                  ) : decided ? (
-                                    <div className="inline-flex items-center gap-2">
-                                      <span className="text-xs font-medium text-neutral-500">
-                                        Inspected ({item.qc_status?.toUpperCase()})
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingBoxId(box.id)}
-                                        className="text-xs text-[#7A021D] font-bold hover:underline cursor-pointer"
-                                      >
-                                        Edit
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="inline-flex items-center gap-2">
-                                      <span className="text-xs text-neutral-400 italic">
-                                        Awaiting warehouse receipt
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingBoxId(box.id)}
-                                        className="text-xs text-[#7A021D] font-bold hover:underline cursor-pointer"
-                                      >
-                                        Inspect
-                                      </button>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
+                        <tbody className="divide-y divide-neutral-200 bg-white">
+                          {box.returned_items.map((item) => (
+                            <tr key={item.id} className="hover:bg-neutral-50/50">
+                              <td className="py-3 px-4 font-bold text-[#2C0505]">{item.product_name}</td>
+                              <td className="py-3 px-4 text-neutral-600">{item.variant_size}</td>
+                              <td className="py-3 px-4">{formatReturnReason(item.return_reason)}</td>
+                              <td className="py-3 px-4">
+                                <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${qcBadge(item.qc_status)}`}>
+                                  {item.qc_status ?? 'Pending'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={busy === item.id}
+                                    onClick={() => void handleQc(item.id, 'passed')}
+                                    className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                                  >
+                                    ✓ QC Pass &amp; Restock (+1)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={busy === item.id}
+                                    onClick={() => void handleQc(item.id, 'failed')}
+                                    className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                                  >
+                                    ✕ QC Fail (Damage)
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>
@@ -510,18 +494,18 @@ export default function ReturnsPage(): React.ReactElement {
         </div>
       )}
 
-      {/* ── Edit & Inspect Modal / Dialog ── */}
+      {/* ── Edit & Inspect Modal ── */}
       {editingBox && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-neutral-200 bg-[#FDF8F4] px-6 py-5">
+            <div className="flex items-center justify-between border-b border-neutral-200 bg-[#FDF8F4] px-6 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7A021D] text-white font-bold text-sm shadow-xs">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#7A021D] text-white font-bold text-xs shadow-xs">
                   {userInitials(editingBox.user?.full_name)}
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-[#2C0505]">
+                  <h2 className="text-base font-bold text-[#2C0505]">
                     Edit &amp; Inspect: {editingBox.user?.full_name ?? 'Member Return'}
                   </h2>
                   <p className="font-mono text-xs text-neutral-400">Box ID: {editingBox.id}</p>
@@ -544,9 +528,12 @@ export default function ReturnsPage(): React.ReactElement {
                 <p className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-3">
                   Logistics &amp; Pickup Tracking Status
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                   {PICKUP_STEPS.map((step) => {
-                    const active = editingBox.pickup_status === step.key;
+                    const active =
+                      step.key === 'completed'
+                        ? editingBox.status === 'completed'
+                        : editingBox.status !== 'completed' && editingBox.pickup_status === step.key;
                     return (
                       <button
                         key={step.key}
@@ -568,7 +555,7 @@ export default function ReturnsPage(): React.ReactElement {
 
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-neutral-200">
                   <span className="text-xs text-neutral-600 font-medium">
-                    Warehouse Receipt: {editingBox.received_at ? `Received on ${new Date(editingBox.received_at).toLocaleDateString('en-IN')}` : 'Not yet received'}
+                    Warehouse Receipt: {editingBox.received_at ? `Received at Style Supply on ${new Date(editingBox.received_at).toLocaleDateString('en-IN')}` : 'Not yet received'}
                   </span>
                   {!editingBox.received_at && (
                     <button

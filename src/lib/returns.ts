@@ -12,7 +12,7 @@ export interface ReturnBox {
   id: string;
   user_id: string;
   status: string;
-  pickup_status: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse' | null;
+  pickup_status: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse' | 'completed' | null;
   received_at: string | null;
   decisions_locked_at: string | null;
   user: { id: string; full_name: string | null } | null;
@@ -25,7 +25,7 @@ export async function listReturns(): Promise<{ returns: ReturnBox[] }> {
 
 export async function setPickupStatus(
   boxId: string,
-  pickupStatus: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse',
+  pickupStatus: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse' | 'completed',
 ): Promise<ReturnBox> {
   return request<ReturnBox>(`/api/admin/returns/${boxId}/pickup`, {
     method: 'POST',

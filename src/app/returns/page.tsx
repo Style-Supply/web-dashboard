@@ -120,7 +120,21 @@ export default function ReturnsPage(): React.ReactElement {
     [returns],
   );
 
-  async function handlePickup(boxId: string, status: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse' | 'completed'): Promise<void> {
+  const [pickupTrackingInputs, setPickupTrackingInputs] = useState<Record<string, string>>({});
+
+  async function handlePickup(
+    boxId: string,
+    status: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse' | 'completed',
+    customTracking?: string,
+  ): Promise<void> {
+    let trackingNumber = customTracking;
+    if (status === 'in_transit' && trackingNumber === undefined) {
+      const box = returns.find((b) => b.id === boxId);
+      const entered = prompt('Enter Return Pickup Tracking Number (AWB / Courier Code):', box?.tracking_number || '');
+      if (entered === null) return; // User cancelled
+      trackingNumber = entered.trim();
+    }
+
     setBusy(boxId);
     // Live in-place optimistic update
     setReturns((prev) =>
@@ -130,12 +144,13 @@ export default function ReturnsPage(): React.ReactElement {
               ...box,
               pickup_status: status === 'completed' ? 'received_at_warehouse' : status,
               status: status === 'completed' ? 'completed' : box.status,
+              tracking_number: trackingNumber !== undefined ? trackingNumber : box.tracking_number,
             }
           : box
       )
     );
     try {
-      await setPickupStatus(boxId, status);
+      await setPickupStatus(boxId, status, trackingNumber);
       showToast('success', `Pickup status updated to ${status.replace('_', ' ')}`);
       await load(false);
     } catch (err) {
@@ -426,6 +441,31 @@ export default function ReturnsPage(): React.ReactElement {
                         </button>
                       )}
                     </div>
+
+                    {/* Return Pickup Tracking Number Row */}
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-neutral-200/60">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-neutral-500">
+                          Return Pickup Tracking:
+                        </span>
+                        <span className="font-mono text-xs font-bold text-[#7A021D] bg-[#7A021D]/5 px-2.5 py-0.5 rounded-full border border-[#7A021D]/20">
+                          {box.tracking_number || 'Not Set'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const entered = prompt('Enter Return Pickup Tracking Number (AWB / Courier Code):', box.tracking_number || '');
+                          if (entered !== null) {
+                            void handlePickup(box.id, (box.pickup_status as any) || 'in_transit', entered.trim());
+                          }
+                        }}
+                        className="text-xs font-bold text-[#7A021D] hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        <span>✏️</span>
+                        <span>{box.tracking_number ? 'Change Tracking Code' : 'Add Pickup Tracking Code'}</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Step 2: Returned Garments QC Inspection Table */}
@@ -569,6 +609,34 @@ export default function ReturnsPage(): React.ReactElement {
                       🏢 Mark Received Now
                     </button>
                   )}
+                </div>
+              </div>
+
+              {/* Pickup Tracking Code Card */}
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50/70 p-5">
+                <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block mb-2">
+                  Return Pickup Tracking Code (Courier / AWB)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. DELHIVERY_RET_987654321, BLUEDART_12345"
+                    value={pickupTrackingInputs[editingBox.id] ?? (editingBox.tracking_number || '')}
+                    onChange={(e) => setPickupTrackingInputs((prev) => ({ ...prev, [editingBox.id]: e.target.value }))}
+                    className="flex-1 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-mono shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#7A021D]"
+                  />
+                  <button
+                    type="button"
+                    disabled={busy === editingBox.id}
+                    onClick={async () => {
+                      const code = pickupTrackingInputs[editingBox.id] ?? editingBox.tracking_number ?? '';
+                      await handlePickup(editingBox.id, (editingBox.pickup_status as any) || 'in_transit', code);
+                      showToast('success', 'Return pickup tracking code saved successfully');
+                    }}
+                    className="rounded-xl bg-[#7A021D] px-4 py-2 text-xs font-bold text-white hover:bg-[#5e0116] shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    Save Tracking
+                  </button>
                 </div>
               </div>
 

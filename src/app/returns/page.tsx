@@ -398,15 +398,16 @@ export default function ReturnsPage(): React.ReactElement {
       ) : (
         <div className="flex flex-col gap-6">
           {filteredReturns.map((box) => {
-            const currentStepIdx = box.status === 'completed' || box.pickup_status === 'completed'
-              ? 4
-              : box.pickup_status === 'received_at_warehouse'
-              ? 3
-              : box.pickup_status === 'picked_up'
-              ? 2
-              : box.pickup_status === 'in_transit'
-              ? 1
-              : 0;
+            const currentStepIdx =
+              box.status === 'completed' || box.pickup_status === 'completed'
+                ? 4
+                : box.received_at || box.pickup_status === 'received_at_warehouse'
+                ? 3
+                : box.pickup_status === 'picked_up'
+                ? 2
+                : box.pickup_status === 'in_transit'
+                ? 1
+                : 0;
 
             return (
               <div

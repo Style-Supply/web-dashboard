@@ -177,25 +177,8 @@ export default function PaymentsPage(): React.ReactElement {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => void handleSyncRazorpay()}
-            disabled={syncing || loading}
-            className="flex items-center gap-2 rounded-xl bg-[#7A021D] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#5E0116] disabled:opacity-50 shadow-xs cursor-pointer"
-          >
-            <svg
-              className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-            </svg>
-            {syncing ? 'Verifying with Razorpay…' : '⚡ Auto-Verify with Razorpay'}
-          </button>
-
-          <button
             onClick={() => void load()}
-            disabled={loading || syncing}
+            disabled={loading}
             className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 shadow-xs cursor-pointer"
           >
             <svg
@@ -371,28 +354,21 @@ export default function PaymentsPage(): React.ReactElement {
                 </div>
               </div>
 
-              {/* Actions Footer */}
-              <div className="mt-5 pt-3 border-t border-neutral-100 flex items-center justify-end gap-2 text-xs">
+              {/* Status Footer */}
+              <div className="mt-5 pt-3 border-t border-neutral-100 flex items-center justify-end text-xs">
                 {p.status === 'confirmed' ? (
                   <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
                     <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    Verified by Razorpay
+                    Verified & Confirmed
                   </span>
-                ) : p.status === 'pending_admin_verification' || p.status === 'pending_user_confirmation' ? (
-                  <button
-                    disabled={busy === p.id}
-                    onClick={() => void handleAutoVerify(p.id)}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#7A021D] px-3.5 py-1.5 font-bold text-white shadow-xs hover:bg-[#5E0116] disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    <svg className={`w-3.5 h-3.5 ${busy === p.id ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                    </svg>
-                    {busy === p.id ? 'Verifying…' : 'Auto-Verify with Razorpay'}
-                  </button>
+                ) : p.status === 'pending_user_confirmation' ? (
+                  <span className="text-xs text-neutral-400">Awaiting user checkout</span>
+                ) : p.status === 'failed' ? (
+                  <span className="text-xs text-red-600 font-semibold">Payment Failed</span>
                 ) : (
-                  <span className="text-xs text-neutral-400 italic">No action required</span>
+                  <span className="text-xs text-neutral-400">—</span>
                 )}
               </div>
             </div>
@@ -414,18 +390,17 @@ export default function PaymentsPage(): React.ReactElement {
                 <th className="px-5 py-3.5">Credit Applied</th>
                 <th className="px-5 py-3.5">Payable</th>
                 <th className="px-5 py-3.5">Status</th>
-                <th className="px-5 py-3.5">Requested Date</th>
-                <th className="px-5 py-3.5 text-right">Verification Status</th>
+                <th className="px-5 py-3.5 text-right">Requested Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-12 text-center text-neutral-400">Loading payments…</td>
+                  <td colSpan={7} className="px-5 py-12 text-center text-neutral-400">Loading payments…</td>
                 </tr>
               ) : filteredPayments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-12 text-center text-neutral-400">No payments found</td>
+                  <td colSpan={7} className="px-5 py-12 text-center text-neutral-400">No payments found</td>
                 </tr>
               ) : (
                 filteredPayments.map((p) => (
@@ -451,31 +426,8 @@ export default function PaymentsPage(): React.ReactElement {
                         {STATUS_LABELS[p.status]}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-xs text-neutral-500">
+                    <td className="px-5 py-4 text-xs text-neutral-500 text-right">
                       {new Date(p.created_at).toLocaleDateString('en-IN')}
-                    </td>
-                    <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
-                      {p.status === 'confirmed' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                          <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                          Auto-Verified
-                        </span>
-                      ) : p.status === 'pending_admin_verification' || p.status === 'pending_user_confirmation' ? (
-                        <button
-                          disabled={busy === p.id}
-                          onClick={() => void handleAutoVerify(p.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#7A021D] px-3 py-1 text-xs font-bold text-white hover:bg-[#5E0116] disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
-                        >
-                          <svg className={`w-3 h-3 ${busy === p.id ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                          </svg>
-                          {busy === p.id ? 'Checking…' : 'Auto-Verify'}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-neutral-400">—</span>
-                      )}
                     </td>
                   </tr>
                 ))

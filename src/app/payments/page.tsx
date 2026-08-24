@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import {
   listPayments,
+  autoVerifyPayment,
+  autoVerifyAllPayments,
   confirmPayment,
   failPayment,
   type Payment,
@@ -14,7 +16,7 @@ const PAGE_SIZE = 50;
 
 const STATUS_LABELS: Record<PaymentStatus, string> = {
   pending_user_confirmation: 'Awaiting User',
-  pending_admin_verification: 'Needs Verification',
+  pending_admin_verification: 'Auto-Verifying',
   confirmed: 'Confirmed',
   failed: 'Failed',
   cancelled: 'Cancelled',
@@ -65,6 +67,7 @@ export default function PaymentsPage(): React.ReactElement {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | ''>('');
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('list');
@@ -119,31 +122,33 @@ export default function PaymentsPage(): React.ReactElement {
     [payments],
   );
 
-  async function handleConfirm(id: string): Promise<void> {
-    if (!confirm('Confirm this payment? This advances membership/purchase state.')) return;
+  async function handleAutoVerify(id: string): Promise<void> {
     setBusy(id);
     try {
-      await confirmPayment(id);
-      showToast('success', 'Payment confirmed successfully');
+      const res = await autoVerifyPayment(id);
+      if (res.verified) {
+        showToast('success', 'Payment verified and confirmed via Razorpay!');
+      } else {
+        showToast('success', res.message || 'Payment checked from Razorpay');
+      }
       await load();
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Confirmation failed');
+      showToast('error', err instanceof Error ? err.message : 'Verification failed');
     } finally {
       setBusy(null);
     }
   }
 
-  async function handleFail(id: string): Promise<void> {
-    const notes = prompt('Reason for marking this payment as failed (optional):') ?? undefined;
-    setBusy(id);
+  async function handleSyncRazorpay(): Promise<void> {
+    setSyncing(true);
     try {
-      await failPayment(id, notes);
-      showToast('success', 'Payment marked as failed');
+      const res = await autoVerifyAllPayments();
+      showToast('success', `Razorpay sync complete. ${res.totalConfirmed} payments auto-confirmed.`);
       await load();
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed');
+      showToast('error', err instanceof Error ? err.message : 'Sync failed');
     } finally {
-      setBusy(null);
+      setSyncing(false);
     }
   }
 
@@ -172,9 +177,26 @@ export default function PaymentsPage(): React.ReactElement {
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => void handleSyncRazorpay()}
+            disabled={syncing || loading}
+            className="flex items-center gap-2 rounded-xl bg-[#7A021D] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#5E0116] disabled:opacity-50 shadow-xs cursor-pointer"
+          >
+            <svg
+              className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+            {syncing ? 'Verifying with Razorpay…' : '⚡ Auto-Verify with Razorpay'}
+          </button>
+
+          <button
             onClick={() => void load()}
-            disabled={loading}
-            className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 shadow-xs"
+            disabled={loading || syncing}
+            className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 shadow-xs cursor-pointer"
           >
             <svg
               className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
@@ -351,23 +373,24 @@ export default function PaymentsPage(): React.ReactElement {
 
               {/* Actions Footer */}
               <div className="mt-5 pt-3 border-t border-neutral-100 flex items-center justify-end gap-2 text-xs">
-                {p.status === 'pending_admin_verification' ? (
-                  <>
-                    <button
-                      disabled={busy === p.id}
-                      onClick={() => void handleConfirm(p.id)}
-                      className="rounded-xl bg-emerald-600 px-4 py-1.5 font-bold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 transition-all"
-                    >
-                      ✓ Confirm Payment
-                    </button>
-                    <button
-                      disabled={busy === p.id}
-                      onClick={() => void handleFail(p.id)}
-                      className="rounded-xl bg-red-50 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors"
-                    >
-                      Mark Failed
-                    </button>
-                  </>
+                {p.status === 'confirmed' ? (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Verified by Razorpay
+                  </span>
+                ) : p.status === 'pending_admin_verification' || p.status === 'pending_user_confirmation' ? (
+                  <button
+                    disabled={busy === p.id}
+                    onClick={() => void handleAutoVerify(p.id)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#7A021D] px-3.5 py-1.5 font-bold text-white shadow-xs hover:bg-[#5E0116] disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    <svg className={`w-3.5 h-3.5 ${busy === p.id ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                    {busy === p.id ? 'Verifying…' : 'Auto-Verify with Razorpay'}
+                  </button>
                 ) : (
                   <span className="text-xs text-neutral-400 italic">No action required</span>
                 )}
@@ -392,7 +415,7 @@ export default function PaymentsPage(): React.ReactElement {
                 <th className="px-5 py-3.5">Payable</th>
                 <th className="px-5 py-3.5">Status</th>
                 <th className="px-5 py-3.5">Requested Date</th>
-                <th className="px-5 py-3.5 text-right">Actions</th>
+                <th className="px-5 py-3.5 text-right">Verification Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -432,23 +455,24 @@ export default function PaymentsPage(): React.ReactElement {
                       {new Date(p.created_at).toLocaleDateString('en-IN')}
                     </td>
                     <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
-                      {p.status === 'pending_admin_verification' ? (
-                        <>
-                          <button
-                            disabled={busy === p.id}
-                            onClick={() => void handleConfirm(p.id)}
-                            className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-2xs"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            disabled={busy === p.id}
-                            onClick={() => void handleFail(p.id)}
-                            className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors"
-                          >
-                            Fail
-                          </button>
-                        </>
+                      {p.status === 'confirmed' ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                          <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          Auto-Verified
+                        </span>
+                      ) : p.status === 'pending_admin_verification' || p.status === 'pending_user_confirmation' ? (
+                        <button
+                          disabled={busy === p.id}
+                          onClick={() => void handleAutoVerify(p.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#7A021D] px-3 py-1 text-xs font-bold text-white hover:bg-[#5E0116] disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <svg className={`w-3 h-3 ${busy === p.id ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                          </svg>
+                          {busy === p.id ? 'Checking…' : 'Auto-Verify'}
+                        </button>
                       ) : (
                         <span className="text-xs text-neutral-400">—</span>
                       )}

@@ -63,3 +63,15 @@ export async function failPayment(id: string, notes?: string): Promise<{ payment
     body: JSON.stringify({ notes }),
   });
 }
+
+export async function autoVerifyPayment(id: string): Promise<{ success: boolean; verified: boolean; status: string; message: string }> {
+  return request<{ success: boolean; verified: boolean; status: string; message: string }>(`/api/admin/payments/${id}/auto-verify`, {
+    method: 'POST',
+  });
+}
+
+export async function autoVerifyAllPayments(): Promise<{ success: boolean; totalChecked: number; totalConfirmed: number }> {
+  return request<{ success: boolean; totalChecked: number; totalConfirmed: number }>(`/api/admin/payments/auto-verify`, {
+    method: 'POST',
+  });
+}

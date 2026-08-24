@@ -395,17 +395,15 @@ export default function ReturnsPage(): React.ReactElement {
       ) : (
         <div className="flex flex-col gap-6">
           {filteredReturns.map((box) => {
-            const currentStepIdx = box.status === 'completed'
+            const currentStepIdx = box.status === 'completed' || box.pickup_status === 'completed'
               ? 4
-              : box.received_at
+              : box.pickup_status === 'received_at_warehouse'
               ? 3
               : box.pickup_status === 'picked_up'
               ? 2
               : box.pickup_status === 'in_transit'
               ? 1
-              : box.pickup_status === 'scheduled'
-              ? 0
-              : -1;
+              : 0;
 
             return (
               <div
@@ -471,7 +469,7 @@ export default function ReturnsPage(): React.ReactElement {
                   <div className="mb-6 rounded-xl border border-neutral-100 bg-neutral-50/70 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-                        Logistics &amp; Pickup Tracking
+                        Logistics &amp; Pickup Tracking (Step-by-Step Progress)
                       </p>
                       <button
                         type="button"
@@ -484,33 +482,47 @@ export default function ReturnsPage(): React.ReactElement {
 
                     <div className="flex flex-wrap items-center gap-3">
                       {PICKUP_STEPS.map((step, idx) => {
-                        const reached = currentStepIdx >= idx;
-                        const isNext = currentStepIdx === idx - 1;
+                        const isCompleted = idx < currentStepIdx;
+                        const isCurrent = idx === currentStepIdx;
+                        const isNext = idx === currentStepIdx + 1;
+                        const isFuture = idx > currentStepIdx + 1;
                         const timestamp = getStepTimestamp(box, step.key);
+
                         return (
                           <div key={step.key} className="flex items-center gap-3">
                             <button
-                              disabled={busy === box.id}
+                              disabled={busy === box.id || isFuture}
                               onClick={() => void handlePickup(box.id, step.key)}
-                              className={`flex flex-col items-start gap-1 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-2xs cursor-pointer ${
-                                reached
-                                  ? 'bg-[#7A021D] text-white'
-                                  : isNext
-                                    ? 'border-2 border-[#7A021D] text-[#7A021D] bg-white hover:bg-[#FDF8F4]'
-                                    : 'border border-neutral-200 text-neutral-600 bg-white hover:border-[#7A021D]'
+                              className={`flex flex-col items-start gap-1 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-2xs ${
+                                isCurrent
+                                  ? 'bg-[#7A021D] text-white ring-2 ring-[#7A021D]/30 shadow-md cursor-default'
+                                  : isCompleted
+                                    ? 'bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 cursor-pointer'
+                                    : isNext
+                                      ? 'border-2 border-dashed border-[#7A021D] bg-white text-[#7A021D] hover:bg-[#7A021D] hover:text-white cursor-pointer shadow-xs'
+                                      : 'border border-neutral-200 text-neutral-400 bg-neutral-50/50 cursor-not-allowed opacity-60'
                               } disabled:cursor-not-allowed`}
                             >
                               <div className="flex items-center gap-1.5">
-                                <span>{step.icon}</span>
-                                <span>{step.label}</span>
+                                <span>{isCompleted ? '✓' : step.icon}</span>
+                                <span>{isNext ? `👉 Mark: ${step.label}` : step.label}</span>
+                                {isCurrent && (
+                                  <span className="ml-1 rounded-full bg-amber-300 text-[#7A021D] text-[9px] font-extrabold px-1.5 py-0.2 uppercase tracking-wider">
+                                    Current
+                                  </span>
+                                )}
                               </div>
-                              {reached && timestamp && (
-                                <span className="text-[10.5px] font-semibold text-amber-200 tracking-tight pl-0.5">
+                              {(isCompleted || isCurrent) && timestamp && (
+                                <span className={`text-[10px] font-semibold tracking-tight ${isCurrent ? 'text-amber-200' : 'text-emerald-700'}`}>
                                   🕒 {formatShortTime(timestamp)}
                                 </span>
                               )}
                             </button>
-                            {idx < PICKUP_STEPS.length - 1 && <span className="text-neutral-300 font-bold">→</span>}
+                            {idx < PICKUP_STEPS.length - 1 && (
+                              <span className={`font-bold text-sm ${idx < currentStepIdx ? 'text-emerald-500' : 'text-neutral-300'}`}>
+                                →
+                              </span>
+                            )}
                           </div>
                         );
                       })}

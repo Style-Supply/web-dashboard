@@ -124,7 +124,26 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
     }
 
     const sku = getVal(r, ['sku', 'product_sku', 'code', 'item_code']);
-    const key = sku ? sku.toLowerCase() : name.toLowerCase();
+    
+    // Find matching product by SKU or Name
+    let matchedKey: string | undefined;
+    if (sku && productMap.has(sku.toLowerCase())) {
+      matchedKey = sku.toLowerCase();
+    } else if (name && productMap.has(name.toLowerCase())) {
+      matchedKey = name.toLowerCase();
+    } else {
+      for (const [k, p] of productMap.entries()) {
+        if (sku && p.sku && p.sku.toLowerCase() === sku.toLowerCase()) {
+          matchedKey = k;
+          break;
+        }
+        if (name && p.name && p.name.toLowerCase() === name.toLowerCase()) {
+          matchedKey = k;
+          break;
+        }
+      }
+    }
+    const key = matchedKey || (sku ? sku.toLowerCase() : name.toLowerCase());
 
     const brand = getVal(r, ['brand', 'brand_slug', 'brand_name', 'designer', 'vendor', 'manufacturer']);
     const catType = getVal(r, ['category_type', 'category', 'category_slug', 'category_type_slug', 'main_category', 'gender', 'department', 'type']);

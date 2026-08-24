@@ -44,7 +44,7 @@ export async function markReceived(boxId: string): Promise<ReturnBox> {
 
 export async function qcItem(
   itemId: string,
-  result: 'passed' | 'failed',
+  result: 'passed' | 'failed' | 'pending',
   notes?: string,
 ): Promise<{ item_id: string; qc_status: string; box_status: string }> {
   return request(`/api/admin/returns/items/${itemId}/qc`, {

@@ -242,7 +242,11 @@ export default function ReturnsPage(): React.ReactElement {
     }
   }
 
-  async function handleQc(itemId: string, result: 'passed' | 'failed', customNotes?: string): Promise<void> {
+  async function handleQc(
+    itemId: string,
+    result: 'passed' | 'failed' | 'pending',
+    customNotes?: string,
+  ): Promise<void> {
     let notes: string | undefined = customNotes ?? itemNotes[itemId];
     if (result === 'failed' && notes === undefined) {
       notes = prompt('QC failure notes (optional):') ?? undefined;
@@ -253,21 +257,20 @@ export default function ReturnsPage(): React.ReactElement {
       prev.map((box) => ({
         ...box,
         returned_items: box.returned_items.map((it) =>
-          it.id === itemId ? { ...it, qc_status: result } : it
+          it.id === itemId ? { ...it, qc_status: result === 'pending' ? null : result } : it
         ),
       }))
     );
     try {
-      const res = await qcItem(itemId, result, notes);
+      await qcItem(itemId, result, notes);
       showToast(
         'success',
         result === 'passed'
           ? 'QC Passed — Inventory SKU restocked +1'
-          : 'QC Failed — Item marked non-restockable',
+          : result === 'failed'
+          ? 'QC Failed — Item marked non-restockable'
+          : 'QC status reset back to Pending',
       );
-      if (res.box_status === 'completed') {
-        showToast('success', '🎉 All return items inspected — Box completed!');
-      }
       await load(false);
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'QC inspection failed');
@@ -598,23 +601,71 @@ export default function ReturnsPage(): React.ReactElement {
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    disabled={busy === item.id}
-                                    onClick={() => void handleQc(item.id, 'passed')}
-                                    className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
-                                  >
-                                    ✓ QC Pass &amp; Restock (+1)
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={busy === item.id}
-                                    onClick={() => void handleQc(item.id, 'failed')}
-                                    className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
-                                  >
-                                    ✕ QC Fail (Damage)
-                                  </button>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {item.qc_status === 'passed' ? (
+                                    <>
+                                      <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg">
+                                        ✓ Passed (+1)
+                                      </span>
+                                      <button
+                                        type="button"
+                                        disabled={busy === item.id}
+                                        onClick={() => void handleQc(item.id, 'failed')}
+                                        className="rounded-xl border border-red-200 bg-white px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                                      >
+                                        ✕ Fail
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={busy === item.id}
+                                        onClick={() => void handleQc(item.id, 'pending')}
+                                        className="rounded-xl border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                                      >
+                                        ↺ Reset to Pending
+                                      </button>
+                                    </>
+                                  ) : item.qc_status === 'failed' ? (
+                                    <>
+                                      <span className="text-xs font-bold text-red-700 bg-red-100 px-2.5 py-1 rounded-lg">
+                                        ✕ Failed
+                                      </span>
+                                      <button
+                                        type="button"
+                                        disabled={busy === item.id}
+                                        onClick={() => void handleQc(item.id, 'passed')}
+                                        className="rounded-xl border border-emerald-200 bg-white px-2.5 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                                      >
+                                        ✓ Pass (+1)
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={busy === item.id}
+                                        onClick={() => void handleQc(item.id, 'pending')}
+                                        className="rounded-xl border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                                      >
+                                        ↺ Reset to Pending
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        disabled={busy === item.id}
+                                        onClick={() => void handleQc(item.id, 'passed')}
+                                        className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                                      >
+                                        ✓ QC Pass &amp; Restock (+1)
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={busy === item.id}
+                                        onClick={() => void handleQc(item.id, 'failed')}
+                                        className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50 transition-all shadow-2xs cursor-pointer"
+                                      >
+                                        ✕ QC Fail (Damage)
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -783,7 +834,11 @@ export default function ReturnsPage(): React.ReactElement {
                             type="button"
                             disabled={busy === item.id}
                             onClick={() => void handleQc(item.id, 'passed', itemNotes[item.id])}
-                            className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 shadow-2xs cursor-pointer"
+                            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                              item.qc_status === 'passed'
+                                ? 'bg-emerald-700 text-white ring-2 ring-emerald-300'
+                                : 'bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50'
+                            }`}
                           >
                             ✓ Pass (+1)
                           </button>
@@ -791,10 +846,24 @@ export default function ReturnsPage(): React.ReactElement {
                             type="button"
                             disabled={busy === item.id}
                             onClick={() => void handleQc(item.id, 'failed', itemNotes[item.id])}
-                            className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50 shadow-2xs cursor-pointer"
+                            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                              item.qc_status === 'failed'
+                                ? 'bg-red-700 text-white ring-2 ring-red-300'
+                                : 'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
+                            }`}
                           >
                             ✕ Fail (Damage)
                           </button>
+                          {item.qc_status && (
+                            <button
+                              type="button"
+                              disabled={busy === item.id}
+                              onClick={() => void handleQc(item.id, 'pending')}
+                              className="rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 shadow-2xs cursor-pointer"
+                            >
+                              ↺ Reset
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

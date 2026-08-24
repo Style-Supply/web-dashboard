@@ -10,19 +10,50 @@ import MembershipPlanDrawer from '@/components/membership-form/MembershipPlanDra
 
 const PAGE_SIZE = 50;
 
-const STATUS_LABELS: Record<MembershipStatus, string> = {
+const STATUS_LABELS: Record<string, string> = {
   active: 'Active',
   paused: 'Paused',
   cancelled: 'Cancelled',
   expired: 'Expired',
+  free: 'Free plan',
+  free_plan: 'Free plan',
+  the_invitation: 'Free plan',
+  none: 'Free plan',
+  inactive: 'Free plan',
 };
 
-const STATUS_COLORS: Record<MembershipStatus, string> = {
+const STATUS_COLORS: Record<string, string> = {
   active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   paused: 'bg-amber-50 text-amber-700 border-amber-200',
   cancelled: 'bg-neutral-100 text-neutral-600 border-neutral-200',
   expired: 'bg-red-50 text-red-700 border-red-200',
+  free: 'bg-neutral-100 text-neutral-600 border-neutral-200',
+  free_plan: 'bg-neutral-100 text-neutral-600 border-neutral-200',
+  the_invitation: 'bg-neutral-100 text-neutral-600 border-neutral-200',
+  none: 'bg-neutral-100 text-neutral-600 border-neutral-200',
+  inactive: 'bg-neutral-100 text-neutral-600 border-neutral-200',
 };
+
+function getStatusLabel(status?: string | null, plan?: string | null): string {
+  if (!status || status === 'free' || status === 'none' || status === 'inactive' || plan === 'the_invitation') {
+    return 'Free plan';
+  }
+  return STATUS_LABELS[status] ?? 'Free plan';
+}
+
+function getStatusColor(status?: string | null, plan?: string | null): string {
+  if (!status || status === 'free' || status === 'none' || status === 'inactive' || plan === 'the_invitation') {
+    return 'bg-neutral-100 text-neutral-600 border-neutral-200';
+  }
+  return STATUS_COLORS[status] ?? 'bg-neutral-100 text-neutral-600 border-neutral-200';
+}
+
+function getPlanName(plan?: string | null, status?: string | null): string {
+  if (!plan || plan === 'none' || plan === 'free' || plan === 'the_invitation' || status === 'free' || status === 'none') {
+    return 'Free plan';
+  }
+  return plan.replace(/_/g, ' ');
+}
 
 function formatRupees(minor: number): string {
   return `₹${(minor / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
@@ -425,16 +456,17 @@ export default function MembershipsPage(): React.ReactElement {
                             <h3 className="text-base font-bold text-[#2C0505]">
                               {m.profiles?.full_name ?? 'Anonymous Member'}
                             </h3>
-                            <p className="text-xs text-neutral-400 capitalize">{m.plan.replace(/_/g, ' ')}</p>
+                            <p className="text-xs text-neutral-400 capitalize">{getPlanName(m.plan, m.status)}</p>
                           </div>
                         </div>
 
                         <span
-                          className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                            STATUS_COLORS[m.status] ?? 'bg-neutral-100 text-neutral-700'
-                          }`}
+                          className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(
+                            m.status,
+                            m.plan,
+                          )}`}
                         >
-                          {STATUS_LABELS[m.status] ?? m.status}
+                          {getStatusLabel(m.status, m.plan)}
                         </span>
                       </div>
 
@@ -532,11 +564,11 @@ export default function MembershipsPage(): React.ReactElement {
                             </div>
                           </td>
                           <td className="px-5 py-4 font-medium capitalize text-neutral-700">
-                            {m.plan.replace(/_/g, ' ')}
+                            {getPlanName(m.plan, m.status)}
                           </td>
                           <td className="px-5 py-4">
-                            <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[m.status]}`}>
-                              {STATUS_LABELS[m.status]}
+                            <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(m.status, m.plan)}`}>
+                              {getStatusLabel(m.status, m.plan)}
                             </span>
                           </td>
                           <td className="px-5 py-4 font-bold text-[#7A021D]">

@@ -39,3 +39,9 @@ coverage/
 
 # Vercel
 .vercel
+
+# CSV upload data files
+*.csv
+!public/dashboard-template.csv
+public/*upload*.csv
+public/ranu_beniwal*.csv

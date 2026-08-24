@@ -53,6 +53,56 @@ function formatReturnReason(reason: string | null): React.ReactNode {
   return <span className="text-xs text-neutral-600 italic">“{reason}”</span>;
 }
 
+function formatDateTime(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(d);
+}
+
+function formatShortTime(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(d);
+}
+
+function getStepTimestamp(box: ReturnBox, stepKey: string): string | null {
+  if (stepKey === 'scheduled') {
+    return box.decisions_locked_at || box.paid_at || box.created_at || null;
+  }
+  if (stepKey === 'in_transit') {
+    if (box.pickup_status === 'in_transit' || box.pickup_status === 'picked_up' || box.pickup_status === 'received_at_warehouse' || box.status === 'completed') {
+      return box.updated_at || box.received_at || box.decisions_locked_at || null;
+    }
+  }
+  if (stepKey === 'picked_up') {
+    if (box.pickup_status === 'picked_up' || box.pickup_status === 'received_at_warehouse' || box.status === 'completed') {
+      return box.received_at || box.updated_at || null;
+    }
+  }
+  if (stepKey === 'received_at_warehouse') {
+    return box.received_at || null;
+  }
+  if (stepKey === 'completed') {
+    return box.status === 'completed' ? (box.updated_at || box.received_at || null) : null;
+  }
+  return null;
+}
+
 export default function ReturnsPage(): React.ReactElement {
   const { showToast } = useToast();
   const [returns, setReturns] = useState<ReturnBox[]>([]);
@@ -87,21 +137,29 @@ export default function ReturnsPage(): React.ReactElement {
   }, [load]);
 
   const filteredReturns = useMemo(() => {
-    return returns.filter((box) => {
+    const list = returns.filter((box) => {
       const matchesSearch =
         !search.trim() ||
         box.user?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-        box.id.toLowerCase().includes(search.toLowerCase());
+        box.id.toLowerCase().includes(search.toLowerCase()) ||
+        box.tracking_number?.toLowerCase().includes(search.toLowerCase());
 
       if (!matchesSearch) return false;
 
       if (filterTab === 'needs_pickup') {
-        return box.pickup_status !== 'picked_up' && box.pickup_status !== 'received_at_warehouse';
+        return box.pickup_status !== 'picked_up' && box.pickup_status !== 'received_at_warehouse' && box.status !== 'completed';
       }
       if (filterTab === 'needs_qc') {
         return Boolean(box.received_at) && box.returned_items.some((i) => !i.qc_status);
       }
       return true;
+    });
+
+    // Always sort latest to oldest (newest first)
+    return list.sort((a, b) => {
+      const timeA = new Date(a.created_at || a.decisions_locked_at || 0).getTime();
+      const timeB = new Date(b.created_at || b.decisions_locked_at || 0).getTime();
+      return timeB - timeA;
     });
   }, [returns, search, filterTab]);
 
@@ -364,14 +422,32 @@ export default function ReturnsPage(): React.ReactElement {
                       <h3 className="text-base font-bold text-[#2C0505]">
                         {box.user?.full_name ?? 'Unknown Member'}
                       </h3>
-                      <p className="font-mono text-xs text-neutral-400">Box ID: {box.id}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                        <p className="font-mono text-xs text-neutral-400">Box ID: {box.id}</p>
+                        {box.decisions_locked_at && (
+                          <>
+                            <span className="text-neutral-300">•</span>
+                            <p className="text-xs text-[#7A021D] font-medium">
+                              Return Initiated: {formatDateTime(box.decisions_locked_at)}
+                            </p>
+                          </>
+                        )}
+                        {box.created_at && !box.decisions_locked_at && (
+                          <>
+                            <span className="text-neutral-300">•</span>
+                            <p className="text-xs text-neutral-500 font-medium">
+                              Created: {formatDateTime(box.created_at)}
+                            </p>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     {box.received_at ? (
                       <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 shadow-2xs">
-                        🏢 Received at Style Supply ({new Date(box.received_at).toLocaleDateString('en-IN')})
+                        🏢 Received: {formatDateTime(box.received_at)}
                       </span>
                     ) : (
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
@@ -410,12 +486,13 @@ export default function ReturnsPage(): React.ReactElement {
                       {PICKUP_STEPS.map((step, idx) => {
                         const reached = currentStepIdx >= idx;
                         const isNext = currentStepIdx === idx - 1;
+                        const timestamp = getStepTimestamp(box, step.key);
                         return (
                           <div key={step.key} className="flex items-center gap-3">
                             <button
                               disabled={busy === box.id}
                               onClick={() => void handlePickup(box.id, step.key)}
-                              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                              className={`flex flex-col items-start gap-1 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-2xs cursor-pointer ${
                                 reached
                                   ? 'bg-[#7A021D] text-white'
                                   : isNext
@@ -423,8 +500,15 @@ export default function ReturnsPage(): React.ReactElement {
                                     : 'border border-neutral-200 text-neutral-600 bg-white hover:border-[#7A021D]'
                               } disabled:cursor-not-allowed`}
                             >
-                              <span>{step.icon}</span>
-                              <span>{step.label}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span>{step.icon}</span>
+                                <span>{step.label}</span>
+                              </div>
+                              {reached && timestamp && (
+                                <span className="text-[10.5px] font-semibold text-amber-200 tracking-tight pl-0.5">
+                                  🕒 {formatShortTime(timestamp)}
+                                </span>
+                              )}
                             </button>
                             {idx < PICKUP_STEPS.length - 1 && <span className="text-neutral-300 font-bold">→</span>}
                           </div>
@@ -576,6 +660,7 @@ export default function ReturnsPage(): React.ReactElement {
                         : step.key === 'received_at_warehouse'
                         ? Boolean(editingBox.received_at) && editingBox.status !== 'completed'
                         : editingBox.status !== 'completed' && editingBox.pickup_status === step.key && (step.key !== 'picked_up' || !editingBox.received_at);
+                    const timestamp = getStepTimestamp(editingBox, step.key);
                     return (
                       <button
                         key={step.key}
@@ -589,7 +674,12 @@ export default function ReturnsPage(): React.ReactElement {
                       >
                         <span className="text-lg mb-1">{step.icon}</span>
                         <span>{step.label}</span>
-                        {active && <span className="mt-1 text-[10px] text-amber-200 uppercase tracking-widest">Active</span>}
+                        {timestamp && (
+                          <span className={`mt-1 text-[10px] font-semibold tracking-tight ${active ? 'text-amber-200' : 'text-neutral-500'}`}>
+                            {formatShortTime(timestamp)}
+                          </span>
+                        )}
+                        {active && !timestamp && <span className="mt-1 text-[10px] text-amber-200 uppercase tracking-widest">Active</span>}
                       </button>
                     );
                   })}
@@ -597,7 +687,7 @@ export default function ReturnsPage(): React.ReactElement {
 
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-neutral-200">
                   <span className="text-xs text-neutral-600 font-medium">
-                    Warehouse Receipt: {editingBox.received_at ? `Received at Style Supply on ${new Date(editingBox.received_at).toLocaleDateString('en-IN')}` : 'Not yet received'}
+                    Warehouse Receipt: {editingBox.received_at ? `Received at Style Supply on ${formatDateTime(editingBox.received_at)}` : 'Not yet received'}
                   </span>
                   {!editingBox.received_at && (
                     <button

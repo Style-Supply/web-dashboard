@@ -14,8 +14,11 @@ export interface ReturnBox {
   status: string;
   pickup_status: 'scheduled' | 'in_transit' | 'picked_up' | 'received_at_warehouse' | 'completed' | null;
   tracking_number?: string | null;
+  created_at?: string | null;
+  paid_at?: string | null;
   received_at: string | null;
   decisions_locked_at: string | null;
+  updated_at?: string | null;
   user: { id: string; full_name: string | null } | null;
   returned_items: ReturnedItem[];
 }

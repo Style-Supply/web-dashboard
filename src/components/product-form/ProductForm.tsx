@@ -11,6 +11,7 @@ import BasicFieldsBlock from './BasicFieldsBlock';
 import PricingBlock from './PricingBlock';
 import VariantEditor, { tupleKey } from './VariantEditor';
 import ImageImporter from './ImageImporter';
+import SizeChartUploader from './SizeChartUploader';
 import type { UseProductFormState } from '@/hooks/useProductFormState';
 import { useTaxonomy } from '@/hooks/useTaxonomy';
 import type { CategoryTreeNode } from '@/types/taxonomy';
@@ -122,6 +123,18 @@ export default function ProductForm({
           value={state.variants}
           onChange={(next) => setField('variants', next)}
         />
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Size Chart</h2>
+            <span className="text-xs text-neutral-400">Optional · Product-level size guide</span>
+          </div>
+          <div className="rounded-xl border border-neutral-200 bg-white p-4">
+            <SizeChartUploader
+              value={state.size_chart_url ?? null}
+              onChange={(url) => setField('size_chart_url', url)}
+            />
+          </div>
+        </section>
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Images</h2>
           <ImageImporter

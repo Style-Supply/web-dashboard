@@ -10,7 +10,21 @@ import type { Brand } from '@/types/taxonomy';
 
 /* ─── upload helper ───────────────────────────────────────── */
 async function uploadBrandLogo(file: File): Promise<string> {
-  // Get auth token from supabase session
+  try {
+    const ext = file.name.split('.').pop() ?? 'png';
+    const storagePath = `brand-logos/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('product-images')
+      .upload(storagePath, file, { contentType: file.type, upsert: true });
+
+    if (!uploadErr) {
+      const { data } = supabase.storage.from('product-images').getPublicUrl(storagePath);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+  } catch {
+    // Fall back
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {};
   if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -18,7 +32,6 @@ async function uploadBrandLogo(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
 
-  // Use raw fetch — do NOT set Content-Type, browser sets it with the multipart boundary
   const res = await fetch(`${API_BASE}/api/admin/brands/logo-upload`, {
     method: 'POST',
     headers,
@@ -33,6 +46,21 @@ async function uploadBrandLogo(file: File): Promise<string> {
 }
 
 async function uploadBrandHero(file: File): Promise<string> {
+  try {
+    const ext = file.name.split('.').pop() ?? 'jpg';
+    const storagePath = `brand-heroes/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('product-images')
+      .upload(storagePath, file, { contentType: file.type, upsert: true });
+
+    if (!uploadErr) {
+      const { data } = supabase.storage.from('product-images').getPublicUrl(storagePath);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+  } catch {
+    // Fall back
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {};
   if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -54,6 +82,21 @@ async function uploadBrandHero(file: File): Promise<string> {
 }
 
 async function uploadBrandSizeChart(file: File): Promise<string> {
+  try {
+    const ext = file.name.split('.').pop() ?? 'jpg';
+    const storagePath = `brand-size-charts/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('product-images')
+      .upload(storagePath, file, { contentType: file.type, upsert: true });
+
+    if (!uploadErr) {
+      const { data } = supabase.storage.from('product-images').getPublicUrl(storagePath);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+  } catch {
+    // Fall back
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {};
   if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;

@@ -2,12 +2,27 @@
 
 import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ApiError } from '@/lib/api';
+import { API_BASE, ApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-
 export async function uploadProductSizeChart(file: File): Promise<string> {
+  // 1. Try direct Supabase storage upload first
+  try {
+    const ext = file.name.split('.').pop() ?? 'jpg';
+    const storagePath = `product-size-charts/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('product-images')
+      .upload(storagePath, file, { contentType: file.type, upsert: true });
+
+    if (!uploadErr) {
+      const { data } = supabase.storage.from('product-images').getPublicUrl(storagePath);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+  } catch {
+    // Fall back to backend API upload
+  }
+
+  // 2. Fallback via backend endpoint
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = {};
   if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;

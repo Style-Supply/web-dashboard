@@ -44,6 +44,9 @@ export default function EditProductPage({
           retail_price_minor: product.retail_price_minor,
           rent_price_minor: product.rent_price_minor,
           currency: product.currency,
+          is_rentable: product.is_rentable ?? true,
+          is_buyable: product.is_buyable ?? true,
+          size_chart_url: product.size_chart_url ?? null,
           status: product.status,
           variants: product.variants.map((v) => ({
             id: v.id,

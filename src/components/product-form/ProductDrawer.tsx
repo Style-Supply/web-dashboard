@@ -42,7 +42,7 @@ export default function ProductDrawer({
         name: '', sku: null, brand_id: null, category_id: null,
         subcategory_id: null, sub_subcategory_id: null, material_id: null,
         fabric_details: null, description: null, retail_price_minor: 0,
-        rent_price_minor: null, currency: 'INR', is_rentable: true, is_buyable: true, status: 'draft',
+        rent_price_minor: null, currency: 'INR', is_rentable: true, is_buyable: true, size_chart_url: null, status: 'draft',
         variants: [{ size: 'M', colour_id: null, custom_colour: null, quantity: 0, location_id: null }],
         look_ids: [],
       });
@@ -74,6 +74,7 @@ export default function ProductDrawer({
           currency: p.currency,
           is_rentable: p.is_rentable ?? true,
           is_buyable: p.is_buyable ?? true,
+          size_chart_url: p.size_chart_url ?? null,
           status: p.status,
           variants: p.variants.map((v) => ({
             id: v.id,

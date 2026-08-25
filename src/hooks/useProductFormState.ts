@@ -23,6 +23,7 @@ function defaultState(): ProductPayload {
     currency: 'INR',
     is_rentable: true,
     is_buyable: true,
+    size_chart_url: null,
     status: 'draft',
     variants: [emptyVariant()],
     look_ids: [],

@@ -4,6 +4,7 @@ export interface Brand {
   slug: string;
   logo_url: string | null;
   hero_url: string | null;
+  size_chart_url?: string | null;
   description: string | null;
   tile_variant: 'image' | 'light' | 'logo';
   sort_order: number;

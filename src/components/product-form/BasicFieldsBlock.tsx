@@ -3,6 +3,7 @@
 import DropdownSelect from '@/components/ui/DropdownSelect';
 import CategoryPicker from './CategoryPicker';
 import LookMultiSelect from './LookMultiSelect';
+import SizeChartUploader from './SizeChartUploader';
 import { useTaxonomy } from '@/hooks/useTaxonomy';
 import type { ProductPayload } from '@/types/product';
 
@@ -100,6 +101,13 @@ export default function BasicFieldsBlock({ value, onChange }: BasicFieldsBlockPr
           value={value.look_ids}
           collections={collections}
           onChange={(ids) => onChange({ look_ids: ids })}
+        />
+      </div>
+
+      <div className="pt-2 border-t border-neutral-100">
+        <SizeChartUploader
+          value={value.size_chart_url ?? null}
+          onChange={(url) => onChange({ size_chart_url: url })}
         />
       </div>
     </div>

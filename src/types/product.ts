@@ -40,6 +40,7 @@ export interface Product {
   currency: string;
   is_rentable?: boolean;
   is_buyable?: boolean;
+  size_chart_url?: string | null;
   created_at: string;
   updated_at: string;
 
@@ -76,6 +77,7 @@ export interface ProductPayload {
   currency: string;
   is_rentable?: boolean;
   is_buyable?: boolean;
+  size_chart_url?: string | null;
   status: 'draft' | 'published';
   variants: ProductVariant[];
   look_ids: string[];

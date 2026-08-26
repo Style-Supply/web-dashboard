@@ -45,10 +45,17 @@ export async function uploadProductSizeChart(file: File): Promise<string> {
 
 interface SizeChartUploaderProps {
   value: string | null;
+  brandDefaultUrl?: string | null;
+  brandName?: string | null;
   onChange: (url: string | null) => void;
 }
 
-export default function SizeChartUploader({ value, onChange }: SizeChartUploaderProps): React.ReactElement {
+export default function SizeChartUploader({
+  value,
+  brandDefaultUrl,
+  brandName,
+  onChange,
+}: SizeChartUploaderProps): React.ReactElement {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,7 +74,7 @@ export default function SizeChartUploader({ value, onChange }: SizeChartUploader
     try {
       const url = await uploadProductSizeChart(file);
       onChange(url);
-      showToast('success', 'Size chart image uploaded');
+      showToast('success', 'Custom size chart image uploaded');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Upload failed');
     } finally {
@@ -82,49 +89,102 @@ export default function SizeChartUploader({ value, onChange }: SizeChartUploader
     if (file) void handleFile(file);
   }
 
+  // Active chart image: custom product chart if set, otherwise brand default
+  const hasCustomChart = !!value;
+  const hasBrandDefault = !hasCustomChart && !!brandDefaultUrl;
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center justify-between mb-2">
         <label className="block text-xs font-medium text-neutral-500">
-          Size Chart Image (Optional)
+          Size Chart (Optional)
         </label>
-        <span className="text-[11px] text-neutral-400">
-          Falls back to brand default if empty
-        </span>
+        {hasCustomChart ? (
+          <span className="inline-flex items-center rounded-full bg-[#7A021D]/10 px-2 py-0.5 text-[11px] font-semibold text-[#7A021D]">
+            Custom Product Chart
+          </span>
+        ) : hasBrandDefault ? (
+          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+            Brand Default ({brandName || 'Brand'})
+          </span>
+        ) : (
+          <span className="text-[11px] text-neutral-400">
+            Optional · Falls back to brand default
+          </span>
+        )}
       </div>
 
-      {value ? (
-        <div className="relative rounded-xl border border-neutral-200 bg-white p-3">
-          <div className="relative h-36 w-full overflow-hidden rounded-lg bg-neutral-50 border border-neutral-100 flex items-center justify-center">
+      {hasCustomChart ? (
+        <div className="relative rounded-xl border border-[#7A021D]/20 bg-[#FDF8F4]/30 p-3.5 space-y-3">
+          <div className="relative h-40 w-full overflow-hidden rounded-lg bg-white border border-neutral-200 flex items-center justify-center p-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={value}
-              alt="Size chart image"
+              src={value!}
+              alt="Custom product size chart"
               className="h-full w-full object-contain"
               onError={(e) => { e.currentTarget.src = ''; }}
             />
           </div>
-          <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#FDF8F4] border border-[#7A021D]/20 px-3 py-1.5 text-xs font-medium text-[#7A021D] hover:bg-[#f5e8e8] transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#7A021D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#5a0115] transition-colors disabled:opacity-50 shadow-xs"
             >
               {uploading ? (
-                <><span className="h-3 w-3 animate-spin rounded-full border-2 border-[#7A021D] border-t-transparent" /> Uploading…</>
+                <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" /> Uploading…</>
               ) : (
-                <>Replace Image</>
+                <>Replace Custom Chart</>
               )}
             </button>
             <button
               type="button"
               onClick={() => onChange(null)}
               disabled={uploading}
-              className="text-xs text-neutral-400 hover:text-red-600 transition-colors disabled:opacity-50"
+              className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors disabled:opacity-50"
             >
-              Remove
+              {brandDefaultUrl ? 'Revert to Brand Default' : 'Remove Chart'}
             </button>
+          </div>
+          {brandDefaultUrl && (
+            <p className="text-[11px] text-neutral-500">
+              Removing this custom chart will revert to {brandName || 'the brand'}&apos;s default size chart.
+            </p>
+          )}
+        </div>
+      ) : hasBrandDefault ? (
+        <div className="relative rounded-xl border border-neutral-200 bg-neutral-50/50 p-3.5 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-neutral-600 font-medium">
+              Currently using {brandName ? `${brandName}'s` : 'Brand'} default size chart:
+            </span>
+          </div>
+          <div className="relative h-40 w-full overflow-hidden rounded-lg bg-white border border-neutral-200 flex items-center justify-center p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={brandDefaultUrl!}
+              alt="Brand default size chart"
+              className="h-full w-full object-contain"
+              onError={(e) => { e.currentTarget.src = ''; }}
+            />
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white border border-[#7A021D] px-3.5 py-1.5 text-xs font-medium text-[#7A021D] hover:bg-[#FDF8F4] transition-colors disabled:opacity-50 shadow-xs"
+            >
+              {uploading ? (
+                <><span className="h-3 w-3 animate-spin rounded-full border-2 border-[#7A021D] border-t-transparent" /> Uploading…</>
+              ) : (
+                <>+ Override with Custom Size Chart</>
+              )}
+            </button>
+            <span className="text-[11px] text-neutral-400">
+              Applies to this product only
+            </span>
           </div>
         </div>
       ) : (
@@ -154,7 +214,9 @@ export default function SizeChartUploader({ value, onChange }: SizeChartUploader
               <p className="text-xs font-medium text-neutral-700">
                 {dragOver ? 'Drop image here' : 'Click or drag to upload product size chart'}
               </p>
-              <p className="text-[11px] text-neutral-400">PNG, JPG, WEBP, SVG up to 8 MB</p>
+              <p className="text-[11px] text-neutral-400">
+                PNG, JPG, WEBP, SVG up to 8 MB {brandName ? `(No default set for ${brandName})` : ''}
+              </p>
             </div>
           )}
         </div>

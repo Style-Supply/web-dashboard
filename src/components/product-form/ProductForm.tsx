@@ -74,7 +74,8 @@ export default function ProductForm({
   const { invalidate } = useProducts();
   const { state, setField } = form;
   const [saveAction, setSaveAction] = useState<SaveAction>(null);
-  const { tree } = useTaxonomy();
+  const { tree, brands } = useTaxonomy();
+  const selectedBrand = brands?.find((b) => b.id === state.brand_id);
 
   // Duplicate detection using tupleKey
   const counts = new Map<string, number>();
@@ -142,6 +143,8 @@ export default function ProductForm({
           <div className="rounded-xl border border-neutral-200 bg-white p-4">
             <SizeChartUploader
               value={state.size_chart_url ?? null}
+              brandDefaultUrl={selectedBrand?.size_chart_url ?? null}
+              brandName={selectedBrand?.name ?? null}
               onChange={(url) => setField('size_chart_url', url)}
             />
           </div>

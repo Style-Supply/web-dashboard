@@ -33,22 +33,22 @@ interface CheckArgs {
 }
 
 function publishCheck({ v, tree, images }: CheckArgs): string | null {
-  if (!v.name.trim()) return 'name is required';
-  if (!v.brand_id) return 'brand is required';
-  if (!v.category_id) return 'category is required';
-  if (!v.subcategory_id) return 'subcategory is required';
+  if (!v.name.trim()) return 'Product Name is required to publish';
+  if (!v.brand_id) return 'Brand is required to publish';
+  if (!v.category_id) return 'Category is required to publish';
+  if (!v.subcategory_id) return 'Subcategory is required to publish';
   const subNode = findNode(tree, v.subcategory_id);
-  if (subNode && subNode.children.length > 0 && !v.sub_subcategory_id) return 'sub-subcategory is required';
-  if (!v.material_id) return 'material is required';
-  if (!v.description?.trim()) return 'description is required';
-  if (!(v.retail_price_minor > 0)) return 'retail price must be greater than 0';
-  if (v.variants.length === 0) return 'at least one variant is required';
+  if (subNode && subNode.children.length > 0 && !v.sub_subcategory_id) return 'Sub-subcategory is required to publish';
+  if (!v.material_id) return 'Material is required to publish';
+  if (!v.description?.trim()) return 'Description is required to publish';
+  if (!(v.retail_price_minor > 0)) return 'Retail price must be greater than ₹0';
+  if (v.variants.length === 0) return 'At least one variant is required';
   for (const va of v.variants) {
-    if ((va.colour_id !== null) === (va.custom_colour !== null)) return 'variant: pick either colour or custom_colour (not both/neither)';
-    if (!va.location_id) return 'variant: location is required';
-    if (va.quantity < 0) return 'variant: quantity must be ≥ 0';
+    if ((va.colour_id !== null) === (va.custom_colour !== null)) return 'Variant: pick either colour or custom colour (not both/neither)';
+    if (!va.location_id) return 'Variant: location is required';
+    if (va.quantity < 0) return 'Variant: quantity must be ≥ 0';
   }
-  if (images.length === 0) return 'at least one image is required';
+  if (images.length === 0) return 'At least one image is required to publish';
   return null;
 }
 
@@ -108,7 +108,18 @@ export default function ProductForm({
         router.push(`/products/${created.id}`);
       }
     } catch (e) {
-      showToast('error', e instanceof Error ? e.message : 'Failed to save product');
+      let message = 'Failed to save product';
+      if (e instanceof Error) {
+        message = e.message;
+      }
+      if (/products_sku_unique|duplicate key.*sku/i.test(message)) {
+        message = 'This SKU is already in use by another product. Please enter a unique SKU.';
+      } else if (/violates foreign key/i.test(message)) {
+        message = 'Invalid reference selected for brand, category, or material.';
+      } else if (/violates not-null/i.test(message)) {
+        message = 'Please fill in all required fields.';
+      }
+      showToast('error', message);
     } finally {
       setSaveAction(null);
     }

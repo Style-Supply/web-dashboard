@@ -107,7 +107,7 @@ function normalizeSize(rawSize: string): string {
   if (['XL', 'EXTRA LARGE'].includes(upper)) return 'XL';
   if (['XXL', '2XL', 'DOUBLE EXTRA LARGE'].includes(upper)) return 'XXL';
   if (['XXS', 'DOUBLE EXTRA SMALL'].includes(upper)) return 'XXS';
-  if (['3XL', 'XXXL'].includes(upper)) return '3XL';
+  if (['3XL', 'XXXL', 'TRIPLE EXTRA LARGE'].includes(upper)) return 'XXXL';
   if (['FREE SIZE', 'ONE SIZE', 'O/S', 'FS', 'STANDARD', 'ONESIZE', 'FREE'].includes(upper)) return 'Free';
   return trimmed;
 }

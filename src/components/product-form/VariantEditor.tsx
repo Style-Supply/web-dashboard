@@ -7,7 +7,7 @@ import { useTaxonomy } from '@/hooks/useTaxonomy';
 import { request } from '@/lib/api';
 import type { ProductVariant } from '@/types/product';
 
-const SIZES: ProductVariant['size'][] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free'];
+const SIZES: ProductVariant['size'][] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'Free'];
 
 export interface VariantEditorProps {
   value: ProductVariant[];

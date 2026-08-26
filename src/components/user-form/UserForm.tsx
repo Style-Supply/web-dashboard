@@ -29,7 +29,7 @@ interface UserFormProps {
 const STATUS_OPTIONS = ['pending', 'approved', 'waitlisted', 'rejected'] as const;
 const HEIGHT_UNITS = ['cm', 'ft'] as const;
 const BODY_UNITS = ['cm', 'in'] as const;
-const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const;
+const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
 const CLUB_OPTIONS = ['Soho House', 'Bastian', 'The Chambers', 'Willingdon Club', 'Bay Club', 'Other'] as const;
 
 const STYLE_TAGS = [

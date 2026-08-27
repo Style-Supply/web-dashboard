@@ -51,6 +51,8 @@ export default function ReviewsPage(): React.ReactElement {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [busy, setBusy] = useState<string | null>(null);
 
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -59,12 +61,16 @@ export default function ReviewsPage(): React.ReactElement {
         rating: ratingFilter ? Number(ratingFilter) : undefined,
       });
       setReviews(reviews);
+      if (selectedReview) {
+        const updated = reviews.find((r) => r.id === selectedReview.id);
+        if (updated) setSelectedReview(updated);
+      }
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to load reviews');
     } finally {
       setLoading(false);
     }
-  }, [typeFilter, ratingFilter, showToast]);
+  }, [typeFilter, ratingFilter, showToast, selectedReview]);
 
   useEffect(() => {
     void load();
@@ -104,6 +110,9 @@ export default function ReviewsPage(): React.ReactElement {
     try {
       await setReviewPublic(review.id, !review.admin_approved_public);
       showToast('success', review.admin_approved_public ? 'Removed from public display' : 'Approved for public display');
+      if (selectedReview?.id === review.id) {
+        setSelectedReview((prev) => prev ? { ...prev, admin_approved_public: !review.admin_approved_public } : null);
+      }
       await load();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to update review status');
@@ -269,19 +278,20 @@ export default function ReviewsPage(): React.ReactElement {
             return (
               <div
                 key={r.id}
-                className={`group relative flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs hover:shadow-md transition-all ${
+                onClick={() => setSelectedReview(r)}
+                className={`group relative flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs hover:shadow-md hover:border-[#7A021D]/30 transition-all cursor-pointer ${
                   busy === r.id ? 'opacity-50 pointer-events-none' : ''
                 }`}
               >
                 <div>
                   {/* Top Bar: Member Initials, Name & Rating */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FDF8F4] text-[#7A021D] font-bold text-xs border border-[#7A021D]/20 shadow-xs">
                         {userInitials(r.profiles?.full_name)}
                       </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-[#2C0505]">
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-[#2C0505] truncate">
                           {r.profiles?.full_name ?? 'Anonymous Member'}
                         </h3>
                         <p className="text-xs text-[#7A021D] font-semibold truncate max-w-[180px]">
@@ -291,7 +301,7 @@ export default function ReviewsPage(): React.ReactElement {
                     </div>
 
                     <span
-                      className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                      className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                         r.review_type === 'purchased'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : 'bg-amber-50 text-amber-800 border-amber-200'
@@ -308,32 +318,42 @@ export default function ReviewsPage(): React.ReactElement {
                   </div>
 
                   {/* Review Quote Content Box */}
-                  <div className="mt-3 rounded-xl border border-neutral-100 bg-neutral-50/70 p-3 text-xs text-neutral-700 leading-relaxed italic">
+                  <div className="mt-3 rounded-xl border border-neutral-100 bg-neutral-50/70 p-3 text-xs text-neutral-700 leading-relaxed italic line-clamp-3">
                     &ldquo;{reviewContent}&rdquo;
                   </div>
                 </div>
 
                 {/* Actions & Public Toggle Footer */}
-                <div className="mt-5 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
+                <div
+                  className="mt-5 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <span className="text-neutral-400">
                     {r.share_publicly ? 'Requested Public' : 'Private Review'}
                   </span>
 
-                  {r.share_publicly ? (
+                  <div className="flex items-center gap-2">
                     <button
-                      disabled={busy === r.id}
-                      onClick={() => void handleToggle(r)}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                        r.admin_approved_public
-                          ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
-                          : 'border border-[#7A021D] text-[#7A021D] bg-[#FDF8F4] hover:bg-[#7A021D] hover:text-white'
-                      }`}
+                      type="button"
+                      onClick={() => setSelectedReview(r)}
+                      className="rounded-xl px-2.5 py-1.5 text-xs font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-colors"
                     >
-                      {r.admin_approved_public ? '✓ Public Approved' : 'Approve for Storefront'}
+                      Details
                     </button>
-                  ) : (
-                    <span className="text-neutral-400 italic">User opted out</span>
-                  )}
+                    {r.share_publicly ? (
+                      <button
+                        disabled={busy === r.id}
+                        onClick={() => void handleToggle(r)}
+                        className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                          r.admin_approved_public
+                            ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                            : 'border border-[#7A021D] text-[#7A021D] bg-[#FDF8F4] hover:bg-[#7A021D] hover:text-white'
+                        }`}
+                      >
+                        {r.admin_approved_public ? '✓ Public Approved' : 'Approve for Storefront'}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             );
@@ -355,7 +375,7 @@ export default function ReviewsPage(): React.ReactElement {
                 <th className="px-5 py-3.5">Rating</th>
                 <th className="px-5 py-3.5">Review Content</th>
                 <th className="px-5 py-3.5">Sharing</th>
-                <th className="px-5 py-3.5 text-right">Approval</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -369,9 +389,18 @@ export default function ReviewsPage(): React.ReactElement {
                 </tr>
               ) : (
                 filteredReviews.map((r) => (
-                  <tr key={r.id} className="hover:bg-neutral-50/80 transition-colors align-top">
+                  <tr
+                    key={r.id}
+                    onClick={() => setSelectedReview(r)}
+                    className="hover:bg-neutral-50/90 transition-colors align-top cursor-pointer group"
+                  >
                     <td className="px-5 py-4 font-bold text-[#2C0505]">
-                      {r.products?.name ?? '—'}
+                      <div className="flex flex-col">
+                        <span>{r.products?.name ?? '—'}</span>
+                        {r.products?.brand && (
+                          <span className="text-[11px] font-normal text-neutral-400">{r.products.brand}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
@@ -396,7 +425,9 @@ export default function ReviewsPage(): React.ReactElement {
                       <Hearts rating={r.rating} />
                     </td>
                     <td className="px-5 py-4 max-w-xs text-xs text-neutral-600 leading-relaxed italic">
-                      {r.body || r.loved_reason || r.disliked_reason || r.return_reason || '—'}
+                      <span className="line-clamp-2">
+                        {r.body || r.loved_reason || r.disliked_reason || r.return_reason || '—'}
+                      </span>
                     </td>
                     <td className="px-5 py-4 text-xs font-semibold">
                       {r.share_publicly ? (
@@ -405,28 +436,207 @@ export default function ReviewsPage(): React.ReactElement {
                         <span className="text-neutral-400">Private Only</span>
                       )}
                     </td>
-                    <td className="px-5 py-4 text-right">
-                      {r.share_publicly ? (
+                    <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-2">
                         <button
-                          disabled={busy === r.id}
-                          onClick={() => void handleToggle(r)}
-                          className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                            r.admin_approved_public
-                              ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
-                              : 'border border-[#7A021D] text-[#7A021D] bg-[#FDF8F4] hover:bg-[#7A021D] hover:text-white'
-                          }`}
+                          type="button"
+                          onClick={() => setSelectedReview(r)}
+                          className="rounded-xl px-2.5 py-1.5 text-xs font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-colors"
                         >
-                          {r.admin_approved_public ? 'Approved' : 'Approve'}
+                          View
                         </button>
-                      ) : (
-                        <span className="text-xs text-neutral-400">—</span>
-                      )}
+                        {r.share_publicly ? (
+                          <button
+                            disabled={busy === r.id}
+                            onClick={() => void handleToggle(r)}
+                            className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                              r.admin_approved_public
+                                ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                                : 'border border-[#7A021D] text-[#7A021D] bg-[#FDF8F4] hover:bg-[#7A021D] hover:text-white'
+                            }`}
+                          >
+                            {r.admin_approved_public ? 'Approved' : 'Approve'}
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════
+          SELECTED REVIEW DETAIL MODAL POPUP
+      ══════════════════════════════════════ */}
+      {selectedReview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setSelectedReview(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative w-full max-w-xl rounded-3xl bg-white p-6 md:p-8 shadow-2xl border border-neutral-200 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header: Title & Close */}
+            <div className="flex items-start justify-between border-b border-neutral-100 pb-4 mb-5">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#7A021D]">
+                  Customer Review Details
+                </span>
+                <h2 className="text-xl font-bold text-[#2C0505] mt-0.5">
+                  {selectedReview.products?.name ?? 'Product Review'}
+                </h2>
+                {selectedReview.products?.brand && (
+                  <p className="text-xs text-neutral-500 font-medium">Brand: {selectedReview.products.brand}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReview(null)}
+                className="h-8 w-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Member & Rating Summary Card */}
+            <div className="rounded-2xl bg-[#FBF4EF] border border-[#7A021D]/15 p-4 mb-5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-[#7A021D] font-bold text-sm border border-[#7A021D]/20 shadow-xs">
+                  {userInitials(selectedReview.profiles?.full_name)}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#2C0505]">
+                    {selectedReview.profiles?.full_name ?? 'Anonymous Member'}
+                  </h4>
+                  <span className="text-xs text-neutral-500">
+                    {new Date(selectedReview.created_at).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <Hearts rating={selectedReview.rating} />
+                </div>
+                <span className="text-xs font-bold text-[#2C0505] mt-0.5 block">
+                  {selectedReview.rating}.0 / 5.0 Rating
+                </span>
+              </div>
+            </div>
+
+            {/* Review Type & Sharing Status */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="rounded-xl border border-neutral-100 bg-neutral-50/70 p-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+                  Review Origin
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                    selectedReview.review_type === 'purchased'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
+                  {selectedReview.review_type ? selectedReview.review_type.toUpperCase() : 'REVIEW'}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-neutral-100 bg-neutral-50/70 p-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+                  Storefront Visibility
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                    selectedReview.share_publicly
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-neutral-100 text-neutral-600 border-neutral-200'
+                  }`}
+                >
+                  {selectedReview.share_publicly ? 'User Approved' : 'Private Only'}
+                </span>
+              </div>
+            </div>
+
+            {/* Written Review Body */}
+            {selectedReview.body && (
+              <div className="mb-5">
+                <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 block mb-2">
+                  Customer Comment / Written Review
+                </label>
+                <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-800 leading-relaxed italic shadow-2xs">
+                  &ldquo;{selectedReview.body}&rdquo;
+                </div>
+              </div>
+            )}
+
+            {/* Loved Reason / Highlights */}
+            {selectedReview.loved_reason && (
+              <div className="mb-5">
+                <label className="text-xs font-bold uppercase tracking-wider text-emerald-700 block mb-1.5">
+                  Loved Highlights
+                </label>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 font-medium">
+                  ✨ {selectedReview.loved_reason}
+                </div>
+              </div>
+            )}
+
+            {/* Return / Disliked Feedback Breakdown */}
+            {(selectedReview.return_reason || selectedReview.disliked_reason) && (
+              <div className="mb-5">
+                <label className="text-xs font-bold uppercase tracking-wider text-amber-700 block mb-1.5">
+                  Return &amp; Fit Feedback Notes
+                </label>
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-950 font-medium leading-relaxed">
+                  🔄 {selectedReview.return_reason || selectedReview.disliked_reason}
+                </div>
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="pt-4 border-t border-neutral-100 flex items-center justify-between gap-3">
+              <span className="text-xs text-neutral-400">
+                ID: <code className="text-[11px] font-mono">{selectedReview.id.slice(0, 8)}…</code>
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedReview(null)}
+                  className="rounded-xl px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                >
+                  Close
+                </button>
+
+                {selectedReview.share_publicly ? (
+                  <button
+                    disabled={busy === selectedReview.id}
+                    onClick={() => void handleToggle(selectedReview)}
+                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                      selectedReview.admin_approved_public
+                        ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                        : 'border border-[#7A021D] text-[#7A021D] bg-[#FDF8F4] hover:bg-[#7A021D] hover:text-white'
+                    }`}
+                  >
+                    {selectedReview.admin_approved_public ? '✓ Public Approved' : 'Approve for Storefront'}
+                  </button>
+                ) : (
+                  <span className="text-xs text-neutral-400 italic">User opted out of storefront</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

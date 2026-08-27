@@ -240,8 +240,11 @@ export async function retagImage(imageId: string, tag: ColourTag): Promise<Produ
 
 export interface BatchImportRow {
   index: number;
-  status: 'ok' | 'error';
+  status: 'ok' | 'skipped' | 'error';
   product_id?: string;
+  name?: string;
+  sku?: string;
+  message?: string;
   error?: string;
   image_failures?: { url: string; reason: string }[];
 }

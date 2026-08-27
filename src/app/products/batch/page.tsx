@@ -120,7 +120,12 @@ export default function BatchPage(): React.ReactElement {
 
       {step === 'results' && (
         <div className="space-y-4">
-          <BatchResultsTable results={results} retryingIndex={retryingIndex} onRetry={(i) => void handleRetry(i)} />
+          <BatchResultsTable
+            results={results}
+            products={products}
+            retryingIndex={retryingIndex}
+            onRetry={(i) => void handleRetry(i)}
+          />
           <Button variant="secondary" onClick={() => setStep('drop')}>
             Upload another
           </Button>

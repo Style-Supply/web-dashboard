@@ -99,13 +99,14 @@ function QuickAdjust({
 
 export default function VariantEditor({ value, onChange }: VariantEditorProps): React.ReactElement {
   const { colours, locations, loading } = useTaxonomy();
+  const defaultLocationId = locations[0]?.id ?? null;
 
   if (loading) return <div className="text-sm text-neutral-400">Loading…</div>;
 
   function add() {
     onChange([
       ...value,
-      { size: 'M', colour_id: null, custom_colour: null, quantity: 1, location_id: null },
+      { size: 'M', colour_id: null, custom_colour: null, quantity: 1, location_id: defaultLocationId },
     ]);
   }
 
@@ -128,44 +129,41 @@ export default function VariantEditor({ value, onChange }: VariantEditorProps): 
     <div className="space-y-3">
       {/* Stock Summary Banner */}
       {value.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-2.5">
+        <div className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs text-neutral-600">
           <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-xs text-neutral-400 uppercase tracking-wide">Total Stock</p>
-              <p className="text-lg font-extrabold text-[#2C0505]">{totalStock}</p>
-            </div>
-            <div className="w-px h-8 bg-neutral-200" />
-            <div className="text-center">
-              <p className="text-xs text-neutral-400 uppercase tracking-wide">Variants</p>
-              <p className="text-lg font-extrabold text-[#2C0505]">{value.length}</p>
-            </div>
-            {outOfStockCount > 0 && (
-              <>
-                <div className="w-px h-8 bg-neutral-200" />
-                <div className="text-center">
-                  <p className="text-xs text-red-400 uppercase tracking-wide">Out of Stock</p>
-                  <p className="text-lg font-extrabold text-red-600">{outOfStockCount}</p>
-                </div>
-              </>
-            )}
+            <span>
+              Total Stock: <strong className="font-semibold text-neutral-900">{totalStock}</strong>
+            </span>
+            <span>
+              Variants: <strong className="font-semibold text-neutral-900">{value.length}</strong>
+            </span>
           </div>
-          <div className={`rounded-full px-3 py-1 text-xs font-bold ${totalStock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-            {totalStock > 0 ? '● Available' : '● Out of Stock'}
-          </div>
+          {outOfStockCount > 0 && (
+            <span className="font-medium text-amber-700">
+              {outOfStockCount} variant{outOfStockCount > 1 ? 's' : ''} out of stock
+            </span>
+          )}
+          {outOfStockCount === 0 && (
+            <span className="font-medium text-emerald-700">● Available</span>
+          )}
         </div>
       )}
 
       {/* Variant Rows */}
       {value.map((v, i) => {
-        const dup = (counts.get(tupleKey(v)) ?? 0) > 1;
+        const isDup = (counts.get(tupleKey(v)) ?? 0) > 1;
         const isSaved = !!v.id;
         return (
           <div
             key={i}
-            className={`rounded-xl border p-3 space-y-2 ${dup ? 'border-red-300 bg-red-50' : v.quantity <= 0 ? 'border-red-200 bg-red-50/40' : 'border-neutral-200 bg-white'}`}
+            className={`space-y-3 rounded-2xl border p-4 transition-all ${
+              isDup
+                ? 'border-amber-300 bg-amber-50/50'
+                : 'border-neutral-200 bg-white hover:border-neutral-300'
+            }`}
           >
-            {/* Row 1: Size, Colour, Location */}
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-[120px_1fr_1fr] md:items-center">
+            {/* Row 1: Size + Color + Location */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
               <DropdownSelect
                 value={v.size}
                 allowClear={false}
@@ -178,9 +176,10 @@ export default function VariantEditor({ value, onChange }: VariantEditorProps): 
                 onChange={(p) => update(i, { colour_id: p.colour_id, custom_colour: p.custom_colour })}
               />
               <DropdownSelect
-                value={v.location_id}
+                value={v.location_id || defaultLocationId}
                 options={locations.map((l) => ({ value: l.id, label: l.name }))}
                 placeholder="Location"
+                allowClear={false}
                 onChange={(val) => update(i, { location_id: val })}
               />
             </div>
@@ -224,7 +223,7 @@ export default function VariantEditor({ value, onChange }: VariantEditorProps): 
               </button>
             </div>
 
-            {dup && <p className="text-xs text-red-600 font-medium">⚠ Duplicate — same size + colour + location.</p>}
+            {isDup && <p className="text-xs text-red-600 font-medium">⚠ Duplicate — same size, colour, and location as another variant</p>}
           </div>
         );
       })}

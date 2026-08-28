@@ -85,20 +85,22 @@ function getStepTimestamp(box: ReturnBox, stepKey: string): string | null {
     return box.decisions_locked_at || box.paid_at || box.created_at || null;
   }
   if (stepKey === 'in_transit') {
-    if (box.pickup_status === 'in_transit' || box.pickup_status === 'picked_up' || box.pickup_status === 'received_at_warehouse' || box.status === 'completed') {
-      return box.updated_at || box.received_at || box.decisions_locked_at || null;
+    if (box.pickup_status === 'in_transit' || box.pickup_status === 'picked_up' || box.status === 'completed') {
+      return box.updated_at || box.decisions_locked_at || null;
     }
   }
   if (stepKey === 'picked_up') {
-    if (box.pickup_status === 'picked_up' || box.pickup_status === 'received_at_warehouse' || box.status === 'completed') {
-      return box.received_at || box.updated_at || null;
+    if (box.pickup_status === 'picked_up' || box.status === 'completed') {
+      return box.updated_at || null;
     }
   }
   if (stepKey === 'received_at_warehouse') {
-    return box.received_at || null;
+    if ((box.pickup_status === 'picked_up' && box.received_at) || box.status === 'completed') {
+      return box.received_at || box.updated_at || null;
+    }
   }
   if (stepKey === 'completed') {
-    return box.status === 'completed' ? (box.updated_at || box.received_at || null) : null;
+    return box.status === 'completed' ? (box.updated_at || null) : null;
   }
   return null;
 }
@@ -399,9 +401,9 @@ export default function ReturnsPage(): React.ReactElement {
         <div className="flex flex-col gap-6">
           {filteredReturns.map((box) => {
             const currentStepIdx =
-              box.status === 'completed' || box.pickup_status === 'completed'
+              box.status === 'completed'
                 ? 4
-                : box.received_at || box.pickup_status === 'received_at_warehouse'
+                : box.pickup_status === 'picked_up' && box.received_at
                 ? 3
                 : box.pickup_status === 'picked_up'
                 ? 2
@@ -447,9 +449,13 @@ export default function ReturnsPage(): React.ReactElement {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {box.received_at ? (
+                    {box.pickup_status === 'picked_up' && box.received_at ? (
                       <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800 shadow-2xs">
                         🏢 Received: {formatDateTime(box.received_at)}
+                      </span>
+                    ) : box.status === 'completed' ? (
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 shadow-2xs">
+                        ✨ Return Completed
                       </span>
                     ) : (
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">

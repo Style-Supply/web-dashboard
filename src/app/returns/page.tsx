@@ -195,6 +195,10 @@ export default function ReturnsPage(): React.ReactElement {
       trackingNumber = entered.trim();
     }
 
+    const now = new Date().toISOString();
+    const nextPickupStatus = status === 'received_at_warehouse' ? 'picked_up' : status === 'completed' ? 'picked_up' : status;
+    const nextReceivedAt = status === 'received_at_warehouse' || status === 'completed' ? now : (status === 'scheduled' || status === 'in_transit') ? null : undefined;
+
     setBusy(boxId);
     // Live in-place optimistic update
     setReturns((prev) =>
@@ -202,7 +206,8 @@ export default function ReturnsPage(): React.ReactElement {
         box.id === boxId
           ? {
               ...box,
-              pickup_status: status === 'completed' ? 'received_at_warehouse' : status,
+              pickup_status: nextPickupStatus,
+              received_at: nextReceivedAt !== undefined ? nextReceivedAt : box.received_at,
               status: status === 'completed' ? 'completed' : box.status,
               tracking_number: trackingNumber !== undefined ? trackingNumber : box.tracking_number,
             }
@@ -211,7 +216,7 @@ export default function ReturnsPage(): React.ReactElement {
     );
     try {
       await setPickupStatus(boxId, status, trackingNumber);
-      showToast('success', `Pickup status updated to ${status.replace('_', ' ')}`);
+      showToast('success', `Pickup status updated to ${status.replace(/_/g, ' ')}`);
       await load(false);
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to update pickup');
@@ -228,7 +233,7 @@ export default function ReturnsPage(): React.ReactElement {
     setReturns((prev) =>
       prev.map((box) =>
         box.id === boxId
-          ? { ...box, received_at: now, pickup_status: 'received_at_warehouse' }
+          ? { ...box, received_at: now, pickup_status: 'picked_up' }
           : box
       )
     );

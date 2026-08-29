@@ -583,7 +583,7 @@ export default function UsersPage(): React.ReactElement {
             LIST VIEW
         ══════════════════════════════════════ */}
         {view === 'list' && roleTab !== 'managers' && (
-          <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs">
+          <div className="rounded-2xl border border-neutral-200 bg-white shadow-xs min-h-[300px]">
             {activeDisplayList.length === 0 && !loading ? (
               <div className="py-16 text-center text-neutral-400 text-sm">
                 No {roleTab === 'admin' ? 'admin accounts' : 'member users'} found.

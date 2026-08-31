@@ -53,6 +53,19 @@ export default function ReviewsPage(): React.ReactElement {
 
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
 
+  // Close modal on Escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSelectedReview(null);
+    }
+    if (selectedReview) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedReview]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -61,16 +74,12 @@ export default function ReviewsPage(): React.ReactElement {
         rating: ratingFilter ? Number(ratingFilter) : undefined,
       });
       setReviews(reviews);
-      if (selectedReview) {
-        const updated = reviews.find((r) => r.id === selectedReview.id);
-        if (updated) setSelectedReview(updated);
-      }
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to load reviews');
     } finally {
       setLoading(false);
     }
-  }, [typeFilter, ratingFilter, showToast, selectedReview]);
+  }, [typeFilter, ratingFilter, showToast]);
 
   useEffect(() => {
     void load();
@@ -107,14 +116,25 @@ export default function ReviewsPage(): React.ReactElement {
 
   async function handleToggle(review: Review): Promise<void> {
     setBusy(review.id);
+    const nextApproved = !review.admin_approved_public;
+    // Optimistic live update
+    setReviews((prev) =>
+      prev.map((r) => (r.id === review.id ? { ...r, admin_approved_public: nextApproved } : r))
+    );
+    setSelectedReview((prev) =>
+      prev && prev.id === review.id ? { ...prev, admin_approved_public: nextApproved } : prev
+    );
     try {
-      await setReviewPublic(review.id, !review.admin_approved_public);
-      showToast('success', review.admin_approved_public ? 'Removed from public display' : 'Approved for public display');
-      if (selectedReview?.id === review.id) {
-        setSelectedReview((prev) => prev ? { ...prev, admin_approved_public: !review.admin_approved_public } : null);
-      }
-      await load();
+      await setReviewPublic(review.id, nextApproved);
+      showToast('success', nextApproved ? 'Approved for public display' : 'Removed from public display');
     } catch (err) {
+      // Revert on error
+      setReviews((prev) =>
+        prev.map((r) => (r.id === review.id ? { ...r, admin_approved_public: review.admin_approved_public } : r))
+      );
+      setSelectedReview((prev) =>
+        prev && prev.id === review.id ? { ...prev, admin_approved_public: review.admin_approved_public } : prev
+      );
       showToast('error', err instanceof Error ? err.message : 'Failed to update review status');
     } finally {
       setBusy(null);
@@ -501,8 +521,12 @@ export default function ReviewsPage(): React.ReactElement {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedReview(null)}
-                className="h-8 w-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedReview(null);
+                }}
+                className="h-8 w-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 ✕
@@ -630,8 +654,12 @@ export default function ReviewsPage(): React.ReactElement {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedReview(null)}
-                  className="rounded-xl px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedReview(null);
+                  }}
+                  className="rounded-xl px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-colors cursor-pointer"
                 >
                   Close
                 </button>

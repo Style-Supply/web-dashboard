@@ -302,12 +302,14 @@ export default function ReviewsPage(): React.ReactElement {
 
                     <span
                       className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                        r.review_type === 'purchased'
+                        r.return_reason?.includes('Fit:')
+                          ? 'bg-purple-50 text-purple-800 border-purple-200'
+                          : r.review_type === 'purchased'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : 'bg-amber-50 text-amber-800 border-amber-200'
                       }`}
                     >
-                      {r.review_type ? r.review_type.toUpperCase() : 'REVIEW'}
+                      {r.return_reason?.includes('Fit:') ? 'RENTAL' : r.review_type ? r.review_type.toUpperCase() : 'REVIEW'}
                     </span>
                   </div>
 
@@ -413,12 +415,14 @@ export default function ReviewsPage(): React.ReactElement {
                     <td className="px-5 py-4">
                       <span
                         className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                          r.review_type === 'purchased'
+                          r.return_reason?.includes('Fit:')
+                            ? 'bg-purple-50 text-purple-800 border-purple-200'
+                            : r.review_type === 'purchased'
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : 'bg-amber-50 text-amber-800 border-amber-200'
                         }`}
                       >
-                        {r.review_type ? r.review_type.toUpperCase() : 'REVIEW'}
+                        {r.return_reason?.includes('Fit:') ? 'RENTAL' : r.review_type ? r.review_type.toUpperCase() : 'REVIEW'}
                       </span>
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">
@@ -592,15 +596,28 @@ export default function ReviewsPage(): React.ReactElement {
               </div>
             )}
 
-            {/* Return / Disliked Feedback Breakdown */}
+            {/* Return / Rental / Fit Feedback Breakdown */}
             {(selectedReview.return_reason || selectedReview.disliked_reason) && (
               <div className="mb-5">
-                <label className="text-xs font-bold uppercase tracking-wider text-amber-700 block mb-1.5">
-                  Return &amp; Fit Feedback Notes
+                <label className="text-xs font-bold uppercase tracking-wider text-amber-700 block mb-2">
+                  {selectedReview.return_reason?.includes('Fit:') ? 'Rental Feedback Breakdown' : 'Return & Fit Feedback Notes'}
                 </label>
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-950 font-medium leading-relaxed">
-                  🔄 {selectedReview.return_reason || selectedReview.disliked_reason}
-                </div>
+                {selectedReview.return_reason?.includes(' · ') ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedReview.return_reason.split(' · ').map((part, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50/80 px-3 py-1.5 text-xs font-semibold text-purple-900 shadow-2xs"
+                      >
+                        🏷️ {part}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-950 font-medium leading-relaxed">
+                    🔄 {selectedReview.return_reason || selectedReview.disliked_reason}
+                  </div>
+                )}
               </div>
             )}
 

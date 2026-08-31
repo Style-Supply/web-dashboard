@@ -41,6 +41,30 @@ function IconList({ active }: { active: boolean }) {
   );
 }
 
+function parseRentalFeedback(returnReason?: string | null) {
+  if (!returnReason) return { isRental: false, fit: null, wearAgain: null, condition: null, otherTags: [] };
+  const parts = returnReason.split(' · ');
+  let fit: string | null = null;
+  let wearAgain: string | null = null;
+  let condition: string | null = null;
+  const otherTags: string[] = [];
+
+  for (const part of parts) {
+    if (part.startsWith('Fit:')) {
+      fit = part.replace('Fit:', '').trim();
+    } else if (part.startsWith('Intent:')) {
+      wearAgain = part.replace('Intent:', '').trim();
+    } else if (part.startsWith('Condition:')) {
+      condition = part.replace('Condition:', '').trim();
+    } else {
+      otherTags.push(part.trim());
+    }
+  }
+
+  const isRental = Boolean(fit || wearAgain || condition);
+  return { isRental, fit, wearAgain, condition, otherTags };
+}
+
 export default function ReviewsPage(): React.ReactElement {
   const { showToast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -564,86 +588,156 @@ export default function ReviewsPage(): React.ReactElement {
             </div>
 
             {/* Review Type & Sharing Status */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              <div className="rounded-xl border border-neutral-100 bg-neutral-50/70 p-3">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-                  Review Origin
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                    selectedReview.review_type === 'purchased'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
-                  }`}
-                >
-                  {selectedReview.review_type ? selectedReview.review_type.toUpperCase() : 'REVIEW'}
-                </span>
-              </div>
+            {(() => {
+              const rentalData = parseRentalFeedback(selectedReview.return_reason);
+              const originLabel = rentalData.isRental
+                ? 'RENTAL'
+                : selectedReview.review_type
+                ? selectedReview.review_type.toUpperCase()
+                : 'REVIEW';
+              const originStyle = rentalData.isRental
+                ? 'bg-purple-50 text-purple-800 border-purple-200'
+                : selectedReview.review_type === 'purchased'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-amber-50 text-amber-800 border-amber-200';
 
-              <div className="rounded-xl border border-neutral-100 bg-neutral-50/70 p-3">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-                  Storefront Visibility
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                    selectedReview.share_publicly
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-neutral-100 text-neutral-600 border-neutral-200'
-                  }`}
-                >
-                  {selectedReview.share_publicly ? 'User Approved' : 'Private Only'}
-                </span>
-              </div>
-            </div>
-
-            {/* Written Review Body */}
-            {selectedReview.body && (
-              <div className="mb-5">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 block mb-2">
-                  Customer Comment / Written Review
-                </label>
-                <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-800 leading-relaxed italic shadow-2xs">
-                  &ldquo;{selectedReview.body}&rdquo;
-                </div>
-              </div>
-            )}
-
-            {/* Loved Reason / Highlights */}
-            {selectedReview.loved_reason && (
-              <div className="mb-5">
-                <label className="text-xs font-bold uppercase tracking-wider text-emerald-700 block mb-1.5">
-                  Loved Highlights
-                </label>
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 font-medium">
-                  ✨ {selectedReview.loved_reason}
-                </div>
-              </div>
-            )}
-
-            {/* Return / Rental / Fit Feedback Breakdown */}
-            {(selectedReview.return_reason || selectedReview.disliked_reason) && (
-              <div className="mb-5">
-                <label className="text-xs font-bold uppercase tracking-wider text-amber-700 block mb-2">
-                  {selectedReview.return_reason?.includes('Fit:') ? 'Rental Feedback Breakdown' : 'Return & Fit Feedback Notes'}
-                </label>
-                {selectedReview.return_reason?.includes(' · ') ? (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedReview.return_reason.split(' · ').map((part, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50/80 px-3 py-1.5 text-xs font-semibold text-purple-900 shadow-2xs"
-                      >
-                        🏷️ {part}
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    <div className="rounded-xl border border-neutral-100 bg-neutral-50/70 p-3">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+                        Review Origin
                       </span>
-                    ))}
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${originStyle}`}>
+                        {originLabel}
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl border border-neutral-100 bg-neutral-50/70 p-3">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+                        Storefront Visibility
+                      </span>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                          selectedReview.share_publicly
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : 'bg-neutral-100 text-neutral-600 border-neutral-200'
+                        }`}
+                      >
+                        {selectedReview.share_publicly ? 'User Approved' : 'Private Only'}
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-950 font-medium leading-relaxed">
-                    🔄 {selectedReview.return_reason || selectedReview.disliked_reason}
-                  </div>
-                )}
-              </div>
-            )}
+
+                  {/* ── RENTAL PRODUCTS REVIEW (4 Exact Fields) ── */}
+                  {rentalData.isRental ? (
+                    <div className="rounded-2xl border border-purple-200 bg-gradient-to-b from-purple-50/40 to-white p-4 mb-5 space-y-4 shadow-xs">
+                      <div className="border-b border-purple-100 pb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                          <span>✨</span> Rental Experience Feedback
+                        </span>
+                      </div>
+
+                      {/* Field 1: How Did It Fit? */}
+                      <div>
+                        <span className="text-xs font-semibold text-neutral-600 block mb-1.5">
+                          1. How did it fit?
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-xl border border-purple-300 bg-white px-3 py-1.5 text-xs font-bold text-purple-900 shadow-2xs">
+                          👗 {rentalData.fit || 'Not specified'}
+                        </span>
+                      </div>
+
+                      {/* Field 2: Would You Wear It Again? */}
+                      {rentalData.wearAgain && (
+                        <div>
+                          <span className="text-xs font-semibold text-neutral-600 block mb-1.5">
+                            2. Would you wear it again?
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-xl border border-purple-300 bg-white px-3 py-1.5 text-xs font-bold text-purple-900 shadow-2xs">
+                            🔄 {rentalData.wearAgain}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Field 3: Condition Before Pickup */}
+                      {rentalData.condition && (
+                        <div>
+                          <span className="text-xs font-semibold text-neutral-600 block mb-1.5">
+                            3. Anything we should know before pickup?
+                          </span>
+                          <span className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-bold shadow-2xs ${
+                            rentalData.condition === 'All good'
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+                              : 'border-amber-300 bg-amber-50 text-amber-900'
+                          }`}>
+                            {rentalData.condition === 'All good' ? '✅' : '⚠️'} {rentalData.condition}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Field 4: Customer Note / Comment */}
+                      {selectedReview.body && (
+                        <div>
+                          <span className="text-xs font-semibold text-neutral-600 block mb-1.5">
+                            4. Customer comments &amp; details:
+                          </span>
+                          <div className="rounded-xl border border-purple-200/80 bg-white p-3.5 text-xs text-neutral-800 leading-relaxed italic shadow-2xs">
+                            &ldquo;{selectedReview.body}&rdquo;
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* ── RETURN PRODUCTS REVIEW (Reasons & Comments) ── */
+                    <div className="space-y-4 mb-5">
+                      {(selectedReview.return_reason || selectedReview.disliked_reason) && (
+                        <div>
+                          <label className="text-xs font-bold uppercase tracking-wider text-amber-700 block mb-2">
+                            Why are you returning this item?
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedReview.return_reason || selectedReview.disliked_reason || '')
+                              .split(',')
+                              .map((r, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-2xs"
+                                >
+                                  🔄 {r.trim()}
+                                </span>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedReview.body && (
+                        <div>
+                          <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 block mb-2">
+                            Customer Comment / Written Review
+                          </label>
+                          <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-800 leading-relaxed italic shadow-2xs">
+                            &ldquo;{selectedReview.body}&rdquo;
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Loved Reason / Highlights (for Purchases) */}
+                  {selectedReview.loved_reason && (
+                    <div className="mb-5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-emerald-700 block mb-1.5">
+                        Loved Highlights
+                      </label>
+                      <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 font-medium">
+                        ✨ {selectedReview.loved_reason}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Footer Buttons */}
             <div className="pt-4 border-t border-neutral-100 flex items-center justify-between gap-3">

@@ -199,6 +199,15 @@ export default function BoxesPage(): React.ReactElement {
   const [offset, setOffset] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Sync initial filter from URL params if present (e.g. /boxes?status=returns_review)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get('status') || params.get('tab');
+      if (s) setStatusFilter(s);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -262,16 +271,25 @@ export default function BoxesPage(): React.ReactElement {
     finally { setDeletingId(null); }
   }
 
+  const QUICK_TABS = [
+    { label: 'All Boxes', value: '' },
+    { label: 'Active Sessions (48h)', value: 'boutique_session_active' },
+    { label: 'Decision Pending', value: 'decision_pending' },
+    { label: 'Returns & QC', value: 'returns_review' },
+    { label: 'Confirmed / Packing', value: 'confirmed' },
+    { label: 'Completed', value: 'completed' },
+  ];
+
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#2C0505]">Boxes</h1>
-          <p className="text-sm text-neutral-400 mt-0.5">{total} total</p>
+          <h1 className="text-2xl font-semibold text-[#2C0505]">Boxes &amp; Returns</h1>
+          <p className="text-sm text-neutral-400 mt-0.5">{total} boxes in catalog</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -295,6 +313,29 @@ export default function BoxesPage(): React.ReactElement {
             {loading ? 'Loading…' : 'Refresh'}
           </button>
         </div>
+      </div>
+
+      {/* Quick Stage Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-neutral-200 pb-3">
+        {QUICK_TABS.map((tab) => {
+          const isActive = statusFilter === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => {
+                setOffset(0);
+                setStatusFilter(tab.value);
+              }}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-[#7A021D] text-white shadow-xs'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Table */}

@@ -574,13 +574,26 @@ export default function BoxDetailPage(): React.ReactElement {
           )}
           {box.status === 'returns_review' && (
             <div className="flex flex-wrap items-center gap-2">
+              {box.pickup_status !== 'in_transit' && box.pickup_status !== 'picked_up' && (
+                <button
+                  onClick={() => {
+                    const code = prompt('Enter Return Courier Tracking AWB (optional):', box.tracking_number || '');
+                    if (code === null) return;
+                    void doAction(() => setPickupStatus(box.id, 'in_transit', code.trim() || undefined), 'Pickup marked as In Transit');
+                  }}
+                  disabled={actionLoading}
+                  className="rounded-lg bg-cyan-600 px-3 py-1 text-xs font-medium text-white hover:bg-cyan-700 disabled:opacity-50"
+                >
+                  🚚 Dispatch Return Courier
+                </button>
+              )}
               {box.pickup_status !== 'picked_up' && (
                 <button
                   onClick={() => void doAction(() => setPickupStatus(box.id, 'picked_up'), 'Pickup marked as Picked Up')}
                   disabled={actionLoading}
                   className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
                 >
-                  Mark Picked Up
+                  📦 Mark Picked Up
                 </button>
               )}
               {!box.received_at && (
@@ -589,15 +602,19 @@ export default function BoxDetailPage(): React.ReactElement {
                   disabled={actionLoading}
                   className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Receive at Warehouse
+                  🏢 Receive at Warehouse
                 </button>
               )}
-              <Link
-                href={`/returns?search=${box.id}`}
-                className="rounded-lg bg-neutral-100 border border-neutral-200 px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-200"
+              <button
+                onClick={() => {
+                  if (!confirm('Mark this box as completed? Ensure all returned items have finished QC.')) return;
+                  void doAction(() => updateBox(box.id, { status: 'completed' }), 'Box marked as Completed');
+                }}
+                disabled={actionLoading}
+                className="rounded-lg bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-black disabled:opacity-50"
               >
-                Inspect &amp; QC Returns →
-              </Link>
+                ✨ Complete Box
+              </button>
             </div>
           )}
         </div>
@@ -689,6 +706,57 @@ export default function BoxDetailPage(): React.ReactElement {
             </div>
           </div>
         </div>
+
+        {/* Reverse Logistics & Returns Tracking (Active when in returns flow) */}
+        {(box.status === 'returns_review' || box.pickup_status || box.items.some(i => i.decision === 'return')) && (
+          <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/40 to-white p-5 space-y-4 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200/60 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-bold text-[#2C0505]">Reverse Logistics &amp; Returns Pipeline</span>
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-300/60 capitalize">
+                    {box.pickup_status ? box.pickup_status.replace(/_/g, ' ') : 'Return Initiated'}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Track reverse courier pickup from member and receive returned garments for Quality Control.
+                </p>
+              </div>
+
+              {box.tracking_number && (
+                <div className="text-xs bg-white border border-neutral-200 rounded-lg px-3 py-1.5 font-mono text-neutral-700">
+                  AWB: <span className="font-semibold text-black">{box.tracking_number}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 5-Step Stepper */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+              {[
+                { key: 'scheduled', label: '1. Pickup Scheduled', icon: '📅', done: true },
+                { key: 'in_transit', label: '2. In Transit', icon: '🚚', done: box.pickup_status === 'in_transit' || box.pickup_status === 'picked_up' || box.status === 'completed' },
+                { key: 'picked_up', label: '3. Picked Up', icon: '📦', done: box.pickup_status === 'picked_up' || box.status === 'completed' },
+                { key: 'received', label: '4. At Warehouse', icon: '🏢', done: Boolean(box.received_at) || box.status === 'completed' },
+                { key: 'completed', label: '5. Completed', icon: '✨', done: box.status === 'completed' },
+              ].map((step, idx) => (
+                <div
+                  key={step.key}
+                  className={`rounded-lg border p-2.5 text-center transition-all ${
+                    step.done
+                      ? 'border-emerald-300 bg-emerald-50/70 text-emerald-900 shadow-2xs font-semibold'
+                      : 'border-neutral-200 bg-white/60 text-neutral-400 font-medium'
+                  }`}
+                >
+                  <div className="text-lg mb-1">{step.icon}</div>
+                  <div className="text-xs">{step.label}</div>
+                  <div className="text-[10px] mt-1 opacity-75">
+                    {step.done ? '✓ Done' : 'Pending'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Items Table */}
         <div>

@@ -78,6 +78,41 @@ function sessionRemaining(endsAt: string | null | undefined): string {
   return `${h}h ${m}m remaining`;
 }
 
+function parseItemQc(qcNotes?: string | null, rawQcStatus?: string | null) {
+  let brand = { status: 'pending', notes: '', images: [] as string[] };
+  let customer = { status: rawQcStatus ?? 'pending', notes: '', images: [] as string[] };
+
+  if (!qcNotes) {
+    return { brand, customer };
+  }
+
+  try {
+    if (typeof qcNotes === 'string' && qcNotes.startsWith('{') && qcNotes.endsWith('}')) {
+      const parsed = JSON.parse(qcNotes);
+      if (parsed.brand) {
+        brand = {
+          status: parsed.brand.status ?? 'pending',
+          notes: parsed.brand.notes ?? '',
+          images: Array.isArray(parsed.brand.images) ? parsed.brand.images : [],
+        };
+      }
+      if (parsed.customer) {
+        customer = {
+          status: parsed.customer.status ?? rawQcStatus ?? 'pending',
+          notes: parsed.customer.notes ?? '',
+          images: Array.isArray(parsed.customer.images) ? parsed.customer.images : [],
+        };
+      }
+    } else {
+      customer.notes = qcNotes;
+    }
+  } catch {
+    customer.notes = qcNotes;
+  }
+
+  return { brand, customer };
+}
+
 // ── Edit Modal Components ──────────────────────────────────────────────────────
 
 function ProductSearch({ onSelect }: { onSelect: (p: Product) => void }) {
@@ -852,6 +887,8 @@ export default function BoxDetailPage(): React.ReactElement {
             <div className="grid grid-cols-1 gap-4">
               {box.items.map((item) => {
                 const isCustomerPickupUnlocked = box.pickup_status === 'picked_up' || box.status === 'returns_review';
+                const qcData = parseItemQc(item.qc_notes, item.qc_status);
+
                 return (
                   <div key={`qc-${item.id}`} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
                     <div className="flex items-center justify-between border-b pb-3">
@@ -875,13 +912,33 @@ export default function BoxDetailPage(): React.ReactElement {
                       <QcCheckpointCard
                         title="1. Received from Brand"
                         description="Inspection on arrival from brand prior to box packing."
-                        status={(item as any).received_from_brand_qc_status ?? 'pending'}
-                        initialNotes={(item as any).received_from_brand_qc_notes ?? ''}
-                        initialImages={(item as any).received_from_brand_qc_images ?? []}
+                        status={qcData.brand.status}
+                        initialNotes={qcData.brand.notes}
+                        initialImages={qcData.brand.images}
                         checkpoint="brand"
                         itemId={item.id}
                         isLocked={false}
-                        onSuccess={load}
+                        onUpdate={(result, notes, images) => {
+                          setBox((prev) => {
+                            if (!prev) return prev;
+                            return {
+                              ...prev,
+                              items: prev.items.map((it) => {
+                                if (it.id !== item.id) return it;
+                                const parsed = parseItemQc(it.qc_notes, it.qc_status);
+                                const updatedState = {
+                                  brand: { status: result, notes, images },
+                                  customer: parsed.customer,
+                                };
+                                return {
+                                  ...it,
+                                  qc_notes: JSON.stringify(updatedState),
+                                  qc_status: (parsed.customer.status !== 'pending' ? parsed.customer.status : result) as 'pending' | 'passed' | 'failed' | null,
+                                };
+                              }),
+                            };
+                          });
+                        }}
                         showToast={showToast}
                       />
 
@@ -889,13 +946,33 @@ export default function BoxDetailPage(): React.ReactElement {
                       <QcCheckpointCard
                         title="2. Picked from Customer"
                         description="Inspection after return or rental period end."
-                        status={item.qc_status ?? (isCustomerPickupUnlocked ? 'pending' : 'locked')}
-                        initialNotes={item.qc_notes ?? ''}
-                        initialImages={(item as any).qc_images ?? []}
+                        status={isCustomerPickupUnlocked ? qcData.customer.status : 'locked'}
+                        initialNotes={qcData.customer.notes}
+                        initialImages={qcData.customer.images}
                         checkpoint="customer"
                         itemId={item.id}
                         isLocked={!isCustomerPickupUnlocked}
-                        onSuccess={load}
+                        onUpdate={(result, notes, images) => {
+                          setBox((prev) => {
+                            if (!prev) return prev;
+                            return {
+                              ...prev,
+                              items: prev.items.map((it) => {
+                                if (it.id !== item.id) return it;
+                                const parsed = parseItemQc(it.qc_notes, it.qc_status);
+                                const updatedState = {
+                                  brand: parsed.brand,
+                                  customer: { status: result, notes, images },
+                                };
+                                return {
+                                  ...it,
+                                  qc_notes: JSON.stringify(updatedState),
+                                  qc_status: result as 'pending' | 'passed' | 'failed' | null,
+                                };
+                              }),
+                            };
+                          });
+                        }}
                         showToast={showToast}
                       />
                     </div>
@@ -919,7 +996,7 @@ interface QcCheckpointCardProps {
   checkpoint: 'brand' | 'customer';
   itemId: string;
   isLocked: boolean;
-  onSuccess: () => Promise<void>;
+  onUpdate: (result: 'passed' | 'failed', notes: string, images: string[]) => void;
   showToast: (type: 'success' | 'error', msg: string) => void;
 }
 
@@ -932,12 +1009,25 @@ function QcCheckpointCard({
   checkpoint,
   itemId,
   isLocked,
-  onSuccess,
+  onUpdate,
   showToast,
 }: QcCheckpointCardProps) {
+  const [currentStatus, setCurrentStatus] = useState(status);
   const [notes, setNotes] = useState(initialNotes);
   const [images, setImages] = useState<string[]>(initialImages);
   const [submitting, setSubmitting] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrentStatus(status);
+  }, [status]);
+
+  useEffect(() => {
+    setNotes(initialNotes);
+  }, [initialNotes]);
+
+  useEffect(() => {
+    setImages(initialImages);
+  }, [initialImages]);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -964,6 +1054,10 @@ function QcCheckpointCard({
 
   async function handleSave(result: 'passed' | 'failed') {
     setSubmitting(result);
+    const prevStatus = currentStatus;
+    setCurrentStatus(result); // Instant optimistic in-place UI update!
+    onUpdate(result, notes, images);
+
     try {
       await request(`/api/admin/returns/items/${itemId}/qc`, {
         method: 'POST',
@@ -975,20 +1069,20 @@ function QcCheckpointCard({
         }),
       });
       showToast('success', `${title} marked ${result === 'passed' ? 'Pass' : 'Fail'}`);
-      await onSuccess();
     } catch (err) {
+      setCurrentStatus(prevStatus); // rollback on error
       showToast('error', err instanceof Error ? err.message : 'QC update failed');
     } finally {
       setSubmitting(null);
     }
   }
 
-  const isPassed = status === 'passed';
-  const isFailed = status === 'failed';
+  const isPassed = currentStatus === 'passed';
+  const isFailed = currentStatus === 'failed';
 
   return (
     <div
-      className={`rounded-lg border p-3 space-y-3 ${
+      className={`rounded-lg border p-3 space-y-3 transition-colors ${
         isLocked ? 'border-neutral-200 bg-neutral-100 opacity-60' : 'border-neutral-200 bg-neutral-50'
       }`}
     >
@@ -1001,7 +1095,7 @@ function QcCheckpointCard({
             'bg-amber-100 text-amber-700'
           }`}
         >
-          {status}
+          {currentStatus}
         </span>
       </div>
 
@@ -1069,14 +1163,22 @@ function QcCheckpointCard({
             <button
               disabled={submitting !== null}
               onClick={() => handleSave('passed')}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold py-1.5 px-3 rounded transition-colors"
+              className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded transition-all cursor-pointer ${
+                isPassed
+                  ? 'bg-green-700 text-white ring-2 ring-green-500 shadow-xs'
+                  : 'bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
+              }`}
             >
               {submitting === 'passed' ? 'Saving…' : '✓ Pass'}
             </button>
             <button
               disabled={submitting !== null}
               onClick={() => handleSave('failed')}
-              className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-semibold py-1.5 px-3 rounded transition-colors"
+              className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded transition-all cursor-pointer ${
+                isFailed
+                  ? 'bg-red-700 text-white ring-2 ring-red-500 shadow-xs'
+                  : 'bg-red-600 hover:bg-red-700 text-white disabled:opacity-50'
+              }`}
             >
               {submitting === 'failed' ? 'Saving…' : '✕ Fail'}
             </button>

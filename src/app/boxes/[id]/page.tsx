@@ -670,7 +670,7 @@ export default function BoxDetailPage(): React.ReactElement {
               const currentSelectValue =
                 box.status === 'completed'
                   ? 'completed'
-                  : box.pickup_status === 'picked_up' && box.received_at && box.decisions_locked_at
+                  : box.pickup_status === 'picked_up' && Boolean(box.received_at)
                   ? 'received_at_warehouse'
                   : box.pickup_status === 'picked_up'
                   ? 'picked_up'

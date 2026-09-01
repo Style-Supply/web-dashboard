@@ -33,6 +33,7 @@ export interface Box {
   decisions_locked_at: string | null;
   pickup_status: string | null;
   tracking_number: string | null;
+  updated_at?: string | null;
   profiles?: { id: string; full_name: string | null; phone: string | null };
 }
 

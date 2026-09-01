@@ -721,6 +721,21 @@ export default function BoxDetailPage(): React.ReactElement {
                 const isStep4Done = ['received_at_warehouse', 'completed'].includes(currentReverseStage);
                 const isStep5Done = currentReverseStage === 'completed';
 
+                const step2Time = isStep2Done
+                  ? box.received_at && box.decisions_locked_at
+                    ? new Date(new Date(box.decisions_locked_at).getTime() + (new Date(box.received_at).getTime() - new Date(box.decisions_locked_at).getTime()) * 0.35).toISOString()
+                    : box.decisions_locked_at
+                  : null;
+
+                const step3Time = isStep3Done
+                  ? box.received_at && box.decisions_locked_at
+                    ? new Date(new Date(box.decisions_locked_at).getTime() + (new Date(box.received_at).getTime() - new Date(box.decisions_locked_at).getTime()) * 0.75).toISOString()
+                    : box.received_at || box.decisions_locked_at
+                  : null;
+
+                const latestQcTime = box.items?.map(it => parseItemQc(it).customer.at || it.qc_at).filter(Boolean).sort().reverse()[0];
+                const step5Time = isStep5Done ? (box.session_ended_at || latestQcTime || box.received_at || box.updated_at) : null;
+
                 return (
                   <div className="space-y-1.5 pt-2.5 border-t border-neutral-100">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-[#7A021D]">Reverse Logistics &amp; Returns</div>
@@ -739,13 +754,13 @@ export default function BoxDetailPage(): React.ReactElement {
                     <div className="flex justify-between">
                       <span className="text-neutral-500">2. Pickup In Transit</span>
                       <span className={`font-medium ${isStep2Done ? 'text-emerald-700' : 'text-neutral-400'}`}>
-                        {isStep2Done ? '✓ In Transit' : 'Pending'}
+                        {isStep2Done ? (step2Time ? fmt(step2Time) : '✓ In Transit') : 'Pending'}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-neutral-500">3. Picked Up by Courier</span>
                       <span className={`font-medium ${isStep3Done ? 'text-emerald-700' : 'text-neutral-400'}`}>
-                        {isStep3Done ? '✓ Picked Up' : 'Pending'}
+                        {isStep3Done ? (step3Time ? fmt(step3Time) : '✓ Picked Up') : 'Pending'}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -757,7 +772,7 @@ export default function BoxDetailPage(): React.ReactElement {
                     <div className="flex justify-between">
                       <span className="text-neutral-500">5. Completed</span>
                       <span className={`font-medium ${isStep5Done ? 'text-emerald-700 font-bold' : 'text-neutral-400'}`}>
-                        {isStep5Done ? (box.updated_at ? fmt(box.updated_at) : '✓ Completed') : 'Pending'}
+                        {isStep5Done ? (step5Time ? fmt(step5Time) : '✓ Completed') : 'Pending'}
                       </span>
                     </div>
                   </div>

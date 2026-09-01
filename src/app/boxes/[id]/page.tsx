@@ -674,25 +674,93 @@ export default function BoxDetailPage(): React.ReactElement {
           {/* Timeline */}
           <div className="rounded-xl border border-neutral-200 bg-white p-4">
             <h2 className="text-xs font-semibold uppercase text-neutral-400 mb-3">Timeline</h2>
-            <div className="space-y-1.5 text-xs">
-              {[
-                ['Confirmed', box.confirmed_at],
-                ['Paid', box.paid_at],
-                ['Packing', box.packing_at],
-                ['Dispatched', box.out_for_delivery_at],
-                ['Outbound Delivered', box.delivered_at],
-                ['Member Received Box', box.received_at],
-                ['Session Start', box.session_started_at],
-                ['Session End', box.session_ended_at],
-                ['Decisions Locked', box.decisions_locked_at],
-                ['Returns Received at Warehouse', box.pickup_status === 'received_at_warehouse' || box.status === 'completed' ? (box.updated_at || box.decisions_locked_at) : null],
-              ].filter(([, v]) => v).map(([label, value]) => (
-                <div key={String(label)} className="flex justify-between">
-                  <span className="text-neutral-400">{label}</span>
-                  <span className="text-neutral-600">{fmt(value as string)}</span>
-                </div>
-              ))}
-              {!box.confirmed_at && !box.paid_at && (
+            <div className="space-y-3 text-xs">
+              {/* Outbound Logistics */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Outbound Journey</div>
+                {[
+                  ['Confirmed', box.confirmed_at],
+                  ['Paid', box.paid_at],
+                  ['Packing', box.packing_at],
+                  ['Dispatched', box.out_for_delivery_at],
+                  ['Delivered', box.delivered_at],
+                  ['Session Start', box.session_started_at],
+                  ['Session End', box.session_ended_at],
+                ].filter(([, v]) => v).map(([label, value]) => (
+                  <div key={String(label)} className="flex justify-between">
+                    <span className="text-neutral-500">{label}</span>
+                    <span className="text-neutral-700 font-medium">{fmt(value as string)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Reverse Logistics & Returns (if returns started or items decided) */}
+              {(() => {
+                const currentReverseStage =
+                  box.status === 'completed'
+                    ? 'completed'
+                    : box.pickup_status === 'picked_up' && Boolean(box.received_at)
+                    ? 'received_at_warehouse'
+                    : box.pickup_status === 'picked_up'
+                    ? 'picked_up'
+                    : box.pickup_status === 'in_transit'
+                    ? 'in_transit'
+                    : 'scheduled';
+
+                const isReturnActive = box.status === 'returns_review' || box.status === 'completed' || Boolean(box.pickup_status) || box.items?.some(i => i.decision === 'return' || i.decision === 'rent');
+
+                if (!isReturnActive && !box.decisions_locked_at) return null;
+
+                const isStep1Done = Boolean(box.pickup_status) || box.status === 'returns_review' || box.status === 'completed';
+                const isStep2Done = ['in_transit', 'picked_up', 'received_at_warehouse', 'completed'].includes(currentReverseStage);
+                const isStep3Done = ['picked_up', 'received_at_warehouse', 'completed'].includes(currentReverseStage);
+                const isStep4Done = ['received_at_warehouse', 'completed'].includes(currentReverseStage);
+                const isStep5Done = currentReverseStage === 'completed';
+
+                return (
+                  <div className="space-y-1.5 pt-2.5 border-t border-neutral-100">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#7A021D]">Reverse Logistics &amp; Returns</div>
+                    {box.decisions_locked_at && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-500">Decisions Locked</span>
+                        <span className="text-neutral-700 font-medium">{fmt(box.decisions_locked_at)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">1. Pickup Scheduled</span>
+                      <span className={`font-medium ${isStep1Done ? 'text-emerald-700' : 'text-neutral-400'}`}>
+                        {isStep1Done ? (fmt(box.decisions_locked_at) !== '—' ? fmt(box.decisions_locked_at) : '✓ Scheduled') : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">2. Pickup In Transit</span>
+                      <span className={`font-medium ${isStep2Done ? 'text-emerald-700' : 'text-neutral-400'}`}>
+                        {isStep2Done ? '✓ In Transit' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">3. Picked Up by Courier</span>
+                      <span className={`font-medium ${isStep3Done ? 'text-emerald-700' : 'text-neutral-400'}`}>
+                        {isStep3Done ? '✓ Picked Up' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">4. Received at Warehouse</span>
+                      <span className={`font-medium ${isStep4Done ? 'text-emerald-700' : 'text-neutral-400'}`}>
+                        {isStep4Done && box.received_at ? fmt(box.received_at) : isStep4Done ? '✓ At Warehouse' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">5. Completed</span>
+                      <span className={`font-medium ${isStep5Done ? 'text-emerald-700 font-bold' : 'text-neutral-400'}`}>
+                        {isStep5Done ? (box.updated_at ? fmt(box.updated_at) : '✓ Completed') : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {!box.confirmed_at && !box.paid_at && !box.decisions_locked_at && (
                 <div className="text-neutral-300 italic">No timeline events yet</div>
               )}
             </div>

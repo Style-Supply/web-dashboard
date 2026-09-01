@@ -83,11 +83,13 @@ function parseItemQc(item: any) {
     status: item?.received_from_brand_qc_status ?? 'pending',
     notes: item?.received_from_brand_qc_notes ?? '',
     images: Array.isArray(item?.received_from_brand_qc_images) ? (item.received_from_brand_qc_images as string[]) : ([] as string[]),
+    at: (item?.received_from_brand_qc_at as string | undefined) ?? (item?.brand_qc_at as string | undefined) ?? undefined,
   };
   let customer = {
     status: item?.qc_status ?? 'pending',
     notes: item?.qc_notes ?? '',
     images: Array.isArray(item?.qc_images) ? (item.qc_images as string[]) : ([] as string[]),
+    at: (item?.qc_at as string | undefined) ?? undefined,
   };
 
   const rawNotes = item?.qc_notes;
@@ -99,6 +101,7 @@ function parseItemQc(item: any) {
           status: parsed.brand.status ?? brand.status,
           notes: parsed.brand.notes ?? brand.notes,
           images: Array.isArray(parsed.brand.images) ? parsed.brand.images : brand.images,
+          at: parsed.brand.at ?? brand.at,
         };
       }
       if (parsed.customer) {
@@ -106,6 +109,7 @@ function parseItemQc(item: any) {
           status: parsed.customer.status ?? customer.status,
           notes: parsed.customer.notes ?? customer.notes,
           images: Array.isArray(parsed.customer.images) ? parsed.customer.images : customer.images,
+          at: parsed.customer.at ?? customer.at,
         };
       }
     } catch {}
@@ -775,7 +779,7 @@ export default function BoxDetailPage(): React.ReactElement {
                       const isCustFail = qcData.customer.status === 'failed';
 
                       return (
-                        <div key={`timeline-qc-${item.id}`} className="rounded-lg bg-neutral-50 p-2 space-y-1 border border-neutral-100">
+                        <div key={`timeline-qc-${item.id}`} className="rounded-lg bg-neutral-50 p-2 space-y-1.5 border border-neutral-100">
                           <div className="flex items-center justify-between font-semibold text-neutral-800 text-[11px]">
                             <span className="truncate max-w-[70%]">{item.product.name}</span>
                             <span className="text-[10px] text-neutral-500 font-normal capitalize">({item.decision})</span>
@@ -783,24 +787,34 @@ export default function BoxDetailPage(): React.ReactElement {
 
                           <div className="flex items-center justify-between text-[10px]">
                             <span className="text-neutral-500">1. Brand Inbound</span>
-                            <span
-                              className={`font-semibold ${
-                                isBrandPass ? 'text-emerald-700' : isBrandFail ? 'text-red-700' : 'text-neutral-400'
-                              }`}
-                            >
-                              {isBrandPass ? '✓ Passed' : isBrandFail ? '✕ Failed' : 'Pending'}
-                            </span>
+                            <div className="text-right">
+                              <span
+                                className={`font-semibold ${
+                                  isBrandPass ? 'text-emerald-700' : isBrandFail ? 'text-red-700' : 'text-neutral-400'
+                                }`}
+                              >
+                                {isBrandPass ? '✓ Passed' : isBrandFail ? '✕ Failed' : 'Pending'}
+                              </span>
+                              {qcData.brand.at && (
+                                <span className="block text-[9px] text-neutral-400 font-normal">{fmt(qcData.brand.at)}</span>
+                              )}
+                            </div>
                           </div>
 
                           <div className="flex items-center justify-between text-[10px]">
                             <span className="text-neutral-500">2. Customer Return</span>
-                            <span
-                              className={`font-semibold ${
-                                isCustPass ? 'text-emerald-700' : isCustFail ? 'text-red-700' : 'text-neutral-400'
-                              }`}
-                            >
-                              {isCustPass ? '✓ Passed' : isCustFail ? '✕ Failed' : 'Pending'}
-                            </span>
+                            <div className="text-right">
+                              <span
+                                className={`font-semibold ${
+                                  isCustPass ? 'text-emerald-700' : isCustFail ? 'text-red-700' : 'text-neutral-400'
+                                }`}
+                              >
+                                {isCustPass ? '✓ Passed' : isCustFail ? '✕ Failed' : 'Pending'}
+                              </span>
+                              {(qcData.customer.at || item.qc_at) && (
+                                <span className="block text-[9px] text-neutral-400 font-normal">{fmt(qcData.customer.at || item.qc_at)}</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -1085,6 +1099,7 @@ export default function BoxDetailPage(): React.ReactElement {
                         itemId={item.id}
                         isLocked={false}
                         onUpdate={(result, notes, images) => {
+                          const now = new Date().toISOString();
                           setBox((prev) => {
                             if (!prev) return prev;
                             return {
@@ -1093,7 +1108,7 @@ export default function BoxDetailPage(): React.ReactElement {
                                 if (it.id !== item.id) return it;
                                 const parsed = parseItemQc(it);
                                 const updatedState = {
-                                  brand: { status: result, notes, images },
+                                  brand: { status: result, notes, images, at: now },
                                   customer: parsed.customer,
                                 };
                                 return {
@@ -1101,6 +1116,7 @@ export default function BoxDetailPage(): React.ReactElement {
                                   received_from_brand_qc_status: result,
                                   received_from_brand_qc_notes: notes,
                                   received_from_brand_qc_images: images,
+                                  received_from_brand_qc_at: now,
                                   qc_notes: JSON.stringify(updatedState),
                                   qc_status: (parsed.customer.status !== 'pending' ? parsed.customer.status : result) as 'pending' | 'passed' | 'failed' | null,
                                 };
@@ -1122,6 +1138,7 @@ export default function BoxDetailPage(): React.ReactElement {
                         itemId={item.id}
                         isLocked={!isCustomerPickupUnlocked}
                         onUpdate={(result, notes, images) => {
+                          const now = new Date().toISOString();
                           setBox((prev) => {
                             if (!prev) return prev;
                             return {
@@ -1131,10 +1148,11 @@ export default function BoxDetailPage(): React.ReactElement {
                                 const parsed = parseItemQc(it);
                                 const updatedState = {
                                   brand: parsed.brand,
-                                  customer: { status: result, notes, images },
+                                  customer: { status: result, notes, images, at: now },
                                 };
                                 return {
                                   ...it,
+                                  qc_at: now,
                                   qc_notes: JSON.stringify(updatedState),
                                   qc_status: result as 'pending' | 'passed' | 'failed' | null,
                                 };

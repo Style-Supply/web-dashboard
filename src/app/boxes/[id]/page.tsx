@@ -572,51 +572,6 @@ export default function BoxDetailPage(): React.ReactElement {
               <button onClick={() => void doAction(() => endSession(box.id), 'Session ended')} disabled={actionLoading} className="rounded-lg bg-pink-100 px-3 py-1 text-xs font-medium text-pink-700 hover:bg-pink-200 disabled:opacity-50">End Session</button>
             </>
           )}
-          {box.status === 'returns_review' && (
-            <div className="flex flex-wrap items-center gap-2">
-              {box.pickup_status !== 'in_transit' && box.pickup_status !== 'picked_up' && (
-                <button
-                  onClick={() => {
-                    const code = prompt('Enter Return Courier Tracking AWB (optional):', box.tracking_number || '');
-                    if (code === null) return;
-                    void doAction(() => setPickupStatus(box.id, 'in_transit', code.trim() || undefined), 'Pickup marked as In Transit');
-                  }}
-                  disabled={actionLoading}
-                  className="rounded-lg bg-cyan-600 px-3 py-1 text-xs font-medium text-white hover:bg-cyan-700 disabled:opacity-50"
-                >
-                  🚚 Dispatch Return Courier
-                </button>
-              )}
-              {box.pickup_status !== 'picked_up' && (
-                <button
-                  onClick={() => void doAction(() => setPickupStatus(box.id, 'picked_up'), 'Pickup marked as Picked Up')}
-                  disabled={actionLoading}
-                  className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-                >
-                  📦 Mark Picked Up
-                </button>
-              )}
-              {!box.received_at && (
-                <button
-                  onClick={() => void doAction(() => markReceived(box.id), 'Returns marked as received at warehouse')}
-                  disabled={actionLoading}
-                  className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  🏢 Receive at Warehouse
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  if (!confirm('Mark this box as completed? Ensure all returned items have finished QC.')) return;
-                  void doAction(() => updateBox(box.id, { status: 'completed' }), 'Box marked as Completed');
-                }}
-                disabled={actionLoading}
-                className="rounded-lg bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-black disabled:opacity-50"
-              >
-                ✨ Complete Box
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Two-column info grid */}
@@ -710,26 +665,50 @@ export default function BoxDetailPage(): React.ReactElement {
 
         {/* Reverse Logistics & Returns Tracking (Active when in returns flow) */}
         {(box.status === 'returns_review' || box.status === 'completed' || box.pickup_status || box.items.some(i => i.decision === 'return' || i.decision === 'rent')) && (
-          <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/40 to-white p-5 space-y-4 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200/60 pb-3">
+          <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/40 to-white p-5 space-y-4 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200/60 pb-3.5">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-base font-bold text-[#2C0505]">Reverse Logistics &amp; Returns Pipeline</span>
-                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-300/60 capitalize">
-                    {box.pickup_status ? box.pickup_status.replace(/_/g, ' ') : 'Pickup Scheduled'}
-                  </span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-0.5">
                   Track reverse courier pickup from member and receive returned garments for Quality Control.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Single Unified Status Changer & Tracking */}
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="pickup-status-select" className="text-xs font-bold text-[#7A021D] uppercase tracking-wider">
+                    Status:
+                  </label>
+                  <select
+                    id="pickup-status-select"
+                    value={box.pickup_status || 'scheduled'}
+                    disabled={actionLoading}
+                    onChange={(e) => {
+                      const newStatus = e.target.value as any;
+                      void doAction(
+                        () => setPickupStatus(box.id, newStatus),
+                        `Status updated to ${newStatus.replace(/_/g, ' ')}`
+                      );
+                    }}
+                    className="rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-[#7A021D] shadow-xs cursor-pointer focus:border-[#7A021D] focus:ring-1 focus:ring-[#7A021D] focus:outline-hidden"
+                  >
+                    <option value="scheduled">📅 1. Pickup Scheduled</option>
+                    <option value="in_transit">🚚 2. In Transit</option>
+                    <option value="picked_up">📦 3. Picked Up</option>
+                    <option value="received_at_warehouse">🏢 4. Received at Warehouse</option>
+                    <option value="completed">✨ 5. Completed</option>
+                  </select>
+                </div>
+
                 {box.tracking_number && (
-                  <div className="text-xs bg-white border border-neutral-200 rounded-lg px-3 py-1 font-mono text-neutral-700">
+                  <div className="text-xs bg-white border border-neutral-200 rounded-lg px-2.5 py-1 font-mono text-neutral-700">
                     AWB: <span className="font-semibold text-black">{box.tracking_number}</span>
                   </div>
                 )}
+
                 <button
                   type="button"
                   onClick={() => {
@@ -741,14 +720,14 @@ export default function BoxDetailPage(): React.ReactElement {
                     );
                   }}
                   disabled={actionLoading}
-                  className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50 shadow-2xs"
+                  className="rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50 shadow-2xs"
                 >
-                  🏷️ {box.tracking_number ? 'Edit AWB' : '+ Add AWB'}
+                  🏷️ {box.tracking_number ? 'Edit AWB' : '+ AWB'}
                 </button>
               </div>
             </div>
 
-            {/* 5-Step Stepper with direct click-to-change */}
+            {/* 5-Step Visual Stepper */}
             {(() => {
               const isStep1Done = Boolean(box.pickup_status) || box.status === 'returns_review' || box.status === 'completed';
               const isStep2Done = ['in_transit', 'picked_up', 'received_at_warehouse', 'completed'].includes(box.pickup_status ?? '') || box.status === 'completed';
@@ -767,103 +746,24 @@ export default function BoxDetailPage(): React.ReactElement {
               return (
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
                   {steps.map((step) => (
-                    <button
+                    <div
                       key={step.key}
-                      type="button"
-                      disabled={actionLoading}
-                      onClick={() => {
-                        void doAction(
-                          () => setPickupStatus(box.id, step.key as any),
-                          `Pickup status changed to ${step.label}`
-                        );
-                      }}
-                      className={`rounded-xl border p-3 text-center transition-all cursor-pointer hover:scale-[1.02] ${
+                      className={`rounded-xl border p-3 text-center transition-all ${
                         step.done
                           ? 'border-emerald-300 bg-emerald-50/80 text-emerald-900 shadow-2xs font-semibold'
-                          : 'border-neutral-200 bg-white/70 text-neutral-400 font-medium hover:border-neutral-300'
+                          : 'border-neutral-200 bg-white/70 text-neutral-400 font-medium'
                       }`}
                     >
                       <div className="text-xl mb-1">{step.icon}</div>
                       <div className="text-xs">{step.label}</div>
                       <div className="text-[10px] mt-1.5 font-bold uppercase tracking-wider">
-                        {step.done ? '✓ Done' : 'Click to Set'}
+                        {step.done ? '✓ Done' : 'Pending'}
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               );
             })()}
-
-            {/* Quick Status Dropdown Controller */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-amber-200/60 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-neutral-700">Quick Status Override:</span>
-                <select
-                  value={box.pickup_status || 'scheduled'}
-                  disabled={actionLoading}
-                  onChange={(e) => {
-                    const newStatus = e.target.value as any;
-                    void doAction(
-                      () => setPickupStatus(box.id, newStatus),
-                      `Pickup status updated to ${newStatus.replace(/_/g, ' ')}`
-                    );
-                  }}
-                  className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 font-semibold text-[#2C0505] shadow-2xs focus:border-[#7A021D] focus:outline-hidden"
-                >
-                  <option value="scheduled">📅 1. Pickup Scheduled</option>
-                  <option value="in_transit">🚚 2. In Transit</option>
-                  <option value="picked_up">📦 3. Picked Up</option>
-                  <option value="received_at_warehouse">🏢 4. Received at Warehouse</option>
-                  <option value="completed">✨ 5. Completed</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {box.pickup_status !== 'in_transit' && box.pickup_status !== 'picked_up' && box.pickup_status !== 'received_at_warehouse' && (
-                  <button
-                    onClick={() => {
-                      const code = prompt('Enter Return Courier Tracking AWB (optional):', box.tracking_number || '');
-                      if (code === null) return;
-                      void doAction(() => setPickupStatus(box.id, 'in_transit', code.trim() || undefined), 'Pickup marked as In Transit');
-                    }}
-                    disabled={actionLoading}
-                    className="rounded-lg bg-cyan-600 px-3 py-1.5 font-medium text-white hover:bg-cyan-700 shadow-2xs disabled:opacity-50"
-                  >
-                    🚚 Dispatch Courier
-                  </button>
-                )}
-                {box.pickup_status !== 'picked_up' && box.pickup_status !== 'received_at_warehouse' && (
-                  <button
-                    onClick={() => void doAction(() => setPickupStatus(box.id, 'picked_up'), 'Pickup marked as Picked Up')}
-                    disabled={actionLoading}
-                    className="rounded-lg bg-amber-600 px-3 py-1.5 font-medium text-white hover:bg-amber-700 shadow-2xs disabled:opacity-50"
-                  >
-                    📦 Mark Picked Up
-                  </button>
-                )}
-                {box.pickup_status !== 'received_at_warehouse' && box.status !== 'completed' && (
-                  <button
-                    onClick={() => void doAction(() => setPickupStatus(box.id, 'received_at_warehouse'), 'Marked as Received at Warehouse')}
-                    disabled={actionLoading}
-                    className="rounded-lg bg-blue-600 px-3 py-1.5 font-medium text-white hover:bg-blue-700 shadow-2xs disabled:opacity-50"
-                  >
-                    🏢 Receive at Warehouse
-                  </button>
-                )}
-                {box.status !== 'completed' && (
-                  <button
-                    onClick={() => {
-                      if (!confirm('Mark this box as completed? Ensure all returned items have finished QC.')) return;
-                      void doAction(() => updateBox(box.id, { status: 'completed' }), 'Box marked as Completed');
-                    }}
-                    disabled={actionLoading}
-                    className="rounded-lg bg-neutral-900 px-3 py-1.5 font-medium text-white hover:bg-black shadow-2xs disabled:opacity-50"
-                  >
-                    ✨ Complete Box
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         )}
 

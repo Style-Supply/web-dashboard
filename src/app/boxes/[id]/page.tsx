@@ -760,6 +760,55 @@ export default function BoxDetailPage(): React.ReactElement {
                 );
               })()}
 
+              {/* Items Quality Control (Two Checkpoints) */}
+              {box.items && box.items.length > 0 && (
+                <div className="space-y-2 pt-2.5 border-t border-neutral-100">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#7A021D]">
+                    Quality Control (2 Checkpoints)
+                  </div>
+                  <div className="space-y-1.5">
+                    {box.items.map((item) => {
+                      const qcData = parseItemQc(item);
+                      const isBrandPass = qcData.brand.status === 'passed';
+                      const isBrandFail = qcData.brand.status === 'failed';
+                      const isCustPass = qcData.customer.status === 'passed';
+                      const isCustFail = qcData.customer.status === 'failed';
+
+                      return (
+                        <div key={`timeline-qc-${item.id}`} className="rounded-lg bg-neutral-50 p-2 space-y-1 border border-neutral-100">
+                          <div className="flex items-center justify-between font-semibold text-neutral-800 text-[11px]">
+                            <span className="truncate max-w-[70%]">{item.product.name}</span>
+                            <span className="text-[10px] text-neutral-500 font-normal capitalize">({item.decision})</span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-neutral-500">1. Brand Inbound</span>
+                            <span
+                              className={`font-semibold ${
+                                isBrandPass ? 'text-emerald-700' : isBrandFail ? 'text-red-700' : 'text-neutral-400'
+                              }`}
+                            >
+                              {isBrandPass ? '✓ Passed' : isBrandFail ? '✕ Failed' : 'Pending'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-neutral-500">2. Customer Return</span>
+                            <span
+                              className={`font-semibold ${
+                                isCustPass ? 'text-emerald-700' : isCustFail ? 'text-red-700' : 'text-neutral-400'
+                              }`}
+                            >
+                              {isCustPass ? '✓ Passed' : isCustFail ? '✕ Failed' : 'Pending'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {!box.confirmed_at && !box.paid_at && !box.decisions_locked_at && (
                 <div className="text-neutral-300 italic">No timeline events yet</div>
               )}

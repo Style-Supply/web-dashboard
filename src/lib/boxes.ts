@@ -86,10 +86,14 @@ export async function addBoxItem(boxId: string, productId: string, variantId: st
   });
 }
 
-export async function updateBoxItem(boxId: string, itemId: string, variantId: string): Promise<void> {
+export async function updateBoxItem(
+  boxId: string,
+  itemId: string,
+  payload: { variant_id?: string; decision?: 'pending' | 'keep' | 'return' | 'rent'; return_reason?: string | null }
+): Promise<void> {
   return request<void>(`/api/admin/boxes/${boxId}/items/${itemId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ variant_id: variantId }),
+    body: JSON.stringify(payload),
   });
 }
 

@@ -183,7 +183,7 @@ function BoxItemEditor({
   const handleVariantChange = async (variantId: string) => {
     setSaving(true);
     try {
-      await updateBoxItem(boxId, item.id, variantId);
+      await updateBoxItem(boxId, item.id, { variant_id: variantId });
       showToast('success', 'Size updated');
       await onRefresh();
     } catch (err) {
@@ -851,9 +851,33 @@ export default function BoxDetailPage(): React.ReactElement {
                         {item.variant.colour && <span className="ml-1 text-xs text-neutral-400">{item.variant.colour}</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${DECISION_COLORS[item.decision] ?? ''}`}>
-                          {item.decision}
-                        </span>
+                        <select
+                          value={item.decision}
+                          disabled={actionLoading}
+                          onChange={async (e) => {
+                            const newDecision = e.target.value as any;
+                            setBox((prev) => {
+                              if (!prev) return prev;
+                              return {
+                                ...prev,
+                                items: prev.items.map((it) => (it.id === item.id ? { ...it, decision: newDecision } : it)),
+                              };
+                            });
+                            try {
+                              await updateBoxItem(box.id, item.id, { decision: newDecision });
+                              showToast('success', `Item decision updated to ${newDecision}`);
+                            } catch (err) {
+                              showToast('error', err instanceof Error ? err.message : 'Failed to update decision');
+                              await load();
+                            }
+                          }}
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize cursor-pointer border-0 shadow-2xs focus:ring-1 focus:ring-black ${DECISION_COLORS[item.decision] ?? ''}`}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="keep">Keep</option>
+                          <option value="return">Return</option>
+                          <option value="rent">Rent</option>
+                        </select>
                         {item.return_reason && (
                           <p className="text-xs text-neutral-400 mt-0.5">{item.return_reason}</p>
                         )}
@@ -901,9 +925,33 @@ export default function BoxDetailPage(): React.ReactElement {
                           <div className="text-xs text-neutral-500">{item.product.brand ?? '—'} · Size: {item.variant.size}</div>
                         </div>
                       </div>
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${DECISION_COLORS[item.decision] ?? ''}`}>
-                        Decision: {item.decision}
-                      </span>
+                      <select
+                        value={item.decision}
+                        disabled={actionLoading}
+                        onChange={async (e) => {
+                          const newDecision = e.target.value as any;
+                          setBox((prev) => {
+                            if (!prev) return prev;
+                            return {
+                              ...prev,
+                              items: prev.items.map((it) => (it.id === item.id ? { ...it, decision: newDecision } : it)),
+                            };
+                          });
+                          try {
+                            await updateBoxItem(box.id, item.id, { decision: newDecision });
+                            showToast('success', `Item decision updated to ${newDecision}`);
+                          } catch (err) {
+                            showToast('error', err instanceof Error ? err.message : 'Failed to update decision');
+                            await load();
+                          }
+                        }}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize cursor-pointer border-0 shadow-2xs focus:ring-1 focus:ring-black ${DECISION_COLORS[item.decision] ?? ''}`}
+                      >
+                        <option value="pending">Decision: Pending</option>
+                        <option value="keep">Decision: Keep</option>
+                        <option value="return">Decision: Return</option>
+                        <option value="rent">Decision: Rent</option>
+                      </select>
                     </div>
 
                     {/* Two Checkpoint Cards */}

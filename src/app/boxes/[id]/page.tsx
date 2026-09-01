@@ -78,36 +78,37 @@ function sessionRemaining(endsAt: string | null | undefined): string {
   return `${h}h ${m}m remaining`;
 }
 
-function parseItemQc(qcNotes?: string | null, rawQcStatus?: string | null) {
-  let brand = { status: 'pending', notes: '', images: [] as string[] };
-  let customer = { status: rawQcStatus ?? 'pending', notes: '', images: [] as string[] };
+function parseItemQc(item: any) {
+  let brand = {
+    status: item?.received_from_brand_qc_status ?? 'pending',
+    notes: item?.received_from_brand_qc_notes ?? '',
+    images: Array.isArray(item?.received_from_brand_qc_images) ? (item.received_from_brand_qc_images as string[]) : ([] as string[]),
+  };
+  let customer = {
+    status: item?.qc_status ?? 'pending',
+    notes: item?.qc_notes ?? '',
+    images: Array.isArray(item?.qc_images) ? (item.qc_images as string[]) : ([] as string[]),
+  };
 
-  if (!qcNotes) {
-    return { brand, customer };
-  }
-
-  try {
-    if (typeof qcNotes === 'string' && qcNotes.startsWith('{') && qcNotes.endsWith('}')) {
-      const parsed = JSON.parse(qcNotes);
+  const rawNotes = item?.qc_notes;
+  if (typeof rawNotes === 'string' && rawNotes.startsWith('{') && rawNotes.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(rawNotes);
       if (parsed.brand) {
         brand = {
-          status: parsed.brand.status ?? 'pending',
-          notes: parsed.brand.notes ?? '',
-          images: Array.isArray(parsed.brand.images) ? parsed.brand.images : [],
+          status: parsed.brand.status ?? brand.status,
+          notes: parsed.brand.notes ?? brand.notes,
+          images: Array.isArray(parsed.brand.images) ? parsed.brand.images : brand.images,
         };
       }
       if (parsed.customer) {
         customer = {
-          status: parsed.customer.status ?? rawQcStatus ?? 'pending',
-          notes: parsed.customer.notes ?? '',
-          images: Array.isArray(parsed.customer.images) ? parsed.customer.images : [],
+          status: parsed.customer.status ?? customer.status,
+          notes: parsed.customer.notes ?? customer.notes,
+          images: Array.isArray(parsed.customer.images) ? parsed.customer.images : customer.images,
         };
       }
-    } else {
-      customer.notes = qcNotes;
-    }
-  } catch {
-    customer.notes = qcNotes;
+    } catch {}
   }
 
   return { brand, customer };
@@ -911,7 +912,7 @@ export default function BoxDetailPage(): React.ReactElement {
             <div className="grid grid-cols-1 gap-4">
               {box.items.map((item) => {
                 const isCustomerPickupUnlocked = box.pickup_status === 'picked_up' || box.status === 'returns_review';
-                const qcData = parseItemQc(item.qc_notes, item.qc_status);
+                const qcData = parseItemQc(item);
 
                 return (
                   <div key={`qc-${item.id}`} className="rounded-xl border border-neutral-200 bg-white p-4 space-y-4">
@@ -973,13 +974,16 @@ export default function BoxDetailPage(): React.ReactElement {
                               ...prev,
                               items: prev.items.map((it) => {
                                 if (it.id !== item.id) return it;
-                                const parsed = parseItemQc(it.qc_notes, it.qc_status);
+                                const parsed = parseItemQc(it);
                                 const updatedState = {
                                   brand: { status: result, notes, images },
                                   customer: parsed.customer,
                                 };
                                 return {
                                   ...it,
+                                  received_from_brand_qc_status: result,
+                                  received_from_brand_qc_notes: notes,
+                                  received_from_brand_qc_images: images,
                                   qc_notes: JSON.stringify(updatedState),
                                   qc_status: (parsed.customer.status !== 'pending' ? parsed.customer.status : result) as 'pending' | 'passed' | 'failed' | null,
                                 };
@@ -1007,7 +1011,7 @@ export default function BoxDetailPage(): React.ReactElement {
                               ...prev,
                               items: prev.items.map((it) => {
                                 if (it.id !== item.id) return it;
-                                const parsed = parseItemQc(it.qc_notes, it.qc_status);
+                                const parsed = parseItemQc(it);
                                 const updatedState = {
                                   brand: parsed.brand,
                                   customer: { status: result, notes, images },

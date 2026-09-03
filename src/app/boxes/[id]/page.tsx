@@ -410,11 +410,11 @@ function EditModal({ box, onClose, onSave, onRefresh }: EditModalProps): React.R
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
             {/* Left Column: Status, Tracking & Profiles */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               
               {/* Card 1: Status & Tracking */}
-              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-4 space-y-4">
-                <div className="flex items-center justify-between border-b border-neutral-200/60 pb-2.5">
+              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-3.5 space-y-3">
+                <div className="flex items-center justify-between border-b border-neutral-200/60 pb-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#2C0505] flex items-center gap-1.5">
                     <span>🚚</span> Status & Tracking
                   </h3>
@@ -425,96 +425,102 @@ function EditModal({ box, onClose, onSave, onRefresh }: EditModalProps): React.R
                   </span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Box Status</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
-                  >
-                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Box Status</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                    >
+                      {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Return Courier AWB Tracking</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">🏷️</span>
-                    <input
-                      type="text"
-                      value={tracking}
-                      onChange={(e) => setTracking(e.target.value)}
-                      placeholder="e.g. BD123456789IN"
-                      className="w-full rounded-xl border border-neutral-200 bg-white pl-8 pr-3 py-2 text-xs font-mono text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
-                    />
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Return AWB Tracking</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">🏷️</span>
+                      <input
+                        type="text"
+                        value={tracking}
+                        onChange={(e) => setTracking(e.target.value)}
+                        placeholder="e.g. BD123456789IN"
+                        className="w-full rounded-xl border border-neutral-200 bg-white pl-7 pr-2.5 py-1.5 text-xs font-mono text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Card 2: Member Account Profile */}
-              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-4 space-y-4">
-                <div className="border-b border-neutral-200/60 pb-2.5">
+              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-3.5 space-y-3">
+                <div className="border-b border-neutral-200/60 pb-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#2C0505] flex items-center gap-1.5">
                     <span>👤</span> Member Account
                   </h3>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Member Full Name</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Member account name"
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
-                  />
-                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Member Full Name</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Member account name"
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Member Phone</label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Member phone number"
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-mono text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
-                  />
-                  <p className="text-[10px] text-neutral-400 mt-1">Updates member's global account profile.</p>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Member Phone</label>
+                    <input
+                      type="text"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Member phone number"
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-mono text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                    />
+                  </div>
                 </div>
+                <p className="text-[10px] text-neutral-400">Updates member's global account profile.</p>
               </div>
 
               {/* Card 3: Delivery Receiver Info */}
-              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-4 space-y-4">
-                <div className="border-b border-neutral-200/60 pb-2.5">
+              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-3.5 space-y-3">
+                <div className="border-b border-neutral-200/60 pb-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#2C0505] flex items-center gap-1.5">
                     <span>📍</span> Delivery Receiver
                   </h3>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Receiver Name</label>
-                  <input
-                    type="text"
-                    value={receiverName}
-                    onChange={(e) => setReceiverName(e.target.value)}
-                    placeholder="Designated receiver name"
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
-                  />
-                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Receiver Name</label>
+                    <input
+                      type="text"
+                      value={receiverName}
+                      onChange={(e) => setReceiverName(e.target.value)}
+                      placeholder="Designated receiver name"
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Receiver Mobile Number</label>
-                  <input
-                    type="text"
-                    value={receiverPhone}
-                    onChange={(e) => setReceiverPhone(e.target.value)}
-                    placeholder="+91..."
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-mono text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
-                  />
-                  <p className="text-[10px] text-neutral-400 mt-1">Updates delivery address without altering member profile.</p>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Receiver Mobile</label>
+                    <input
+                      type="text"
+                      value={receiverPhone}
+                      onChange={(e) => setReceiverPhone(e.target.value)}
+                      placeholder="+91..."
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-mono text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                    />
+                  </div>
                 </div>
+                <p className="text-[10px] text-neutral-400">Updates delivery address without altering member profile.</p>
               </div>
 
             </div>

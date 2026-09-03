@@ -43,7 +43,7 @@ export default function ProductDrawer({
         subcategory_id: null, sub_subcategory_id: null, material_id: null,
         fabric_details: null, description: null, retail_price_minor: 0,
         rent_price_minor: null, currency: 'INR', is_rentable: true, is_buyable: true, size_chart_url: null, status: 'draft',
-        variants: [{ size: 'M', colour_id: null, custom_colour: null, quantity: 0, location_id: null }],
+        variants: [{ size: 'M', colour_id: null, custom_colour: null, quantity: 0, location_id: null, sku: null }],
         look_ids: [],
       });
       setImages([]);
@@ -83,6 +83,7 @@ export default function ProductDrawer({
             custom_colour: v.custom_colour,
             quantity: v.quantity,
             location_id: v.location?.id ?? null,
+            sku: v.sku ?? null,
           })),
           look_ids: p.looks.map((l) => l.id),
         });

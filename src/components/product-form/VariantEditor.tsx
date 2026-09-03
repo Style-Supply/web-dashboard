@@ -12,6 +12,7 @@ const SIZES: ProductVariant['size'][] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL
 export interface VariantEditorProps {
   value: ProductVariant[];
   onChange: (next: ProductVariant[]) => void;
+  productSku?: string | null;
 }
 
 function tupleKey(v: ProductVariant): string {
@@ -97,17 +98,29 @@ function QuickAdjust({
   );
 }
 
-export default function VariantEditor({ value, onChange }: VariantEditorProps): React.ReactElement {
+export default function VariantEditor({ value, onChange, productSku }: VariantEditorProps): React.ReactElement {
   const { colours, locations, loading } = useTaxonomy();
   const defaultLocationId = locations[0]?.id ?? null;
 
   if (loading) return <div className="text-sm text-neutral-400">Loading…</div>;
 
   function add() {
+    const nextSku = productSku?.trim() ? `${productSku.trim()}-M` : null;
     onChange([
       ...value,
-      { size: 'M', colour_id: null, custom_colour: null, quantity: 1, location_id: defaultLocationId },
+      { size: 'M', colour_id: null, custom_colour: null, quantity: 1, location_id: defaultLocationId, sku: nextSku },
     ]);
+  }
+
+  function autoFillSkus() {
+    if (!productSku || !productSku.trim()) return;
+    const base = productSku.trim();
+    onChange(
+      value.map((v) => {
+        if (v.sku && v.sku.trim()) return v;
+        return { ...v, sku: `${base}-${v.size}` };
+      })
+    );
   }
 
   function update(index: number, patch: Partial<ProductVariant>) {
@@ -138,14 +151,26 @@ export default function VariantEditor({ value, onChange }: VariantEditorProps): 
               Variants: <strong className="font-semibold text-neutral-900">{value.length}</strong>
             </span>
           </div>
-          {outOfStockCount > 0 && (
-            <span className="font-medium text-amber-700">
-              {outOfStockCount} variant{outOfStockCount > 1 ? 's' : ''} out of stock
-            </span>
-          )}
-          {outOfStockCount === 0 && (
-            <span className="font-medium text-emerald-700">● Available</span>
-          )}
+          <div className="flex items-center gap-3">
+            {productSku && (
+              <button
+                type="button"
+                onClick={autoFillSkus}
+                className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 hover:border-[#7A021D] hover:text-[#7A021D] shadow-2xs transition-colors cursor-pointer"
+                title={`Auto-populate empty variant SKUs with prefix ${productSku}-{size}`}
+              >
+                ⚡ Auto-fill SKUs ({productSku}-*)
+              </button>
+            )}
+            {outOfStockCount > 0 && (
+              <span className="font-medium text-amber-700">
+                {outOfStockCount} variant{outOfStockCount > 1 ? 's' : ''} out of stock
+              </span>
+            )}
+            {outOfStockCount === 0 && (
+              <span className="font-medium text-emerald-700">● Available</span>
+            )}
+          </div>
         </div>
       )}
 
@@ -162,26 +187,45 @@ export default function VariantEditor({ value, onChange }: VariantEditorProps): 
                 : 'border-neutral-200 bg-white hover:border-neutral-300'
             }`}
           >
-            {/* Row 1: Size + Color + Location */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
-              <DropdownSelect
-                value={v.size}
-                allowClear={false}
-                options={SIZES.map((s) => ({ value: s, label: s }))}
-                onChange={(val) => update(i, { size: val as ProductVariant['size'] })}
-              />
-              <ColourPicker
-                value={{ colour_id: v.colour_id, custom_colour: v.custom_colour }}
-                colours={colours}
-                onChange={(p) => update(i, { colour_id: p.colour_id, custom_colour: p.custom_colour })}
-              />
-              <DropdownSelect
-                value={v.location_id || defaultLocationId}
-                options={locations.map((l) => ({ value: l.id, label: l.name }))}
-                placeholder="Location"
-                allowClear={false}
-                onChange={(val) => update(i, { location_id: val })}
-              />
+            {/* Row 1: Size + Color + Location + Variant SKU */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-neutral-400">Size</label>
+                <DropdownSelect
+                  value={v.size}
+                  allowClear={false}
+                  options={SIZES.map((s) => ({ value: s, label: s }))}
+                  onChange={(val) => update(i, { size: val as ProductVariant['size'] })}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-neutral-400">Colour</label>
+                <ColourPicker
+                  value={{ colour_id: v.colour_id, custom_colour: v.custom_colour }}
+                  colours={colours}
+                  onChange={(p) => update(i, { colour_id: p.colour_id, custom_colour: p.custom_colour })}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-neutral-400">Location</label>
+                <DropdownSelect
+                  value={v.location_id || defaultLocationId}
+                  options={locations.map((l) => ({ value: l.id, label: l.name }))}
+                  placeholder="Location"
+                  allowClear={false}
+                  onChange={(val) => update(i, { location_id: val })}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-neutral-400">Variant SKU</label>
+                <input
+                  type="text"
+                  placeholder={productSku ? `${productSku}-${v.size}` : 'Variant SKU'}
+                  value={v.sku ?? ''}
+                  onChange={(e) => update(i, { sku: e.target.value.trim() ? e.target.value : null })}
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-xs font-mono text-neutral-800 placeholder:text-neutral-400 focus:border-[#7A021D] focus:ring-1 focus:ring-[#7A021D] outline-none transition-colors"
+                />
+              </div>
             </div>
 
             {/* Row 2: Quantity + badge + quick adjust + remove */}

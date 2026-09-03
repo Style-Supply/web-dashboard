@@ -236,7 +236,7 @@ function BoxItemEditor({
         >
           {(item.product.variants || []).map((v) => (
             <option key={v.id} value={v.id} disabled={v.quantity <= 0}>
-              {v.size} {v.colour?.name ? `(${v.colour.name})` : ''} {v.quantity <= 0 ? '- Out of Stock' : ''}
+              {v.size} {v.colour?.name ? `(${v.colour.name})` : ''} {v.sku ? `[SKU: ${v.sku}]` : ''} {v.quantity <= 0 ? '- Out of Stock' : ''}
             </option>
           ))}
         </select>
@@ -405,7 +405,7 @@ function EditModal({ box, onClose, onSave, onRefresh }: EditModalProps): React.R
                     >
                       {selectedProduct.variants.map((v) => (
                         <option key={v.id} value={v.id} disabled={v.quantity <= 0}>
-                          {v.size} {v.colour?.name ? `(${v.colour.name})` : ''} {v.quantity <= 0 ? '- Out of Stock' : ''}
+                          {v.size} {v.colour?.name ? `(${v.colour.name})` : ''} {v.sku ? `[SKU: ${v.sku}]` : ''} {v.quantity <= 0 ? '- Out of Stock' : ''}
                         </option>
                       ))}
                     </select>

@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 
-const SAMPLE_CSV = `name,sku,brand,category_type,subcategory,sub_subcategory,material,fabric_details,description,retail_price_inr,rent_price_inr,currency,is_rentable,is_buyable,collection,status,variant_size,variant_colour,variant_quantity,variant_location,image_urls
-Veira- beige dress,RBL-002,Ranu Beniwal,Women,Dresses,,Cotton-Linen Blend,"Main Fabric: Cotton-Linen Blend. Lining: 100% Recycled Cotton.",,26500,2500,INR,TRUE,TRUE,,draft,S,Beige,1,Pune,
-Solaya Top,RBL-006,Ranu Beniwal,Women,Tops,,100% Cotton Slub,"Main Fabric: 100% Cotton Slub. Lining: 100% Recycled Cotton.",,13900,1390,INR,TRUE,TRUE,,draft,XS,Yellow,1,Pune,
-Solaya Top,RBL-006,,,,,,,,,,,,,,,S,Yellow,1,Pune,
-Solaya Top,RBL-006,,,,,,,,,,,,,,,M,Yellow,1,Pune,`;
+const SAMPLE_CSV = `name,sku,brand,category_type,subcategory,sub_subcategory,material,fabric_details,description,retail_price_inr,rent_price_inr,currency,is_rentable,is_buyable,collection,status,variant_size,variant_colour,variant_quantity,variant_location,variant_sku,image_urls
+Veira- beige dress,RBL-002,Ranu Beniwal,Women,Dresses,,Cotton-Linen Blend,"Main Fabric: Cotton-Linen Blend. Lining: 100% Recycled Cotton.",,26500,2500,INR,TRUE,TRUE,,draft,S,Beige,1,Pune,RBL-002-S,
+Solaya Top,RBL-006,Ranu Beniwal,Women,Tops,,100% Cotton Slub,"Main Fabric: 100% Cotton Slub. Lining: 100% Recycled Cotton.",,13900,1390,INR,TRUE,TRUE,,draft,XS,Yellow,1,Pune,RBL-006-XS,
+Solaya Top,RBL-006,,,,,,,,,,,,,,,S,Yellow,1,Pune,RBL-006-S,
+Solaya Top,RBL-006,,,,,,,,,,,,,,,M,Yellow,1,Pune,RBL-006-M,`;
 
 export default function BatchGuide({ onClose }: { onClose?: () => void }): React.ReactElement {
   const [copied, setCopied] = useState(false);
@@ -301,6 +301,12 @@ export default function BatchGuide({ onClose }: { onClose?: () => void }): React
                 <td className="px-3.5 py-2 font-mono font-bold text-[#7A021D]">variant_location</td>
                 <td className="px-3.5 py-2">Text</td>
                 <td className="px-3.5 py-2">Store / Warehouse name (e.g. <code>Pune</code>, <code>Mumbai</code>)</td>
+                <td className="px-3.5 py-2 text-neutral-500">Optional</td>
+              </tr>
+              <tr>
+                <td className="px-3.5 py-2 font-mono font-bold text-[#7A021D]">variant_sku</td>
+                <td className="px-3.5 py-2">Text</td>
+                <td className="px-3.5 py-2">Variant SKU code (e.g. <code>RBL-006-XS</code>)</td>
                 <td className="px-3.5 py-2 text-neutral-500">Optional</td>
               </tr>
               <tr>

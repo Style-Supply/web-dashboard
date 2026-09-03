@@ -68,7 +68,7 @@ export default function BatchPreviewTable({
                     <ul className="mt-1 space-y-0.5">
                       {(p.variants ?? []).map((v, vi) => (
                         <li key={vi}>
-                          {v.size} / {v.colour_slug ?? v.custom_colour ?? '—'} / qty {v.quantity} / {v.location_slug ?? '—'}
+                          {v.size} / {v.colour_slug ?? v.custom_colour ?? '—'} / qty {v.quantity} / {v.location_slug ?? '—'}{v.sku ? ` / SKU: ${v.sku}` : ''}
                         </li>
                       ))}
                     </ul>

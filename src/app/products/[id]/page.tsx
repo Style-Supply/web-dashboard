@@ -55,6 +55,7 @@ export default function EditProductPage({
             custom_colour: v.custom_colour,
             quantity: v.quantity,
             location_id: v.location?.id ?? null,
+            sku: v.sku ?? null,
           })),
           look_ids: product.looks.map((l) => l.id),
         });

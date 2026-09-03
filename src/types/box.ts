@@ -64,9 +64,10 @@ export interface BoxItemDetail {
       size: string;
       colour: { name: string } | null;
       quantity: number;
+      sku?: string | null;
     }>;
   };
-  variant: { id: string; size: string; colour: string | null };
+  variant: { id: string; size: string; colour: string | null; sku?: string | null };
 }
 
 export interface BoxDetail extends Box {

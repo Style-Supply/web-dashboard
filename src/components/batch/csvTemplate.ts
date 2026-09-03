@@ -21,6 +21,7 @@ export const CSV_COLUMNS = [
   'variant_colour',
   'variant_quantity',
   'variant_location',
+  'variant_sku',
   'image_urls',
 ] as const;
 
@@ -58,6 +59,7 @@ export const EXPECTED_COLUMNS = [
   'variant_colour',
   'variant_quantity',
   'variant_location',
+  'variant_sku',
   'image_urls',
 ];
 
@@ -207,6 +209,7 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
             custom_colour: v.custom_colour || v.colour || v.color || null,
             quantity: Number(v.quantity ?? 1),
             location_slug: v.location_slug || v.location || null,
+            sku: v.sku || v.variant_sku || null,
           }));
         }
       } catch {
@@ -219,14 +222,16 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
       const vColour = getVal(r, ['variant_colour', 'variant_color', 'colour', 'color', 'custom_colour', 'shade', 'color_name']);
       const vQtyStr = getVal(r, ['variant_quantity', 'variant_qty', 'quantity', 'qty', 'stock', 'inventory', 'count']);
       const vLoc = getVal(r, ['variant_location', 'location', 'warehouse', 'store', 'location_name']);
+      const vSku = getVal(r, ['variant_sku', 'v_sku', 'sku_variant', 'varsku']);
 
-      if (vSize || vColour || vQtyStr || vLoc) {
+      if (vSize || vColour || vQtyStr || vLoc || vSku) {
         variants.push({
           size: normalizeSize(vSize || 'Free'),
           colour_slug: vColour || null,
           custom_colour: vColour || null,
           quantity: vQtyStr ? parseInt(vQtyStr, 10) || 0 : 1,
           location_slug: vLoc || null,
+          sku: vSku || null,
         });
       }
     }

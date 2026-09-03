@@ -5,6 +5,7 @@ export interface ProductVariant {
   custom_colour: string | null;
   quantity: number;
   location_id: string | null;
+  sku?: string | null;
 }
 
 export interface ProductImage {
@@ -57,6 +58,7 @@ export interface Product {
     custom_colour: string | null;
     quantity: number;
     location: ProductLocationRef | null;
+    sku?: string | null;
   }>;
   images: ProductImage[];
   looks: ProductLookRef[];
@@ -136,6 +138,7 @@ export interface BatchRowPayload {
     custom_colour?: string | null;
     quantity: number;
     location_slug?: string | null;
+    sku?: string | null;
   }>;
   image_urls?: string[];
 }

@@ -257,7 +257,7 @@ export default function BatchResultsTable({
                                   className="rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-700 shadow-2xs"
                                 >
                                   <strong>{v.size}</strong> • {v.colour_slug ?? v.custom_colour ?? 'Default Color'} • Qty:{' '}
-                                  {v.quantity} • {v.location_slug ?? 'Main'}
+                                  {v.quantity} • {v.location_slug ?? 'Main'}{v.sku ? ` • SKU: ${v.sku}` : ''}
                                 </span>
                               ))}
                             </div>

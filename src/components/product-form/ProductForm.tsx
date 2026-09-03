@@ -134,6 +134,7 @@ export default function ProductForm({
         <VariantEditor
           value={state.variants}
           onChange={(next) => setField('variants', next)}
+          productSku={state.sku}
         />
         <section className="space-y-3">
           <div className="flex items-center justify-between">

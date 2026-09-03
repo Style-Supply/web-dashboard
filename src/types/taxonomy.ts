@@ -21,6 +21,17 @@ export interface Collection {
   looks?: Look[];
 }
 
+export interface LookProduct {
+  id: string;
+  name: string;
+  brand?: { id: string; name: string } | null;
+  thumbnail_url?: string | null;
+  retail_price_minor?: number;
+  rent_price_minor?: number | null;
+  sort_order?: number;
+  is_primary?: boolean;
+}
+
 export interface Look {
   id: string;
   collection_id: string;
@@ -29,6 +40,8 @@ export interface Look {
   description: string | null;
   hero_url: string | null;
   sort_order: number;
+  product_count?: number;
+  products?: LookProduct[];
 }
 
 export interface Category {

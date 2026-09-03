@@ -5,8 +5,9 @@ import { Collections, Looks } from '@/lib/taxonomy-api';
 import { useToast } from '@/components/ui/Toast';
 import { invalidateTaxonomyCache } from '@/hooks/useTaxonomy';
 import { supabase } from '@/lib/supabase';
-import { API_BASE, ApiError } from '@/lib/api';
-import type { Collection, Look } from '@/types/taxonomy';
+import { API_BASE, ApiError, request } from '@/lib/api';
+import type { Collection, Look, LookProduct } from '@/types/taxonomy';
+import type { Product, ProductListResponse } from '@/types/product';
 
 /* ─── upload helper for collection hero ──────────────────── */
 async function uploadCollectionHero(file: File): Promise<string> {
@@ -390,6 +391,461 @@ function CollectionDrawer({
   );
 }
 
+/* ─── Look Editor Modal ─────────────────────────────────────── */
+interface LookEditorModalProps {
+  look: Look;
+  onClose: () => void;
+  onLookUpdated: () => Promise<void>;
+}
+
+function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps) {
+  const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Look info state
+  const [name, setName] = useState(look.name);
+  const [description, setDescription] = useState(look.description ?? '');
+  const [heroUrl, setHeroUrl] = useState<string | null>(look.hero_url);
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Attached products state
+  const [products, setProducts] = useState<LookProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
+  // Catalog search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [addingProductId, setAddingProductId] = useState<string | null>(null);
+
+  const loadProducts = useCallback(async () => {
+    setLoadingProducts(true);
+    try {
+      const res = await Looks.getProducts(look.id);
+      setProducts(res.items ?? []);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to load look products');
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, [look.id]);
+
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await request<ProductListResponse>(`/api/admin/products?q=${encodeURIComponent(searchQuery)}&limit=8`);
+        setSearchResults(res.items ?? []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Save Name & Description
+  async function handleSaveDetails() {
+    if (!name.trim()) {
+      showToast('error', 'Look name is required');
+      return;
+    }
+    setSavingDetails(true);
+    try {
+      await Looks.update(look.id, {
+        name: name.trim(),
+        description: description.trim() || null,
+        hero_url: heroUrl,
+      });
+      showToast('success', 'Look details saved');
+      await onLookUpdated();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to update look');
+    } finally {
+      setSavingDetails(false);
+    }
+  }
+
+  // Upload image
+  async function handleImageFile(file: File) {
+    setUploadingImage(true);
+    try {
+      const url = await Looks.uploadImage(file);
+      setHeroUrl(url);
+      await Looks.update(look.id, { hero_url: url });
+      showToast('success', 'Look image updated');
+      await onLookUpdated();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Image upload failed');
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  // Remove image
+  async function handleRemoveImage() {
+    if (!confirm('Remove image from this look?')) return;
+    setHeroUrl(null);
+    try {
+      await Looks.update(look.id, { hero_url: null });
+      showToast('success', 'Look image removed');
+      await onLookUpdated();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to remove image');
+    }
+  }
+
+  // Add product
+  async function handleAddProduct(p: Product) {
+    setAddingProductId(p.id);
+    try {
+      await Looks.addProduct(look.id, p.id);
+      showToast('success', `Added "${p.name}" to look`);
+      await loadProducts();
+      await onLookUpdated();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to add product');
+    } finally {
+      setAddingProductId(null);
+    }
+  }
+
+  // Remove product
+  async function handleRemoveProduct(productId: string) {
+    try {
+      await Looks.removeProduct(look.id, productId);
+      showToast('success', 'Product removed from look');
+      await loadProducts();
+      await onLookUpdated();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to remove product');
+    }
+  }
+
+  const attachedIds = new Set(products.map((p) => p.id));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl border border-neutral-100 flex flex-col max-h-[92vh] overflow-hidden my-4">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-neutral-100 bg-[#FAF8F5] px-6 py-4 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7A021D]/10 text-[#7A021D] text-lg font-bold">
+              ✦
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-[#2C0505]">Edit Look: {name || 'Untitled'}</h2>
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-mono text-neutral-600">
+                  #{look.id.slice(0, 8)}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Configure look hero photo and attach curated outfit pieces</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Modal Body: 2 Columns */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* Left Column: Image & Details */}
+            <div className="space-y-6">
+              
+              {/* Card 1: Look Hero Image */}
+              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-4 space-y-3.5">
+                <div className="flex items-center justify-between border-b border-neutral-200/60 pb-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#2C0505] flex items-center gap-1.5">
+                    <span>📸</span> Look Image / Editorial Shot
+                  </h3>
+                  {heroUrl && (
+                    <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleImageFile(f);
+                    e.target.value = '';
+                  }}
+                />
+
+                {heroUrl ? (
+                  <div className="space-y-3">
+                    <div className="relative aspect-[3/4] max-h-72 w-full rounded-xl overflow-hidden border border-neutral-200 shadow-sm bg-neutral-100 flex items-center justify-center">
+                      <img src={heroUrl} alt={name} className="h-full w-full object-cover object-top" />
+                      {uploadingImage && (
+                        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white gap-2">
+                          <span className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          <span className="text-xs font-medium">Uploading new image…</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="flex-1 rounded-lg border border-neutral-200 bg-white py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
+                      >
+                        Replace Image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleRemoveImage()}
+                        disabled={uploadingImage}
+                        className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete image"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => !uploadingImage && fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center cursor-pointer hover:border-[#7A021D] hover:bg-[#FFF5F7] transition-all group"
+                  >
+                    {uploadingImage ? (
+                      <div className="flex flex-col items-center gap-2 py-4">
+                        <span className="h-7 w-7 animate-spin rounded-full border-2 border-[#7A021D] border-t-transparent" />
+                        <span className="text-xs font-semibold text-[#7A021D]">Uploading photo…</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="h-10 w-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-500 group-hover:bg-[#7A021D]/10 group-hover:text-[#7A021D] transition-colors">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <p className="text-xs font-semibold text-neutral-700">Click to upload Look image</p>
+                        <p className="text-[11px] text-neutral-400">PNG, JPG, or WEBP up to 4MB</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Card 2: Look Details */}
+              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-4 space-y-3.5">
+                <div className="border-b border-neutral-200/60 pb-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#2C0505] flex items-center gap-1.5">
+                    <span>✏️</span> Look Information
+                  </h3>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Look Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. City Chic"
+                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Editorial Caption / Description</label>
+                  <textarea
+                    rows={2}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Optional styling notes or editorial quote..."
+                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D]"
+                  />
+                </div>
+
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveDetails()}
+                    disabled={savingDetails || !name.trim()}
+                    className="rounded-xl bg-[#7A021D] px-4 py-2 text-xs font-semibold text-white hover:bg-[#600117] transition-colors disabled:opacity-50 shadow-sm"
+                  >
+                    {savingDetails ? 'Saving…' : 'Save Details'}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Column: Products in this Look */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-[#2C0505]">Products in Look</h3>
+                  <p className="text-[11px] text-neutral-400">Curate the complete outfit shown in this look</p>
+                </div>
+                <span className="rounded-full bg-[#7A021D]/10 px-2.5 py-0.5 text-xs font-bold text-[#7A021D]">
+                  {products.length} {products.length === 1 ? 'product' : 'products'}
+                </span>
+              </div>
+
+              {/* Products List */}
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {loadingProducts ? (
+                  <div className="p-6 text-center text-xs text-neutral-400">Loading products…</div>
+                ) : products.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-neutral-200 p-6 text-center text-xs text-neutral-400">
+                    No products added to this look yet. Use the search below to attach items.
+                  </div>
+                ) : (
+                  products.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-neutral-200/80 bg-white hover:border-neutral-300 transition-all shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {p.thumbnail_url ? (
+                          <img src={p.thumbnail_url} alt="" className="h-11 w-9 rounded-lg object-cover flex-shrink-0 border border-neutral-100" />
+                        ) : (
+                          <div className="h-11 w-9 rounded-lg bg-neutral-100 flex items-center justify-center text-[9px] text-neutral-400">No IMG</div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 truncate">
+                            {p.brand?.name ?? '—'}
+                          </p>
+                          <p className="text-xs font-semibold text-[#2C0505] truncate">{p.name}</p>
+                          <p className="text-[11px] text-neutral-500 mt-0.5">
+                            {p.rent_price_minor ? `Rent: ₹${Math.round(p.rent_price_minor / 100)}` : 'Rentable'}
+                            {p.retail_price_minor ? ` · MRP: ₹${Math.round(p.retail_price_minor / 100)}` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleRemoveProduct(p.id)}
+                        className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Remove product from look"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Add Products Section */}
+              <div className="rounded-xl border border-neutral-200 bg-[#FCFAF8] p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#7A021D] flex items-center gap-1.5">
+                    <span>🔍</span> Add Products to Look
+                  </label>
+                  {searching && <span className="text-[11px] text-[#7A021D] animate-pulse">Searching…</span>}
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by product name or SKU…"
+                    className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D]"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="max-h-48 overflow-y-auto divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white shadow-sm [scrollbar-width:none]">
+                    {searchResults.map((p) => {
+                      const isAttached = attachedIds.has(p.id);
+                      const isAdding = addingProductId === p.id;
+                      const thumb = p.images?.[0]?.public_url ?? null;
+                      return (
+                        <div key={p.id} className="p-2 flex items-center justify-between gap-3 hover:bg-[#FDF8F4] transition-colors">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {thumb ? (
+                              <img src={thumb} alt="" className="h-9 w-7.5 rounded object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="h-9 w-7.5 rounded bg-neutral-100 flex items-center justify-center text-[8px]">IMG</div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-[#2C0505] truncate">{p.name}</p>
+                              <p className="text-[10px] text-neutral-400">{p.brand?.name ?? '—'}</p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleAddProduct(p)}
+                            disabled={isAttached || isAdding}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+                              isAttached
+                                ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                                : 'bg-[#7A021D] text-white hover:bg-[#600117] shadow-2xs'
+                            }`}
+                          >
+                            {isAttached ? '✓ Added' : isAdding ? 'Adding…' : '+ Add'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-neutral-100 bg-[#FAF8F5] px-6 py-3 flex-shrink-0">
+          <p className="text-xs text-neutral-400">All look changes and attached products are saved automatically.</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl bg-[#2C0505] px-5 py-2 text-xs font-semibold text-white hover:bg-black transition-colors"
+          >
+            Done
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 /* ─── Manage Looks Drawer ──────────────────────────────────── */
 interface ManageLooksDrawerProps {
   collection: Collection | null;
@@ -397,6 +853,7 @@ interface ManageLooksDrawerProps {
   onClose: () => void;
   onAddLook: (name: string) => Promise<void>;
   onDeleteLook: (lookId: string) => Promise<void>;
+  onRefresh: () => Promise<void>;
 }
 
 function ManageLooksDrawer({
@@ -405,10 +862,12 @@ function ManageLooksDrawer({
   onClose,
   onAddLook,
   onDeleteLook,
+  onRefresh,
 }: ManageLooksDrawerProps) {
   const [newLookName, setNewLookName] = useState('');
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingLook, setEditingLook] = useState<Look | null>(null);
 
   if (!collection) return null;
 
@@ -424,6 +883,7 @@ function ManageLooksDrawer({
   }
 
   async function handleDelete(lookId: string) {
+    if (!confirm('Are you sure you want to delete this look? Any attached products will be unlinked.')) return;
     setDeletingId(lookId);
     try {
       await onDeleteLook(lookId);
@@ -436,20 +896,18 @@ function ManageLooksDrawer({
     <>
       <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-white shadow-2xl"
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl"
         style={{ animation: 'slideInRight .22s ease-out' }}
       >
-        {/* header */}
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-[#2C0505] px-6 py-4">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-neutral-200 bg-[#2C0505] px-6 py-4 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white font-bold">
+              ✦
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white">Looks in {collection.name}</h2>
-              <p className="text-xs text-white/50 mt-0.5">{looks.length} look{looks.length !== 1 ? 's' : ''}</p>
+              <p className="text-xs text-white/50 mt-0.5">{looks.length} look{looks.length !== 1 ? 's' : ''} configured</p>
             </div>
           </div>
           <button
@@ -462,10 +920,10 @@ function ManageLooksDrawer({
           </button>
         </div>
 
-        {/* body */}
+        {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Quick Add Look */}
-          <div className="rounded-xl border border-neutral-200 bg-[#FDF8F4] p-4 space-y-3">
+          <div className="rounded-xl border border-neutral-200 bg-[#FDF8F4] p-4 space-y-2.5">
             <label className="block text-xs font-semibold uppercase tracking-wide text-[#7A021D]">
               Add New Look
             </label>
@@ -475,23 +933,26 @@ function ManageLooksDrawer({
                 onChange={(e) => setNewLookName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleAdd(); }}
                 placeholder="Look name (e.g. Look 01 - Sunset)"
-                className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A021D]/30 focus:border-[#7A021D]"
+                className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#7A021D]/30 focus:border-[#7A021D]"
               />
               <button
                 onClick={() => void handleAdd()}
                 disabled={adding || !newLookName.trim()}
                 className="rounded-lg bg-[#7A021D] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5a0115] disabled:opacity-50 transition-colors shrink-0"
               >
-                {adding ? 'Adding…' : 'Add'}
+                {adding ? 'Adding…' : 'Add Look'}
               </button>
             </div>
           </div>
 
-          {/* Looks list */}
+          {/* Looks List */}
           <div>
-            <h3 className="mb-3 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-              Existing Looks ({looks.length})
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                Existing Looks ({looks.length})
+              </h3>
+              <span className="text-[11px] text-neutral-400">Click a look to manage photo & products</span>
+            </div>
 
             {looks.length === 0 ? (
               <div className="rounded-xl border border-dashed border-neutral-200 p-8 text-center">
@@ -499,36 +960,61 @@ function ManageLooksDrawer({
                 <p className="mt-1 text-[11px] text-neutral-400">Type a name above to add a look</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {looks.map((l) => (
                   <div
                     key={l.id}
-                    className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3 shadow-sm hover:border-neutral-300 transition-all"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white p-3 shadow-xs hover:border-neutral-300 transition-all"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FDF8F4] text-[#7A021D] font-bold text-xs">
-                        ✦
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[#2C0505]">{l.name}</p>
-                        <p className="text-[11px] font-mono text-neutral-400">{l.slug}</p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {l.hero_url ? (
+                        <img src={l.hero_url} alt="" className="h-14 w-11 rounded-lg object-cover flex-shrink-0 border border-neutral-200 shadow-2xs" />
+                      ) : (
+                        <div className="h-14 w-11 rounded-lg bg-neutral-100 flex flex-col items-center justify-center text-[9px] text-neutral-400 flex-shrink-0 border border-neutral-200/60">
+                          <span>📸</span>
+                          <span>No IMG</span>
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-[#2C0505] truncate">{l.name}</p>
+                          <span className="rounded-full bg-[#7A021D]/10 px-2 py-0.5 text-[10px] font-bold text-[#7A021D] shrink-0">
+                            {l.product_count ?? 0} {l.product_count === 1 ? 'product' : 'products'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-mono text-neutral-400 truncate mt-0.5">/{l.slug}</p>
+                        {l.description && (
+                          <p className="text-[11px] text-neutral-500 truncate mt-0.5">{l.description}</p>
+                        )}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => void handleDelete(l.id)}
-                      disabled={deletingId === l.id}
-                      className="rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                      title="Delete look"
-                    >
-                      {deletingId === l.id ? (
-                        <span className="h-4 w-4 block animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setEditingLook(l)}
+                        className="rounded-lg bg-neutral-100 hover:bg-[#7A021D] hover:text-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors flex items-center gap-1"
+                      >
+                        <span>✏️</span> Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(l.id)}
+                        disabled={deletingId === l.id}
+                        className="rounded-lg p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Delete look"
+                      >
+                        {deletingId === l.id ? (
+                          <span className="h-4 w-4 block animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -536,6 +1022,7 @@ function ManageLooksDrawer({
           </div>
         </div>
 
+        {/* Footer */}
         <div className="shrink-0 border-t border-neutral-200 bg-neutral-50 px-6 py-3 text-right">
           <button
             onClick={onClose}
@@ -545,6 +1032,25 @@ function ManageLooksDrawer({
           </button>
         </div>
       </div>
+
+      {/* Look Editor Modal */}
+      {editingLook && (
+        <LookEditorModal
+          look={editingLook}
+          onClose={() => setEditingLook(null)}
+          onLookUpdated={async () => {
+            await onRefresh();
+            // Refresh local editingLook object
+            try {
+              const fresh = await Looks.listFor(collection.id);
+              const updated = fresh.items.find((x) => x.id === editingLook.id);
+              if (updated) setEditingLook(updated);
+            } catch (err) {
+              console.error(err);
+            }
+          }}
+        />
+      )}
     </>
   );
 }
@@ -635,18 +1141,24 @@ export default function CollectionsPage() {
     }
   }
 
+  async function openManagingLooks(col: Collection) {
+    setManagingLooksCol(col);
+    try {
+      const fresh = await Looks.listFor(col.id);
+      setManagingLooksCol((prev) => prev && prev.id === col.id ? { ...prev, looks: fresh.items } : prev);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   // Looks handlers
   async function handleAddLook(collectionId: string, name: string) {
     try {
       await Looks.create({ collection_id: collectionId, name });
       invalidateTaxonomyCache();
       await load();
-      // update active modal collection reference
-      setManagingLooksCol((prev) => {
-        if (!prev) return null;
-        const newLookList = [...(prev.looks ?? []), { id: Date.now().toString(), collection_id: collectionId, name, slug: '', description: null, hero_url: null, sort_order: 0 }];
-        return { ...prev, looks: newLookList };
-      });
+      const fresh = await Looks.listFor(collectionId);
+      setManagingLooksCol((prev) => prev ? { ...prev, looks: fresh.items } : null);
       showToast('success', 'Look added');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to add look');
@@ -658,10 +1170,10 @@ export default function CollectionsPage() {
       await Looks.remove(lookId);
       invalidateTaxonomyCache();
       await load();
-      setManagingLooksCol((prev) => {
-        if (!prev) return null;
-        return { ...prev, looks: (prev.looks ?? []).filter((l) => l.id !== lookId) };
-      });
+      if (managingLooksCol) {
+        const fresh = await Looks.listFor(managingLooksCol.id);
+        setManagingLooksCol((prev) => prev ? { ...prev, looks: fresh.items } : null);
+      }
       showToast('success', 'Look removed');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to delete look');
@@ -865,7 +1377,7 @@ export default function CollectionsPage() {
                     {/* Card Actions */}
                     <div className="mt-5 pt-3 border-t border-neutral-100 flex items-center justify-between">
                       <button
-                        onClick={() => setManagingLooksCol(col)}
+                        onClick={() => void openManagingLooks(col)}
                         className="flex items-center gap-1.5 text-xs font-semibold text-[#7A021D] hover:underline"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -958,7 +1470,7 @@ export default function CollectionsPage() {
                   {/* Looks Count */}
                   <div>
                     <button
-                      onClick={() => setManagingLooksCol(col)}
+                      onClick={() => void openManagingLooks(col)}
                       className="inline-flex items-center gap-1 rounded-lg bg-[#FDF8F4] px-2.5 py-1 text-xs font-semibold text-[#7A021D] hover:bg-[#f5e8e8] transition-colors"
                     >
                       <span>✦</span> {looksCount} Look{looksCount !== 1 ? 's' : ''}
@@ -1006,6 +1518,17 @@ export default function CollectionsPage() {
         onClose={() => setManagingLooksCol(null)}
         onAddLook={(name) => handleAddLook(managingLooksCol!.id, name)}
         onDeleteLook={(lookId) => handleDeleteLook(lookId)}
+        onRefresh={async () => {
+          await load();
+          if (managingLooksCol) {
+            try {
+              const fresh = await Looks.listFor(managingLooksCol.id);
+              setManagingLooksCol((prev) => prev ? { ...prev, looks: fresh.items } : null);
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        }}
       />
 
       {/* eslint-disable-next-line react/no-danger */}

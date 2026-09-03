@@ -1,8 +1,10 @@
-import { request } from './api';
+import { request, API_BASE, ApiError } from './api';
+import { supabase } from '@/lib/supabase';
 import type {
   Brand,
   Collection,
   Look,
+  LookProduct,
   Category,
   CategoryTreeNode,
   Material,
@@ -44,6 +46,33 @@ export const Looks = {
   create: (b: Partial<Look>) => create<Look>('looks', b),
   update: (id: string, b: Partial<Look>) => update<Look>('looks', id, b),
   remove: (id: string) => remove('looks', id),
+  getProducts: (lookId: string) =>
+    request<ListResp<LookProduct>>(`/api/admin/looks/${lookId}/products`),
+  addProduct: (lookId: string, productId: string, isPrimary?: boolean) =>
+    request<{ success: boolean }>(`/api/admin/looks/${lookId}/products`, {
+      method: 'POST',
+      body: JSON.stringify({ product_id: productId, is_primary: isPrimary }),
+    }),
+  removeProduct: (lookId: string, productId: string) =>
+    request<void>(`/api/admin/looks/${lookId}/products/${productId}`, { method: 'DELETE' }),
+  uploadImage: async (file: File): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/api/admin/looks/image-upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: { message: res.statusText } }));
+      throw new ApiError(body?.error?.message ?? res.statusText, res.status, body?.error?.code ?? null);
+    }
+    const result = await res.json() as { url: string };
+    return result.url;
+  },
 };
 
 export const Categories = {

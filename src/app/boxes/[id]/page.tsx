@@ -134,40 +134,76 @@ function ProductSearch({ onSelect }: { onSelect: (p: Product) => void }) {
     const t = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await request<ProductListResponse>(`/api/admin/products?q=${encodeURIComponent(query)}&limit=10`);
+        const res = await request<ProductListResponse>(`/api/admin/products?q=${encodeURIComponent(query)}&limit=8`);
         setResults(res.items);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
-    }, 400);
+    }, 300);
     return () => clearTimeout(t);
   }, [query]);
 
   return (
-    <div className="relative border rounded-lg p-3 bg-neutral-50 mb-4">
-      <label className="block text-xs font-medium text-neutral-600 mb-1">Search Product to Add</label>
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Type product name or SKU..."
-        className="w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm mb-2"
-      />
-      {loading && <div className="text-xs text-neutral-500">Searching...</div>}
-      {!loading && results.length > 0 && (
-        <ul className="max-h-40 overflow-y-auto divide-y border rounded bg-white">
-          {results.map((p) => (
-            <li
-              key={p.id}
-              onClick={() => onSelect(p)}
-              className="p-2 text-sm hover:bg-neutral-100 cursor-pointer flex justify-between"
-            >
-              <span>{p.name} {p.brand?.name ? `(${p.brand.name})` : ''}</span>
-              <span className="text-neutral-500">{p.variants.length} variants</span>
-            </li>
-          ))}
+    <div className="relative rounded-xl border border-dashed border-neutral-300 bg-[#FDFBF9] p-3.5 transition-colors focus-within:border-[#7A021D] focus-within:bg-white">
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
+          <span>🔍</span> Add New Item to Box
+        </label>
+        {loading && <span className="text-[11px] text-[#7A021D] font-medium animate-pulse">Searching…</span>}
+      </div>
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by product name or SKU…"
+          className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-xs"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      {results.length > 0 && (
+        <ul className="mt-2 max-h-52 overflow-y-auto divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white shadow-lg [scrollbar-width:none]">
+          {results.map((p) => {
+            const totalStock = (p.variants || []).reduce((s, v) => s + (v.quantity || 0), 0);
+            return (
+              <li
+                key={p.id}
+                onClick={() => {
+                  onSelect(p);
+                  setQuery('');
+                  setResults([]);
+                }}
+                className="p-2.5 hover:bg-[#FDF8F4] cursor-pointer flex items-center gap-3 transition-colors"
+              >
+                {p.images?.[0]?.public_url ? (
+                  <img src={p.images[0].public_url} alt="" className="h-10 w-8 rounded object-cover flex-shrink-0" />
+                ) : (
+                  <div className="h-10 w-8 rounded bg-neutral-100 flex items-center justify-center text-[10px] text-neutral-400">IMG</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-[#2C0505] truncate">{p.name}</div>
+                  <div className="text-[11px] text-neutral-400">{p.brand?.name ?? '—'} · {p.variants?.length ?? 0} variants</div>
+                </div>
+                <div className="text-right">
+                  <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                    totalStock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                  }`}>
+                    {totalStock > 0 ? `${totalStock} in stock` : 'Out of stock'}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
@@ -190,10 +226,10 @@ function BoxItemEditor({
     setSaving(true);
     try {
       await updateBoxItem(boxId, item.id, { variant_id: variantId });
-      showToast('success', 'Size updated');
+      showToast('success', 'Variant updated');
       await onRefresh();
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed to update size');
+      showToast('error', err instanceof Error ? err.message : 'Failed to update variant');
     } finally {
       setSaving(false);
     }
@@ -208,31 +244,37 @@ function BoxItemEditor({
       await onRefresh();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Failed to remove');
-      setSaving(false); // only stop loading on error, on success unmounts
+      setSaving(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-between py-3 border-b last:border-0 border-neutral-100">
-      <div className="flex gap-3 items-center">
+    <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-neutral-200/80 bg-white hover:border-neutral-300 hover:shadow-2xs transition-all">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
         {item.product.thumbnail_url ? (
-          <img src={item.product.thumbnail_url} alt="" className="w-10 h-10 rounded object-cover" />
+          <img src={item.product.thumbnail_url} alt="" className="h-12 w-10 rounded-lg object-cover flex-shrink-0 shadow-2xs border border-neutral-100" />
         ) : (
-          <div className="w-10 h-10 rounded bg-neutral-200 flex items-center justify-center text-xs">No IMG</div>
+          <div className="h-12 w-10 rounded-lg bg-neutral-100 flex items-center justify-center text-[10px] text-neutral-400 flex-shrink-0">No IMG</div>
         )}
-        <div>
-          <div className="text-sm font-medium">{item.product.name}</div>
-          <div className="text-xs text-neutral-500">
-            {item.variant.size} {item.variant.colour ? `· ${item.variant.colour}` : ''} {item.variant.sku ? `· SKU: ${item.variant.sku}` : ''}
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 truncate">
+            {item.product.brand ?? 'StyleSupply'}
+          </div>
+          <div className="text-xs font-semibold text-[#2C0505] truncate">{item.product.name}</div>
+          <div className="text-[11px] text-neutral-500 flex items-center gap-1.5 mt-0.5">
+            <span className="font-medium text-neutral-700">Size: {item.variant.size}</span>
+            {item.variant.colour && <span className="text-neutral-400">· {item.variant.colour}</span>}
+            {item.variant.sku && <span className="font-mono text-[10px] text-neutral-400">· SKU: {item.variant.sku}</span>}
           </div>
         </div>
       </div>
-      <div className="flex gap-2 items-center">
+
+      <div className="flex items-center gap-2 flex-shrink-0">
         <select
           value={item.variant.id}
           onChange={(e) => void handleVariantChange(e.target.value)}
           disabled={saving}
-          className="text-xs border rounded p-1 min-w-[80px]"
+          className="rounded-lg border border-neutral-200 bg-neutral-50/80 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all disabled:opacity-50"
         >
           {(item.product.variants || []).map((v) => (
             <option key={v.id} value={v.id} disabled={v.quantity <= 0}>
@@ -240,14 +282,16 @@ function BoxItemEditor({
             </option>
           ))}
         </select>
+
         <button
+          type="button"
           onClick={() => void handleRemove()}
           disabled={saving}
-          className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors disabled:opacity-50"
-          title="Remove Item"
+          className="h-8 w-8 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30"
+          title="Remove item"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
         </button>
       </div>
@@ -269,9 +313,18 @@ function EditModal({ box, onClose, onSave, onRefresh }: EditModalProps): React.R
   const [tracking, setTracking] = useState(box.tracking_number ?? '');
   const [status, setStatus] = useState<string>(box.status);
   
-  // Profile State
-  const [name, setName] = useState(box.user?.full_name ?? '');
-  const [phone, setPhone] = useState(box.user?.phone ?? '');
+  // Member Profile State
+  const [name, setName] = useState(box.user?.full_name ?? box.profiles?.full_name ?? '');
+  const [phone, setPhone] = useState(box.user?.phone ?? box.profiles?.phone ?? '');
+
+  // Receiver Info State
+  const addr = (box.address as Record<string, unknown> | null) ?? {};
+  const [receiverName, setReceiverName] = useState(
+    ((addr.receiver_name as string) || box.receiver_name || name || '').toString()
+  );
+  const [receiverPhone, setReceiverPhone] = useState(
+    ((addr.receiver_phone as string) || box.receiver_phone || '').toString()
+  );
 
   // Add Item State
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -282,17 +335,22 @@ function EditModal({ box, onClose, onSave, onRefresh }: EditModalProps): React.R
   const handleSaveGlobal = async () => {
     setSavingGlobal(true);
     try {
-      // Save Basic Info
+      // 1. Save Basic Info
       await onSave(tracking.trim() || null, status);
-      // Save Profile
-      if (box.user) {
-        await updateBoxProfile(box.id, { full_name: name, phone });
-      }
+      
+      // 2. Save Profile & Receiver details
+      await updateBoxProfile(box.id, {
+        full_name: name.trim() || null,
+        phone: phone.trim() || null,
+        receiver_name: receiverName.trim() || null,
+        receiver_phone: receiverPhone.trim() || null,
+      });
+
       showToast('success', 'Box and Profile updated');
       await onRefresh();
       onClose();
     } catch (err) {
-      // onSave already toasts error
+      showToast('error', err instanceof Error ? err.message : 'Failed to save changes');
     } finally {
       setSavingGlobal(false);
     }
@@ -303,7 +361,7 @@ function EditModal({ box, onClose, onSave, onRefresh }: EditModalProps): React.R
     setSavingGlobal(true);
     try {
       await addBoxItem(box.id, selectedProduct.id, selectedVariantId);
-      showToast('success', 'Item added');
+      showToast('success', 'Item added to box');
       setSelectedProduct(null);
       setSelectedVariantId('');
       await onRefresh();
@@ -315,130 +373,275 @@ function EditModal({ box, onClose, onSave, onRefresh }: EditModalProps): React.R
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl my-8">
-        <h2 className="text-xl font-semibold text-[#2C0505] mb-6">Edit Box Details</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Left Column: Basic Info & Profile */}
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="font-medium text-neutral-800 border-b pb-2">Status & Tracking</h3>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A021D]"
-                >
-                  {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Tracking Number</label>
-                <input
-                  type="text"
-                  value={tracking}
-                  onChange={(e) => setTracking(e.target.value)}
-                  placeholder="e.g. BD123456789IN"
-                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A021D]"
-                />
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl border border-neutral-100 flex flex-col max-h-[90vh] overflow-hidden my-6">
+        
+        {/* Header Bar */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 bg-[#FAF8F5]/80 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7A021D]/10 text-[#7A021D] font-bold text-lg">
+              📦
             </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-[#2C0505]">Edit Box Details</h2>
+                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-mono text-neutral-600">
+                  #{box.id.slice(0, 8)}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Update fulfillment status, tracking, member, and box items</p>
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+            title="Close"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-            {box.user && (
-              <div className="space-y-4">
-                <h3 className="font-medium text-neutral-800 border-b pb-2">Member Profile</h3>
+        {/* Modal Body (Scrollable) */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* Left Column: Status, Tracking & Profiles */}
+            <div className="space-y-6">
+              
+              {/* Card 1: Status & Tracking */}
+              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-4 space-y-4">
+                <div className="flex items-center justify-between border-b border-neutral-200/60 pb-2.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#2C0505] flex items-center gap-1.5">
+                    <span>🚚</span> Status & Tracking
+                  </h3>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    STATUS_COLORS[status] ?? 'bg-neutral-100 text-neutral-600'
+                  }`}>
+                    {STATUS_LABELS[status] ?? status}
+                  </span>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Full Name</label>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Box Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                  >
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Return Courier AWB Tracking</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">🏷️</span>
+                    <input
+                      type="text"
+                      value={tracking}
+                      onChange={(e) => setTracking(e.target.value)}
+                      placeholder="e.g. BD123456789IN"
+                      className="w-full rounded-xl border border-neutral-200 bg-white pl-8 pr-3 py-2 text-xs font-mono text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Member Account Profile */}
+              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-4 space-y-4">
+                <div className="border-b border-neutral-200/60 pb-2.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#2C0505] flex items-center gap-1.5">
+                    <span>👤</span> Member Account
+                  </h3>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Member Full Name</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A021D]"
+                    placeholder="Member account name"
+                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">Phone Number</label>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Member Phone</label>
                   <input
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A021D]"
+                    placeholder="Member phone number"
+                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-mono text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                  />
+                  <p className="text-[10px] text-neutral-400 mt-1">Updates member's global account profile.</p>
+                </div>
+              </div>
+
+              {/* Card 3: Delivery Receiver Info */}
+              <div className="rounded-xl border border-neutral-200/80 bg-[#FCFAF8] p-4 space-y-4">
+                <div className="border-b border-neutral-200/60 pb-2.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#2C0505] flex items-center gap-1.5">
+                    <span>📍</span> Delivery Receiver
+                  </h3>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Receiver Name</label>
+                  <input
+                    type="text"
+                    value={receiverName}
+                    onChange={(e) => setReceiverName(e.target.value)}
+                    placeholder="Designated receiver name"
+                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
                   />
                 </div>
-                <p className="text-xs text-neutral-400">Note: Saving will update this member's global profile.</p>
-              </div>
-            )}
-          </div>
 
-          {/* Right Column: Box Items */}
-          <div className="space-y-4">
-            <h3 className="font-medium text-neutral-800 border-b pb-2">Box Items ({box.items.length}/{box.max_items})</h3>
-            
-            <div className="bg-white border rounded-lg overflow-hidden divide-y">
-              {box.items.map((item) => (
-                <BoxItemEditor key={item.id} item={item} boxId={box.id} onRefresh={onRefresh} />
-              ))}
-              {box.items.length === 0 && (
-                <div className="p-4 text-sm text-neutral-500 text-center">No items in box.</div>
-              )}
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Receiver Mobile Number</label>
+                  <input
+                    type="text"
+                    value={receiverPhone}
+                    onChange={(e) => setReceiverPhone(e.target.value)}
+                    placeholder="+91..."
+                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-mono text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]/20 focus:border-[#7A021D] transition-all shadow-2xs"
+                  />
+                  <p className="text-[10px] text-neutral-400 mt-1">Updates delivery address without altering member profile.</p>
+                </div>
+              </div>
+
             </div>
 
-            {box.items.length < box.max_items && (
-              <div className="mt-4">
-                {!selectedProduct ? (
-                  <ProductSearch onSelect={(p) => { setSelectedProduct(p); setSelectedVariantId(p.variants[0]?.id || ''); }} />
-                ) : (
-                  <div className="border rounded-lg p-3 bg-neutral-50">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="text-sm font-medium">{selectedProduct.name}</div>
-                      <button onClick={() => setSelectedProduct(null)} className="text-xs text-neutral-500 hover:text-neutral-700">Cancel</button>
-                    </div>
-                    <select
-                      value={selectedVariantId}
-                      onChange={(e) => setSelectedVariantId(e.target.value)}
-                      className="w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm mb-3"
-                    >
-                      {selectedProduct.variants.map((v) => (
-                        <option key={v.id} value={v.id} disabled={v.quantity <= 0}>
-                          {v.size} {v.colour?.name ? `(${v.colour.name})` : ''} {v.sku ? `[SKU: ${v.sku}]` : ''} {v.quantity <= 0 ? '- Out of Stock' : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => void handleAddItem()}
-                      disabled={savingGlobal || !selectedVariantId}
-                      className="w-full bg-[#7A021D] text-white text-sm py-1.5 rounded-md hover:bg-[#8B1A35] disabled:opacity-50"
-                    >
-                      {savingGlobal ? 'Adding...' : 'Add to Box'}
-                    </button>
+            {/* Right Column: Box Items */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-[#2C0505]">Box Items</h3>
+                  <p className="text-[11px] text-neutral-400">Manage pieces included in this shipment</p>
+                </div>
+                <span className="rounded-full bg-[#7A021D]/10 px-2.5 py-0.5 text-xs font-bold text-[#7A021D]">
+                  {box.items.length} / {box.max_items} filled
+                </span>
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                {box.items.map((item) => (
+                  <BoxItemEditor key={item.id} item={item} boxId={box.id} onRefresh={onRefresh} />
+                ))}
+                {box.items.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-neutral-200 p-8 text-center text-xs text-neutral-400">
+                    No items in this box yet. Use the search below to add items.
                   </div>
                 )}
               </div>
-            )}
+
+              {/* Add Item Section */}
+              {box.items.length < box.max_items ? (
+                <div>
+                  {!selectedProduct ? (
+                    <ProductSearch onSelect={(p) => { setSelectedProduct(p); setSelectedVariantId(p.variants[0]?.id || ''); }} />
+                  ) : (
+                    <div className="rounded-xl border border-[#7A021D]/30 bg-[#FFF5F7] p-3.5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold text-[#7A021D]">Selected Product to Add</div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProduct(null)}
+                          className="text-xs text-neutral-500 hover:text-neutral-700"
+                        >
+                          ✕ Cancel
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {selectedProduct.images?.[0]?.public_url ? (
+                          <img src={selectedProduct.images[0].public_url} alt="" className="h-12 w-10 rounded-lg object-cover flex-shrink-0 shadow-2xs" />
+                        ) : (
+                          <div className="h-12 w-10 rounded-lg bg-neutral-200 flex items-center justify-center text-[10px]">IMG</div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold text-[#2C0505] truncate">{selectedProduct.name}</div>
+                          <div className="text-[11px] text-neutral-500">{selectedProduct.brand?.name ?? '—'}</div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-neutral-600 mb-1">Choose Variant Size / SKU</label>
+                        <select
+                          value={selectedVariantId}
+                          onChange={(e) => setSelectedVariantId(e.target.value)}
+                          className="w-full rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#7A021D]"
+                        >
+                          {selectedProduct.variants.map((v) => (
+                            <option key={v.id} value={v.id} disabled={v.quantity <= 0}>
+                              {v.size} {v.colour?.name ? `(${v.colour.name})` : ''} {v.sku ? `[SKU: ${v.sku}]` : ''} {v.quantity <= 0 ? '- Out of Stock' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleAddItem()}
+                        disabled={savingGlobal || !selectedVariantId}
+                        className="w-full rounded-lg bg-[#7A021D] py-2 text-xs font-semibold text-white hover:bg-[#600117] transition-colors disabled:opacity-50 shadow-sm"
+                      >
+                        {savingGlobal ? 'Adding…' : '+ Add Item to Box'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-neutral-50 p-3 text-center text-xs text-neutral-500 font-medium">
+                  Box capacity reached ({box.max_items}/{box.max_items}). Remove an item to add another.
+                </div>
+              )}
+
+            </div>
+
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-6 border-t pt-4">
-          <button
-            onClick={onClose}
-            disabled={savingGlobal}
-            className="rounded-lg px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => void handleSaveGlobal()}
-            disabled={savingGlobal}
-            className="rounded-lg bg-[#7A021D] px-6 py-2 text-sm font-medium text-white hover:bg-[#8B1A35] transition-colors disabled:opacity-50 shadow-sm"
-          >
-            {savingGlobal ? 'Saving…' : 'Save Changes'}
-          </button>
+        {/* Pinned Footer Bar */}
+        <div className="flex items-center justify-between border-t border-neutral-100 bg-[#FAF8F5] px-6 py-3.5 flex-shrink-0">
+          <div className="text-xs text-neutral-400">
+            Changes will take effect immediately upon saving.
+          </div>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={savingGlobal}
+              className="rounded-xl border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSaveGlobal()}
+              disabled={savingGlobal}
+              className="rounded-xl bg-[#7A021D] px-6 py-2 text-xs font-semibold text-white hover:bg-[#600117] transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {savingGlobal ? (
+                <>
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Saving…
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+          </div>
         </div>
+
       </div>
     </div>
   );

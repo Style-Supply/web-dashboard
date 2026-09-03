@@ -72,7 +72,15 @@ export async function deleteBox(id: string): Promise<void> {
 
 // --- Admin Overrides for Profile & Items ---
 
-export async function updateBoxProfile(id: string, payload: { full_name?: string | null; phone?: string | null }): Promise<void> {
+export async function updateBoxProfile(
+  id: string,
+  payload: {
+    full_name?: string | null;
+    phone?: string | null;
+    receiver_name?: string | null;
+    receiver_phone?: string | null;
+  }
+): Promise<void> {
   return request<void>(`/api/admin/boxes/${id}/profile`, {
     method: 'PATCH',
     body: JSON.stringify(payload),

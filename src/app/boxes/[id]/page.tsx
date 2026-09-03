@@ -673,11 +673,24 @@ export default function BoxDetailPage(): React.ReactElement {
                   const receiverName = addr.receiver_name != null && String(addr.receiver_name).trim()
                     ? String(addr.receiver_name)
                     : (box.user?.full_name ?? box.profiles?.full_name ?? null);
+                  const receiverPhone = addr.receiver_phone != null && String(addr.receiver_phone).trim()
+                    ? String(addr.receiver_phone)
+                    : (box.user?.phone ?? box.profiles?.phone ?? null);
                   return (
                     <>
                       <div className="flex justify-between border-b border-neutral-100 pb-2">
                         <span className="text-neutral-500">Receiver's Name</span>
                         <span className="font-semibold text-[#2C0505]">{receiverName ?? '—'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-neutral-100 pb-2">
+                        <span className="text-neutral-500">Receiver's Mobile</span>
+                        {receiverPhone ? (
+                          <a href={`tel:${receiverPhone}`} className="font-semibold font-mono text-[#7A021D] hover:underline">
+                            {receiverPhone}
+                          </a>
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
                       </div>
                       <div className="flex justify-between pt-0.5">
                         <span className="text-neutral-500">Address</span>

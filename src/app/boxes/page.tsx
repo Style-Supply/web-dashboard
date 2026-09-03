@@ -389,9 +389,12 @@ export default function BoxesPage(): React.ReactElement {
                       {box.receiver_name && box.profiles?.full_name && box.receiver_name !== box.profiles.full_name ? (
                         <p className="text-[11px] text-neutral-400">
                           Member: {box.profiles.full_name}
+                          {box.receiver_phone ? ` · 📞 ${box.receiver_phone}` : ''}
                         </p>
                       ) : (
-                        <p className="text-xs text-neutral-400 font-mono">{box.id.slice(0, 8)}…</p>
+                        <p className="text-xs text-neutral-400 font-mono">
+                          {box.receiver_phone ? `📞 ${box.receiver_phone}` : `${box.id.slice(0, 8)}…`}
+                        </p>
                       )}
                     </div>
                   </div>

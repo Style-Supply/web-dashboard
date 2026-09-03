@@ -36,6 +36,7 @@ export interface Box {
   updated_at?: string | null;
   profiles?: { id: string; full_name: string | null; phone: string | null };
   receiver_name?: string | null;
+  receiver_phone?: string | null;
 }
 
 export interface BoxItemDetail {

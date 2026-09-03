@@ -35,6 +35,7 @@ export interface Box {
   tracking_number: string | null;
   updated_at?: string | null;
   profiles?: { id: string; full_name: string | null; phone: string | null };
+  receiver_name?: string | null;
 }
 
 export interface BoxItemDetail {

@@ -21,6 +21,7 @@ import {
 } from '@/lib/boxes';
 import { request } from '@/lib/api';
 import { markReceived, setPickupStatus } from '@/lib/returns';
+import { QcPhotoModal, QcPhotoLightbox } from '@/components/boxes/QcPhotoModal';
 import type { BoxDetail } from '@/types/box';
 import type { ProductListResponse, Product } from '@/types/product';
 
@@ -552,7 +553,15 @@ export default function BoxDetailPage(): React.ReactElement {
               Back to Boxes
             </Link>
             <h1 className="text-2xl font-semibold text-[#2C0505]">Box Detail</h1>
-            <p className="text-xs text-neutral-400 font-mono mt-1">{box.id}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 mt-1">
+              <span className="font-mono">{box.id}</span>
+              {((box.address as any)?.receiver_name || box.user?.full_name || box.profiles?.full_name) && (
+                <>
+                  <span>•</span>
+                  <span>Receiver: <strong className="text-neutral-700 font-semibold">{String((box.address as any)?.receiver_name || box.user?.full_name || box.profiles?.full_name)}</strong></span>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -658,16 +667,28 @@ export default function BoxDetailPage(): React.ReactElement {
           {box.address && (
             <div className="rounded-xl border border-neutral-200 bg-white p-4">
               <h2 className="text-xs font-semibold uppercase text-neutral-400 mb-3">Delivery Address</h2>
-              <div className="text-sm text-neutral-600 space-y-1">
+              <div className="space-y-2 text-sm">
                 {(() => {
                   const addr = box.address as Record<string, unknown>;
+                  const receiverName = addr.receiver_name != null && String(addr.receiver_name).trim()
+                    ? String(addr.receiver_name)
+                    : (box.user?.full_name ?? box.profiles?.full_name ?? null);
                   return (
                     <>
-                      {addr.apartment != null && <div>{String(addr.apartment)}</div>}
-                      {addr.locality != null && <div>{String(addr.locality)}</div>}
-                      {addr.state != null && (
-                        <div>{String(addr.state)}{addr.pincode != null ? ` — ${String(addr.pincode)}` : ''}</div>
-                      )}
+                      <div className="flex justify-between border-b border-neutral-100 pb-2">
+                        <span className="text-neutral-500">Receiver's Name</span>
+                        <span className="font-semibold text-[#2C0505]">{receiverName ?? '—'}</span>
+                      </div>
+                      <div className="flex justify-between pt-0.5">
+                        <span className="text-neutral-500">Address</span>
+                        <div className="text-right text-neutral-700 space-y-0.5 max-w-[65%]">
+                          {addr.apartment != null && <div>{String(addr.apartment)}</div>}
+                          {addr.locality != null && <div>{String(addr.locality)}</div>}
+                          {addr.state != null && (
+                            <div>{String(addr.state)}{addr.pincode != null ? ` — ${String(addr.pincode)}` : ''}</div>
+                          )}
+                        </div>
+                      </div>
                     </>
                   );
                 })()}
@@ -1198,7 +1219,7 @@ interface QcCheckpointCardProps {
   checkpoint: 'brand' | 'customer';
   itemId: string;
   isLocked: boolean;
-  onUpdate: (result: 'passed' | 'failed', notes: string, images: string[]) => void;
+  onUpdate: (result: 'passed' | 'failed' | 'pending', notes: string, images: string[]) => void;
   showToast: (type: 'success' | 'error', msg: string) => void;
 }
 
@@ -1219,6 +1240,11 @@ function QcCheckpointCard({
   const [images, setImages] = useState<string[]>(initialImages);
   const [submitting, setSubmitting] = useState<string | null>(null);
 
+  // Multiple image upload modal & lightbox states
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [isDragOverGrid, setIsDragOverGrid] = useState(false);
+
   useEffect(() => {
     setCurrentStatus(status);
   }, [status]);
@@ -1231,48 +1257,34 @@ function QcCheckpointCard({
     setImages(initialImages);
   }, [initialImages]);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const newImages: string[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const reader = new FileReader();
-      const promise = new Promise<string>((resolve) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-      const dataUrl = await promise;
-      newImages.push(dataUrl);
-    }
-    setImages((prev) => [...prev, ...newImages]);
-    e.target.value = '';
+  function handleAddPhotos(newUrls: string[]) {
+    setImages((prev) => [...prev, ...newUrls]);
   }
 
   function handleRemoveImage(index: number) {
     setImages((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function handleSave(result: 'passed' | 'failed') {
-    setSubmitting(result);
+  async function handleSave(result?: 'passed' | 'failed' | 'pending') {
+    const targetStatus = result ?? (currentStatus === 'passed' ? 'passed' : currentStatus === 'failed' ? 'failed' : 'pending');
+    setSubmitting(result ?? 'save');
     const prevStatus = currentStatus;
-    setCurrentStatus(result); // Instant optimistic in-place UI update!
-    onUpdate(result, notes, images);
+    if (result) setCurrentStatus(result);
+    onUpdate(targetStatus, notes, images);
 
     try {
       await request(`/api/admin/returns/items/${itemId}/qc`, {
         method: 'POST',
         body: JSON.stringify({
           checkpoint,
-          result,
+          result: targetStatus,
           notes,
           images,
         }),
       });
-      showToast('success', `${title} marked ${result === 'passed' ? 'Pass' : 'Fail'}`);
+      showToast('success', result ? `${title} marked ${result === 'passed' ? 'Pass' : result === 'failed' ? 'Fail' : 'Pending'}` : `${title} notes and photos saved`);
     } catch (err) {
-      setCurrentStatus(prevStatus); // rollback on error
+      if (result) setCurrentStatus(prevStatus); // rollback on error
       showToast('error', err instanceof Error ? err.message : 'QC update failed');
     } finally {
       setSubmitting(null);
@@ -1281,6 +1293,7 @@ function QcCheckpointCard({
 
   const isPassed = currentStatus === 'passed';
   const isFailed = currentStatus === 'failed';
+  const hasUnsavedChanges = notes !== initialNotes || JSON.stringify(images) !== JSON.stringify(initialImages);
 
   return (
     <div
@@ -1325,43 +1338,108 @@ function QcCheckpointCard({
               <label className="text-[11px] font-medium text-neutral-600">
                 QC Inspection Photos ({images.length})
               </label>
-              <label className="cursor-pointer inline-flex items-center gap-1 text-xs font-medium text-neutral-700 hover:text-black bg-white border border-neutral-300 px-2 py-1 rounded shadow-xs">
+
+              {/* Multiple Image Upload Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setPhotoModalOpen(true)}
+                className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold text-[#7A021D] hover:text-white hover:bg-[#7A021D] bg-white border border-[#7A021D]/30 px-2.5 py-1 rounded-md shadow-2xs transition-all"
+              >
                 <span>📷 Add Photos</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-              </label>
+                <span className="text-[10px] text-neutral-400 group-hover:text-white/80 font-normal">
+                  (Multi-upload)
+                </span>
+              </button>
             </div>
 
-            {/* Photos Preview Grid */}
-            {images.length > 0 ? (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {images.map((imgUrl, idx) => (
-                  <div key={idx} className="relative group w-14 h-14 rounded border border-neutral-200 overflow-hidden bg-white shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={imgUrl} alt={`QC photo ${idx + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-0.5 right-0.5 bg-black/70 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-red-600 transition-colors"
-                      title="Remove photo"
+            {/* Photos Preview Grid with Drag & Drop */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOverGrid(true);
+              }}
+              onDragLeave={() => setIsDragOverGrid(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOverGrid(false);
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  setPhotoModalOpen(true);
+                }
+              }}
+              className={`rounded-lg transition-colors p-1 ${
+                isDragOverGrid ? 'border-2 border-dashed border-[#7A021D] bg-[#7A021D]/5' : ''
+              }`}
+            >
+              {images.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {images.map((imgUrl, idx) => (
+                    <div
+                      key={idx}
+                      className="relative group w-14 h-14 rounded-lg border border-neutral-200 overflow-hidden bg-white shrink-0 shadow-2xs cursor-pointer"
+                      onClick={() => setLightboxIndex(idx)}
+                      title="Click to zoom / inspect photo"
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[11px] text-neutral-400 italic">No QC photos attached yet.</p>
-            )}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={imgUrl} alt={`QC photo ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                        <span className="text-[11px] text-white" title="Inspect">🔍</span>
+                      </div>
+
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage(idx);
+                        }}
+                        className="absolute top-0.5 right-0.5 bg-black/70 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-red-600 transition-colors z-10 cursor-pointer"
+                        title="Remove photo"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Add more tile in grid */}
+                  <button
+                    type="button"
+                    onClick={() => setPhotoModalOpen(true)}
+                    className="w-14 h-14 rounded-lg border-2 border-dashed border-neutral-300 hover:border-[#7A021D] hover:bg-[#7A021D]/5 flex flex-col items-center justify-center text-neutral-400 hover:text-[#7A021D] transition-all shrink-0 cursor-pointer text-xs"
+                    title="Add more inspection photos"
+                  >
+                    <span className="text-base leading-none font-bold">+</span>
+                    <span className="text-[9px] font-medium">Add</span>
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => setPhotoModalOpen(true)}
+                  className="rounded-lg border border-dashed border-neutral-300 hover:border-neutral-400 bg-white/60 p-3 text-center cursor-pointer transition-colors"
+                >
+                  <p className="text-[11px] text-neutral-500 font-medium">No QC photos attached yet.</p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">
+                    Click to add multiple inspection photos or drop files here.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex gap-2 pt-2">
+            {hasUnsavedChanges && (
+              <button
+                disabled={submitting !== null}
+                onClick={() => handleSave()}
+                className="text-xs font-semibold py-1.5 px-3 rounded-md border border-neutral-300 bg-white hover:bg-neutral-100 text-neutral-700 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                title="Save updated photos and condition notes without changing pass/fail status"
+              >
+                {submitting === 'save' ? 'Saving…' : '💾 Save Notes & Photos'}
+              </button>
+            )}
+
             <button
               disabled={submitting !== null}
               onClick={() => handleSave('passed')}
@@ -1385,6 +1463,25 @@ function QcCheckpointCard({
               {submitting === 'failed' ? 'Saving…' : '✕ Fail'}
             </button>
           </div>
+
+          {/* Multiple Photo Upload Modal */}
+          <QcPhotoModal
+            open={photoModalOpen}
+            onClose={() => setPhotoModalOpen(false)}
+            checkpointTitle={title}
+            itemId={itemId}
+            onAddImages={handleAddPhotos}
+            showToast={showToast}
+          />
+
+          {/* Inspection Photo Lightbox Zoom Viewer */}
+          <QcPhotoLightbox
+            images={images}
+            selectedIndex={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+            onDelete={handleRemoveImage}
+            checkpointTitle={title}
+          />
         </>
       )}
     </div>

@@ -343,7 +343,7 @@ export default function BoxesPage(): React.ReactElement {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-neutral-100 bg-neutral-50/80">
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Member</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Member / Receiver</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Status</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Session</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Created</th>
@@ -376,15 +376,23 @@ export default function BoxesPage(): React.ReactElement {
                 key={box.id}
                 className="group transition-colors hover:bg-neutral-50/60"
               >
-                {/* Member */}
+                {/* Member / Receiver */}
                 <td className="px-4 py-3.5">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#7A021D]/10 text-xs font-semibold text-[#7A021D]">
-                      {(box.profiles?.full_name ?? 'U')[0].toUpperCase()}
+                      {((box.receiver_name || box.profiles?.full_name || 'U'))[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-[#2C0505]">{box.profiles?.full_name ?? 'Unknown'}</p>
-                      <p className="text-xs text-neutral-400 font-mono">{box.id.slice(0, 8)}…</p>
+                      <p className="font-medium text-[#2C0505]">
+                        {box.receiver_name ? box.receiver_name : (box.profiles?.full_name ?? 'Unknown')}
+                      </p>
+                      {box.receiver_name && box.profiles?.full_name && box.receiver_name !== box.profiles.full_name ? (
+                        <p className="text-[11px] text-neutral-400">
+                          Member: {box.profiles.full_name}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-neutral-400 font-mono">{box.id.slice(0, 8)}…</p>
+                      )}
                     </div>
                   </div>
                 </td>

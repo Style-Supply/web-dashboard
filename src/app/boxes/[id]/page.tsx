@@ -223,7 +223,7 @@ function BoxItemEditor({
         <div>
           <div className="text-sm font-medium">{item.product.name}</div>
           <div className="text-xs text-neutral-500">
-            {item.variant.size} {item.variant.colour ? `· ${item.variant.colour}` : ''}
+            {item.variant.size} {item.variant.colour ? `· ${item.variant.colour}` : ''} {item.variant.sku ? `· SKU: ${item.variant.sku}` : ''}
           </div>
         </div>
       </div>
@@ -1016,6 +1016,7 @@ export default function BoxDetailPage(): React.ReactElement {
                       <td className="px-4 py-3 text-neutral-500">{item.product.brand ?? '—'}</td>
                       <td className="px-4 py-3">
                         <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs">{item.variant.size}</span>
+                        {item.variant.sku && <span className="ml-1 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-mono text-neutral-500">SKU: {item.variant.sku}</span>}
                         {item.variant.colour && <span className="ml-1 text-xs text-neutral-400">{item.variant.colour}</span>}
                       </td>
                       <td className="px-4 py-3">
@@ -1090,7 +1091,9 @@ export default function BoxDetailPage(): React.ReactElement {
                         )}
                         <div>
                           <div className="font-semibold text-sm text-[#2C0505]">{item.product.name}</div>
-                          <div className="text-xs text-neutral-500">{item.product.brand ?? '—'} · Size: {item.variant.size}</div>
+                          <div className="text-xs text-neutral-500">
+                            {item.product.brand ?? '—'} · Size: {item.variant.size} {item.variant.sku ? `· SKU: ${item.variant.sku}` : ''}
+                          </div>
                         </div>
                       </div>
                       <select

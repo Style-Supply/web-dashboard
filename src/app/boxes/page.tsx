@@ -378,26 +378,31 @@ export default function BoxesPage(): React.ReactElement {
               >
                 {/* Member / Receiver */}
                 <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#7A021D]/10 text-xs font-semibold text-[#7A021D]">
-                      {((box.receiver_name || box.profiles?.full_name || 'U'))[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-medium text-[#2C0505]">
-                        {box.receiver_name ? box.receiver_name : (box.profiles?.full_name ?? 'Unknown')}
-                      </p>
-                      {box.receiver_name && box.profiles?.full_name && box.receiver_name !== box.profiles.full_name ? (
-                        <p className="text-[11px] text-neutral-400">
-                          Member: {box.profiles.full_name}
-                          {box.receiver_phone ? ` · 📞 ${box.receiver_phone}` : ''}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-neutral-400 font-mono">
-                          {box.receiver_phone ? `📞 ${box.receiver_phone}` : `${box.id.slice(0, 8)}…`}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  {(() => {
+                    const memberName = box.profiles?.full_name?.trim() || 'Unknown';
+                    const receiverName = box.receiver_name?.trim() || memberName;
+                    const initial = (memberName || receiverName || 'U')[0].toUpperCase();
+                    return (
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#7A021D]/10 text-xs font-bold text-[#7A021D]">
+                          {initial}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 leading-tight">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Member:</span>
+                            <span className="text-sm font-semibold text-[#2C0505] truncate">{memberName}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-neutral-600 mt-1 leading-tight">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Receiver:</span>
+                            <span className="font-medium text-[#7A021D] truncate">{receiverName}</span>
+                            {box.receiver_phone && (
+                              <span className="font-mono text-[11px] text-neutral-500 shrink-0">· 📞 {box.receiver_phone}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </td>
 
                 {/* Status */}

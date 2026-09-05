@@ -418,6 +418,8 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [searching, setSearching] = useState(false);
   const [addingProductId, setAddingProductId] = useState<string | null>(null);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
+  const [updatingVariantProductId, setUpdatingVariantProductId] = useState<string | null>(null);
 
   const loadProducts = useCallback(async () => {
     setLoadingProducts(true);
@@ -445,7 +447,17 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
       setSearching(true);
       try {
         const res = await request<ProductListResponse>(`/api/admin/products?q=${encodeURIComponent(searchQuery)}&limit=8`);
-        setSearchResults(res.items ?? []);
+        const items = res.items ?? [];
+        setSearchResults(items);
+        setSelectedVariants((prev) => {
+          const next = { ...prev };
+          for (const item of items) {
+            if (!next[item.id] && item.variants && item.variants.length > 0) {
+              next[item.id] = item.variants[0].id;
+            }
+          }
+          return next;
+        });
       } catch (err) {
         console.error(err);
       } finally {
@@ -506,11 +518,12 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
     }
   }
 
-  // Add product
+  // Add product with selected variant
   async function handleAddProduct(p: Product) {
     setAddingProductId(p.id);
+    const chosenVariantId = selectedVariants[p.id] || p.variants?.[0]?.id || null;
     try {
-      await Looks.addProduct(look.id, p.id);
+      await Looks.addProduct(look.id, p.id, chosenVariantId);
       showToast('success', `Added "${p.name}" to look`);
       await loadProducts();
       await onLookUpdated();
@@ -518,6 +531,20 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
       showToast('error', err instanceof Error ? err.message : 'Failed to add product');
     } finally {
       setAddingProductId(null);
+    }
+  }
+
+  // Update variant for product already in look
+  async function handleUpdateVariant(productId: string, variantId: string) {
+    setUpdatingVariantProductId(productId);
+    try {
+      await Looks.updateProductVariant(look.id, productId, variantId || null);
+      showToast('success', 'Look product variant updated');
+      await loadProducts();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to update variant');
+    } finally {
+      setUpdatingVariantProductId(null);
     }
   }
 
@@ -722,15 +749,15 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
                   products.map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-neutral-200/80 bg-white hover:border-neutral-300 transition-all shadow-2xs"
+                      className="flex items-center justify-between gap-3 p-3 rounded-xl border border-neutral-200/80 bg-white hover:border-neutral-300 transition-all shadow-2xs"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         {p.thumbnail_url ? (
-                          <img src={p.thumbnail_url} alt="" className="h-11 w-9 rounded-lg object-cover flex-shrink-0 border border-neutral-100" />
+                          <img src={p.thumbnail_url} alt="" className="h-12 w-10 rounded-lg object-cover flex-shrink-0 border border-neutral-100 shadow-2xs" />
                         ) : (
-                          <div className="h-11 w-9 rounded-lg bg-neutral-100 flex items-center justify-center text-[9px] text-neutral-400">No IMG</div>
+                          <div className="h-12 w-10 rounded-lg bg-neutral-100 flex items-center justify-center text-[9px] text-neutral-400 flex-shrink-0">No IMG</div>
                         )}
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 truncate">
                             {p.brand?.name ?? '—'}
                           </p>
@@ -739,13 +766,44 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
                             {p.rent_price_minor ? `Rent: ₹${Math.round(p.rent_price_minor / 100)}` : 'Rentable'}
                             {p.retail_price_minor ? ` · MRP: ₹${Math.round(p.retail_price_minor / 100)}` : ''}
                           </p>
+
+                          {/* Variant Selector / Badge */}
+                          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                            {p.all_variants && p.all_variants.length > 1 ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A021D] bg-[#FDF8F4] px-1.5 py-0.5 rounded border border-[#7A021D]/20">
+                                  Variant:
+                                </span>
+                                <select
+                                  value={p.variant_id ?? p.variant?.id ?? p.all_variants[0]?.id}
+                                  onChange={(e) => void handleUpdateVariant(p.id, e.target.value)}
+                                  disabled={updatingVariantProductId === p.id}
+                                  className="rounded-lg border border-neutral-200 bg-neutral-50/90 px-2 py-0.5 text-[11px] font-medium text-neutral-800 hover:bg-white focus:outline-none focus:ring-1 focus:ring-[#7A021D] transition-all disabled:opacity-50"
+                                >
+                                  {p.all_variants.map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                      Size: {v.size} {v.sku ? `(${v.sku})` : ''} {v.quantity !== undefined && v.quantity <= 0 ? '· Out of stock' : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                                {updatingVariantProductId === p.id && (
+                                  <span className="h-3 w-3 animate-spin rounded-full border border-[#7A021D] border-t-transparent" />
+                                )}
+                              </div>
+                            ) : p.variant ? (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-[#FDF8F4] border border-[#7A021D]/20 px-2 py-0.5 text-[10px] font-semibold text-[#7A021D]">
+                                <span>Size: {p.variant.size}</span>
+                                {p.variant.sku && <span className="font-mono text-neutral-400">· {p.variant.sku}</span>}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => void handleRemoveProduct(p.id)}
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors flex-shrink-0"
                         title="Remove product from look"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -786,22 +844,49 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
                 </div>
 
                 {searchResults.length > 0 && (
-                  <div className="max-h-48 overflow-y-auto divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white shadow-sm [scrollbar-width:none]">
+                  <div className="max-h-56 overflow-y-auto divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white shadow-sm [scrollbar-width:none]">
                     {searchResults.map((p) => {
                       const isAttached = attachedIds.has(p.id);
                       const isAdding = addingProductId === p.id;
                       const thumb = p.images?.[0]?.public_url ?? null;
+                      const variants = p.variants || [];
+                      const selectedVarId = selectedVariants[p.id] || variants[0]?.id || '';
+
                       return (
-                        <div key={p.id} className="p-2 flex items-center justify-between gap-3 hover:bg-[#FDF8F4] transition-colors">
-                          <div className="flex items-center gap-2.5 min-w-0">
+                        <div key={p.id} className="p-2.5 flex items-center justify-between gap-3 hover:bg-[#FDF8F4] transition-colors">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             {thumb ? (
-                              <img src={thumb} alt="" className="h-9 w-7.5 rounded object-cover flex-shrink-0" />
+                              <img src={thumb} alt="" className="h-10 w-8 rounded object-cover flex-shrink-0 border border-neutral-100" />
                             ) : (
-                              <div className="h-9 w-7.5 rounded bg-neutral-100 flex items-center justify-center text-[8px]">IMG</div>
+                              <div className="h-10 w-8 rounded bg-neutral-100 flex items-center justify-center text-[8px] flex-shrink-0">IMG</div>
                             )}
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="text-xs font-semibold text-[#2C0505] truncate">{p.name}</p>
                               <p className="text-[10px] text-neutral-400">{p.brand?.name ?? '—'}</p>
+                              
+                              {/* Variant Selection Option */}
+                              {variants.length > 1 ? (
+                                <div className="mt-1 flex items-center gap-1.5">
+                                  <span className="text-[10px] font-medium text-neutral-500">Variant:</span>
+                                  <select
+                                    value={selectedVarId}
+                                    onChange={(e) => setSelectedVariants((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                                    disabled={isAttached || isAdding}
+                                    className="rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-neutral-700 hover:border-neutral-300 focus:outline-none focus:ring-1 focus:ring-[#7A021D] disabled:opacity-50"
+                                  >
+                                    {variants.map((v) => (
+                                      <option key={v.id} value={v.id}>
+                                        Size: {v.size} {v.sku ? `(${v.sku})` : ''} {v.quantity <= 0 ? '· Out of stock' : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : variants.length === 1 ? (
+                                <div className="mt-0.5 text-[10px] text-neutral-500 font-medium">
+                                  <span className="rounded bg-neutral-100 px-1.5 py-0.2">Size: {variants[0].size}</span>
+                                  {variants[0].sku && <span className="ml-1 font-mono text-neutral-400">({variants[0].sku})</span>}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
 
@@ -809,7 +894,7 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
                             type="button"
                             onClick={() => void handleAddProduct(p)}
                             disabled={isAttached || isAdding}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
                               isAttached
                                 ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
                                 : 'bg-[#7A021D] text-white hover:bg-[#600117] shadow-2xs'

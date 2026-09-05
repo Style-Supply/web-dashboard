@@ -48,10 +48,15 @@ export const Looks = {
   remove: (id: string) => remove('looks', id),
   getProducts: (lookId: string) =>
     request<ListResp<LookProduct>>(`/api/admin/looks/${lookId}/products`),
-  addProduct: (lookId: string, productId: string, isPrimary?: boolean) =>
-    request<{ success: boolean }>(`/api/admin/looks/${lookId}/products`, {
+  addProduct: (lookId: string, productId: string, variantId?: string | null, isPrimary?: boolean) =>
+    request<{ success: boolean; variant_id?: string | null }>(`/api/admin/looks/${lookId}/products`, {
       method: 'POST',
-      body: JSON.stringify({ product_id: productId, is_primary: isPrimary }),
+      body: JSON.stringify({ product_id: productId, variant_id: variantId, is_primary: isPrimary }),
+    }),
+  updateProductVariant: (lookId: string, productId: string, variantId: string | null) =>
+    request<{ success: boolean; variant_id?: string | null }>(`/api/admin/looks/${lookId}/products/${productId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ variant_id: variantId }),
     }),
   removeProduct: (lookId: string, productId: string) =>
     request<void>(`/api/admin/looks/${lookId}/products/${productId}`, { method: 'DELETE' }),

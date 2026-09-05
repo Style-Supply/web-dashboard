@@ -21,6 +21,13 @@ export interface Collection {
   looks?: Look[];
 }
 
+export interface LookProductVariant {
+  id: string;
+  size: string;
+  sku?: string | null;
+  quantity?: number;
+}
+
 export interface LookProduct {
   id: string;
   name: string;
@@ -30,6 +37,9 @@ export interface LookProduct {
   rent_price_minor?: number | null;
   sort_order?: number;
   is_primary?: boolean;
+  variant_id?: string | null;
+  variant?: LookProductVariant | null;
+  all_variants?: LookProductVariant[];
 }
 
 export interface Look {

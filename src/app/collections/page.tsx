@@ -761,7 +761,7 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
                           <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 truncate">
                             {p.brand?.name ?? '—'}
                           </p>
-                          <p className="text-xs font-semibold text-[#2C0505] truncate">{p.name}</p>
+                          <p className="text-xs font-semibold text-[#2C0505] break-words">{p.name}</p>
                           <p className="text-[11px] text-neutral-500 mt-0.5">
                             {p.rent_price_minor ? `Rent: ₹${Math.round(p.rent_price_minor / 100)}` : 'Rentable'}
                             {p.retail_price_minor ? ` · MRP: ₹${Math.round(p.retail_price_minor / 100)}` : ''}
@@ -861,7 +861,7 @@ function LookEditorModal({ look, onClose, onLookUpdated }: LookEditorModalProps)
                               <div className="h-10 w-8 rounded bg-neutral-100 flex items-center justify-center text-[8px] flex-shrink-0">IMG</div>
                             )}
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-[#2C0505] truncate">{p.name}</p>
+                              <p className="text-xs font-semibold text-[#2C0505] break-words">{p.name}</p>
                               <p className="text-[10px] text-neutral-400">{p.brand?.name ?? '—'}</p>
                               
                               {/* Variant Selection Option */}

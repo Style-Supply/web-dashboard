@@ -1482,20 +1482,19 @@ function QcCheckpointCard({
     setImages(initialImages);
   }, [initialImages]);
 
-  function handleAddPhotos(newUrls: string[]) {
-    setImages((prev) => [...prev, ...newUrls]);
-  }
-
-  function handleRemoveImage(index: number) {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  async function handleSave(result?: 'passed' | 'failed' | 'pending') {
+  async function handleSaveWith(
+    result?: 'passed' | 'failed' | 'pending',
+    notesToSave?: string,
+    imagesToSave?: string[],
+  ) {
     const targetStatus = result ?? (currentStatus === 'passed' ? 'passed' : currentStatus === 'failed' ? 'failed' : 'pending');
+    const targetNotes = notesToSave !== undefined ? notesToSave : notes;
+    const targetImages = imagesToSave !== undefined ? imagesToSave : images;
+
     setSubmitting(result ?? 'save');
     const prevStatus = currentStatus;
     if (result) setCurrentStatus(result);
-    onUpdate(targetStatus, notes, images);
+    onUpdate(targetStatus, targetNotes, targetImages);
 
     try {
       await request(`/api/admin/returns/items/${itemId}/qc`, {
@@ -1503,16 +1502,46 @@ function QcCheckpointCard({
         body: JSON.stringify({
           checkpoint,
           result: targetStatus,
-          notes,
-          images,
+          notes: targetNotes,
+          images: targetImages,
         }),
       });
-      showToast('success', result ? `${title} marked ${result === 'passed' ? 'Pass' : result === 'failed' ? 'Fail' : 'Pending'}` : `${title} notes and photos saved`);
+      showToast(
+        'success',
+        result
+          ? `${title} marked ${result === 'passed' ? 'Pass' : result === 'failed' ? 'Fail' : 'Pending'}`
+          : `${title} saved successfully`,
+      );
     } catch (err) {
       if (result) setCurrentStatus(prevStatus); // rollback on error
       showToast('error', err instanceof Error ? err.message : 'QC update failed');
+      throw err;
     } finally {
       setSubmitting(null);
+    }
+  }
+
+  async function handleSave(result?: 'passed' | 'failed' | 'pending') {
+    return handleSaveWith(result, notes, images);
+  }
+
+  async function handleAddPhotos(newUrls: string[]) {
+    const updatedImages = [...images, ...newUrls];
+    setImages(updatedImages);
+    try {
+      await handleSaveWith(undefined, notes, updatedImages);
+    } catch {
+      // Error toast already handled in handleSaveWith
+    }
+  }
+
+  async function handleRemoveImage(index: number) {
+    const updatedImages = images.filter((_, i) => i !== index);
+    setImages(updatedImages);
+    try {
+      await handleSaveWith(undefined, notes, updatedImages);
+    } catch {
+      // Error toast already handled in handleSaveWith
     }
   }
 

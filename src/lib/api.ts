@@ -52,15 +52,20 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await getAuthHeaders();
 
+  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
+  const headers: Record<string, string> = {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    ...authHeaders,
+    ...(init?.headers as Record<string, string> ?? {}),
+  };
+  if (!isFormData && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      ...authHeaders,
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: { code: 'UNKNOWN', message: res.statusText } }));

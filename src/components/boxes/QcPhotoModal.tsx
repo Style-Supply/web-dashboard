@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase, PRODUCT_IMAGES_BUCKET } from '@/lib/supabase';
+import { request } from '@/lib/api';
 
 /**
  * Compresses an image file to max 1600x1600 JPEG at 85% quality to avoid
@@ -45,8 +46,7 @@ export async function compressQcImage(file: File): Promise<Blob> {
       ctx.drawImage(img, 0, 0, width, height);
       canvas.toBlob(
         (blob) => {
-          if (blob) resolve(blob);
-          else resolve(file);
+          resolve(blob ?? file);
         },
         'image/jpeg',
         0.85,
@@ -63,10 +63,59 @@ export async function compressQcImage(file: File): Promise<Blob> {
 }
 
 /**
- * Uploads a single file to Supabase Storage 'product-images' bucket under 'qc-photos/...'.
- * If direct upload fails (e.g. offline dev or bucket config), cleanly falls back to a compressed data URL.
+ * Batch uploads multiple files directly via backend admin endpoint.
+ */
+export async function uploadQcImagesBatch(files: File[], itemId: string): Promise<string[]> {
+  try {
+    const formData = new FormData();
+    formData.append('item_id', itemId);
+    for (const f of files) {
+      formData.append('files', f);
+    }
+
+    const res = await request<{ urls?: string[] }>('/api/admin/returns/upload-qc-photo', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (res?.urls && Array.isArray(res.urls) && res.urls.length > 0) {
+      return res.urls;
+    }
+  } catch (err) {
+    console.warn('[QC Upload] Backend batch upload failed, trying individual uploads:', err);
+  }
+
+  // Fallback: individual upload per file
+  const results: string[] = [];
+  for (const f of files) {
+    const url = await uploadQcImage(f, itemId);
+    results.push(url);
+  }
+  return results;
+}
+
+/**
+ * Uploads a single file via backend endpoint, falling back to direct storage or base64.
  */
 export async function uploadQcImage(file: File, itemId: string): Promise<string> {
+  // 1. Try backend endpoint first
+  try {
+    const formData = new FormData();
+    formData.append('item_id', itemId);
+    formData.append('file', file);
+
+    const res = await request<{ url?: string; urls?: string[] }>('/api/admin/returns/upload-qc-photo', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const url = res?.url ?? res?.urls?.[0];
+    if (url) return url;
+  } catch (err) {
+    console.warn('[QC Upload] Backend upload failed, falling back to direct storage or data URL:', err);
+  }
+
+  // 2. Direct Supabase Storage (if authorized)
   try {
     const compressedBlob = await compressQcImage(file);
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -84,10 +133,10 @@ export async function uploadQcImage(file: File, itemId: string): Promise<string>
       if (data?.publicUrl) return data.publicUrl;
     }
   } catch (err) {
-    console.warn('[QC Upload] Storage upload failed, falling back to data URL:', err);
+    console.warn('[QC Upload] Direct storage upload failed, falling back to data URL:', err);
   }
 
-  // Fallback to base64 Data URL (compressed)
+  // 3. Fallback to base64 Data URL (compressed)
   const compressedBlob = await compressQcImage(file);
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -197,23 +246,17 @@ export function QcPhotoModal({
     if (stagedFiles.length === 0) return;
     setUploading(true);
 
-    const uploadedUrls: string[] = [];
-    const total = stagedFiles.length;
-
     try {
-      for (let i = 0; i < total; i++) {
-        const item = stagedFiles[i];
-        setUploadProgress({ current: i + 1, total, name: item.file.name });
-        const url = await uploadQcImage(item.file, itemId);
-        uploadedUrls.push(url);
-      }
+      const files = stagedFiles.map((s) => s.file);
+      setUploadProgress({ current: 1, total: files.length, name: files[0]?.name ?? '' });
+      const uploadedUrls = await uploadQcImagesBatch(files, itemId);
 
       onAddImages(uploadedUrls);
       showToast('success', `Added ${uploadedUrls.length} QC photo(s) successfully`);
       setStagedFiles([]);
       onClose();
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed to upload some photos');
+      showToast('error', err instanceof Error ? err.message : 'Failed to upload photos');
     } finally {
       setUploading(false);
       setUploadProgress(null);

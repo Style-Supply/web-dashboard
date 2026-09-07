@@ -127,7 +127,11 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [fullName, setFullName] = useState(initial?.full_name ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [phone, setPhone] = useState(initial?.phone_number ?? '');
-  const [phoneVerified, setPhoneVerified] = useState(initial?.phone_verified ?? false);
+  const [phoneVerified, setPhoneVerified] = useState(() => {
+    if (initial?.phone_verified !== undefined) return Boolean(initial.phone_verified);
+    if (initial?.admin_notes && initial.admin_notes.includes('[PHONE_VERIFIED]')) return true;
+    return false;
+  });
   const [instagram, setInstagram] = useState(initial?.instagram_handle ?? '');
   const [referralCode, setReferralCode] = useState(initial?.referral_code ?? '');
   const [approvalStatus, setApprovalStatus] = useState<string>(
@@ -221,8 +225,12 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
 
     const dobValue = dob.trim();
     const dobTag = dobValue ? `[DOB: ${dobValue}]` : '';
-    const cleanAdminNotes = adminNotes.replace(/\[DOB:\s*[^\]]+\]/gi, '').trim();
-    const finalAdminNotes = [cleanAdminNotes, dobTag].filter(Boolean).join(' ').trim();
+    const phoneVerifiedTag = phoneVerified ? '[PHONE_VERIFIED]' : '';
+    const cleanAdminNotes = adminNotes
+      .replace(/\[DOB:\s*[^\]]+\]/gi, '')
+      .replace(/\[PHONE_VERIFIED\]/gi, '')
+      .trim();
+    const finalAdminNotes = [cleanAdminNotes, dobTag, phoneVerifiedTag].filter(Boolean).join(' ').trim();
 
     const payload: UserPayload = {
       full_name: fullName.trim(),

@@ -180,7 +180,7 @@ export default function UserDetailPanel({ user, onClose, onEdit }: UserDetailPan
               value={
                 <div className="flex items-center gap-2">
                   <span>{user.phone_number || '—'}</span>
-                  {user.phone_verified && (
+                  {(user.phone_verified || (user.admin_notes && user.admin_notes.includes('[PHONE_VERIFIED]'))) && (
                     <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                       ✓ Verified
                     </span>

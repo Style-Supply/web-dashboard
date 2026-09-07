@@ -129,8 +129,13 @@ export async function listUsers(query: ListUsersQuery = {}): Promise<ListUsersRe
       sub.email.toLowerCase() === 'tech@stylesupply.io' ||
       (sub.admin_notes && sub.admin_notes.toLowerCase().includes('admin'));
 
+    const isPhoneVerified =
+      Boolean(sub.phone_verified) ||
+      Boolean(sub.admin_notes && sub.admin_notes.includes('[PHONE_VERIFIED]'));
+
     return {
       ...sub,
+      phone_verified: isPhoneVerified,
       role: (isAdmin ? 'admin' : 'user') as 'admin' | 'user',
     };
   });

@@ -29,8 +29,50 @@ interface UserFormProps {
 const STATUS_OPTIONS = ['pending', 'approved', 'waitlisted', 'rejected'] as const;
 const HEIGHT_UNITS = ['cm', 'ft'] as const;
 const BODY_UNITS = ['cm', 'in'] as const;
-const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
-const CLUB_OPTIONS = ['Soho House', 'Bastian', 'The Chambers', 'Willingdon Club', 'Bay Club', 'Other'] as const;
+const TOP_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
+const BOTTOM_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '24', '26', '28', '30', '32', '34', '36'] as const;
+const DRESS_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'UK 4', 'UK 6', 'UK 8', 'UK 10', 'UK 12', 'UK 14', 'UK 16'] as const;
+const PREFERRED_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
+
+const CLUB_OPTIONS = [
+  'Soho House',
+  'The Bay Club',
+  'Jolies',
+  'The Quorum',
+  'The Indus Club',
+  'Willingdon Sports Club',
+  'Bombay Gymkhana',
+  'Breach Candy Club',
+  'Royal Bombay Yacht Club',
+  'The Club',
+  'Otters Club',
+  'Bandra Gymkhana',
+  'Khar Gymkhana',
+  'Juhu Gymkhana',
+  'NSCI',
+  'CCI',
+  'MCA',
+  'The Malabar Hill Club',
+  'Other',
+] as const;
+
+const HEAR_ABOUT_OPTIONS = [
+  'Instagram',
+  'Pinterest',
+  'A friend or referral',
+  'A stylist or designer',
+  'An event or pop-up',
+  'Press or an article',
+  'Google or search',
+  'Other',
+] as const;
+
+const EVENT_FREQ_OPTIONS = [
+  'Every week',
+  'Every month',
+  'A couple times a year',
+  'Rarely',
+] as const;
 
 const STYLE_TAGS = [
   'plan',
@@ -85,6 +127,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [fullName, setFullName] = useState(initial?.full_name ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [phone, setPhone] = useState(initial?.phone_number ?? '');
+  const [phoneVerified, setPhoneVerified] = useState(initial?.phone_verified ?? false);
   const [instagram, setInstagram] = useState(initial?.instagram_handle ?? '');
   const [referralCode, setReferralCode] = useState(initial?.referral_code ?? '');
   const [approvalStatus, setApprovalStatus] = useState<string>(
@@ -121,7 +164,8 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
   const [hips, setHips] = useState(fromNum(initial?.hips_size_value));
   const [hipsUnit, setHipsUnit] = useState(initial?.hips_size_unit ?? 'in');
 
-  // Sizes
+  // Sizes & Preferred Size
+  const [preferredSize, setPreferredSize] = useState(initial?.preferred_size ?? '');
   const [topSizes, setTopSizes] = useState<string[]>(() => {
     if (initial?.top_sizes && initial.top_sizes.length > 0) return initial.top_sizes;
     return (initial?.morning_routine_selections || [])
@@ -205,6 +249,8 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       top_sizes: topSizes,
       bottom_sizes: bottomSizes,
       dress_sizes: dressSizes,
+      preferred_size: preferredSize || null,
+      phone_verified: phoneVerified,
       hear_about_us: hearAboutUs.trim() || '',
       event_frequency: eventFrequency.trim() || '',
       private_clubs: privateClubs,
@@ -284,7 +330,27 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       <Section title="Contact & Credentials">
         <LabeledInput label="Full name *" value={fullName} onChange={setFullName} />
         <LabeledInput label="Email *" value={email} onChange={setEmail} type="email" />
-        <LabeledInput label="Phone" value={phone} onChange={setPhone} />
+        <div>
+          <LabeledInput label="Phone" value={phone} onChange={setPhone} />
+          <div className="mt-1.5 flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={phoneVerified}
+                onChange={(e) => setPhoneVerified(e.target.checked)}
+                className="h-4 w-4 rounded border-neutral-300 text-[#7A021D] focus:ring-[#7A021D]"
+              />
+              <span className="text-xs font-medium text-neutral-600">
+                Phone verified
+              </span>
+            </label>
+            {phoneVerified && (
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                ✓ Verified
+              </span>
+            )}
+          </div>
+        </div>
         <LabeledInput label="Instagram handle" value={instagram} onChange={setInstagram} />
         <LabeledInput label="Referral code" value={referralCode} onChange={setReferralCode} />
         <LabeledSelect
@@ -322,18 +388,25 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       {role !== 'admin' && (
         <>
           <Section title="Fit profile & Measurements">
-            <LabeledInput
-              label="Date of Birth (D.O.B)"
-              type="date"
-              value={dob}
-              onChange={(val) => {
-                setDob(val);
-                const computed = calculateAgeFromDob(val);
-                if (computed !== null) {
-                  setAge(String(computed));
-                }
-              }}
-            />
+            <div>
+              <LabeledInput
+                label="Date of Birth (D.O.B)"
+                type="date"
+                value={dob}
+                onChange={(val) => {
+                  setDob(val);
+                  const computed = calculateAgeFromDob(val);
+                  if (computed !== null) {
+                    setAge(String(computed));
+                  }
+                }}
+              />
+              {dob && calculateAgeFromDob(dob) !== null && (
+                <span className="mt-1 block text-[11px] font-medium text-emerald-700">
+                  Calculated age: {calculateAgeFromDob(dob)} years
+                </span>
+              )}
+            </div>
             <MeasurementField
               label="Age"
               value={age}
@@ -384,16 +457,42 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
             />
           </Section>
 
+          {/* Preferred Size */}
+          <section>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#7A021D]">
+              Preferred Size (Primary)
+            </h2>
+            <div className="flex flex-wrap gap-1.5">
+              {PREFERRED_SIZE_OPTIONS.map((sz) => {
+                const active = preferredSize === sz;
+                return (
+                  <button
+                    key={`pref-${sz}`}
+                    type="button"
+                    onClick={() => setPreferredSize(active ? '' : sz)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold shadow-xs'
+                        : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
+                    }`}
+                  >
+                    {sz}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           {/* Usual Sizes */}
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#7A021D]">
-              Usual Sizes
+              Usual Sizes (Select all that fit)
             </h2>
             <div className="flex flex-col gap-3">
               <div>
-                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Top</span>
+                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Top / Shirt</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {SIZE_OPTIONS.map((sz) => {
+                  {TOP_SIZE_OPTIONS.map((sz) => {
                     const active = topSizes.includes(sz);
                     return (
                       <button
@@ -402,7 +501,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
                         onClick={() => toggleArrayItem(topSizes, sz, setTopSizes)}
                         className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                           active
-                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
+                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold shadow-xs'
                             : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
                         }`}
                       >
@@ -414,9 +513,9 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
               </div>
 
               <div>
-                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Bottom</span>
+                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Bottom / Pants & Waist</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {SIZE_OPTIONS.map((sz) => {
+                  {BOTTOM_SIZE_OPTIONS.map((sz) => {
                     const active = bottomSizes.includes(sz);
                     return (
                       <button
@@ -425,7 +524,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
                         onClick={() => toggleArrayItem(bottomSizes, sz, setBottomSizes)}
                         className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                           active
-                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
+                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold shadow-xs'
                             : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
                         }`}
                       >
@@ -437,9 +536,9 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
               </div>
 
               <div>
-                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Dress</span>
+                <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Dress & UK Sizing</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {SIZE_OPTIONS.map((sz) => {
+                  {DRESS_SIZE_OPTIONS.map((sz) => {
                     const active = dressSizes.includes(sz);
                     return (
                       <button
@@ -448,7 +547,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
                         onClick={() => toggleArrayItem(dressSizes, sz, setDressSizes)}
                         className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                           active
-                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
+                            ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold shadow-xs'
                             : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
                         }`}
                       >
@@ -463,18 +562,58 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
 
           {/* Discovery & Social Profile */}
           <Section title="Discovery & Memberships">
-            <LabeledInput
-              label="How did they hear about us?"
-              value={hearAboutUs}
-              onChange={setHearAboutUs}
-            />
-            <LabeledInput
-              label="Event frequency"
-              value={eventFrequency}
-              onChange={setEventFrequency}
-            />
+            <div className="col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[#2C0505]/70">How did they hear about us?</span>
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {HEAR_ABOUT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setHearAboutUs(opt === hearAboutUs ? '' : opt)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                      hearAboutUs === opt
+                        ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold shadow-xs'
+                        : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              <Input
+                value={hearAboutUs}
+                onChange={(e) => setHearAboutUs(e.target.value)}
+                placeholder="Or specify referral / source..."
+              />
+            </div>
+
+            <div className="col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[#2C0505]/70">Event Frequency</span>
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {EVENT_FREQ_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setEventFrequency(opt === eventFrequency ? '' : opt)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                      eventFrequency === opt
+                        ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold shadow-xs'
+                        : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              <Input
+                value={eventFrequency}
+                onChange={(e) => setEventFrequency(e.target.value)}
+                placeholder="Event attendance frequency..."
+              />
+            </div>
+
             <div className="col-span-2">
-              <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Private Clubs</span>
+              <span className="text-xs font-medium text-[#2C0505]/70 block mb-1">Private Club Memberships</span>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {CLUB_OPTIONS.map((club) => {
                   const active = privateClubs.includes(club);
@@ -485,7 +624,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
                       onClick={() => toggleArrayItem(privateClubs, club, setPrivateClubs)}
                       className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                         active
-                          ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold'
+                          ? 'border-[#7A021D] bg-[#7A021D] text-white font-semibold shadow-xs'
                           : 'border-neutral-200 bg-white text-[#2C0505] hover:border-[#7A021D]'
                       }`}
                     >

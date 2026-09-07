@@ -27,6 +27,7 @@ export interface OnboardingSubmission {
   top_sizes?: string[] | null;
   bottom_sizes?: string[] | null;
   dress_sizes?: string[] | null;
+  preferred_size?: string | null;
 
   morning_routine_selections: string[] | null;
   dressing_preferences?: string[] | null;
@@ -44,4 +45,5 @@ export interface OnboardingSubmission {
   invite_code?: string | null;
   invite_sent_at?: string | null;
   role?: 'admin' | 'user' | null;
+  phone_verified?: boolean | null;
 }

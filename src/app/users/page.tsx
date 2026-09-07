@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 import {
   approveAccessRequest,
@@ -55,6 +56,7 @@ function IconList({ active }: { active: boolean }) {
 }
 
 export default function UsersPage(): React.ReactElement {
+  const router = useRouter();
   const { showToast } = useToast();
   const { user: currentUser } = useAuth();
 
@@ -159,38 +161,7 @@ export default function UsersPage(): React.ReactElement {
   );
 
   function openAddUser() {
-    if (roleTab === 'admin') {
-      setEditingUser({
-        id: '',
-        created_at: '',
-        full_name: '',
-        email: '',
-        phone_number: null,
-        floor_apartment: null,
-        city: 'Mumbai',
-        zip_code: null,
-        instagram_handle: null,
-        height_value: null,
-        height_unit: null,
-        shoulder_width_value: null,
-        shoulder_width_unit: null,
-        bust_size_value: null,
-        bust_size_unit: null,
-        waist_size_value: null,
-        waist_size_unit: null,
-        hips_size_value: null,
-        hips_size_unit: null,
-        age_value: null,
-        age_unit: null,
-        morning_routine_selections: null,
-        approval_status: 'approved',
-        admin_notes: 'Administrator Account',
-        role: 'admin',
-      });
-    } else {
-      setEditingUser(null);
-    }
-    setDrawerMode('create');
+    router.push(roleTab === 'admin' ? '/users/new?role=admin' : '/users/new');
   }
 
   function openEditUser(user: OnboardingSubmission) {
@@ -725,7 +696,15 @@ export default function UsersPage(): React.ReactElement {
         )}
 
         {selected && (
-          <UserDetailPanel user={selected} onClose={() => setSelectedId(null)} />
+          <UserDetailPanel
+            user={selected}
+            onClose={() => setSelectedId(null)}
+            onEdit={() => {
+              const target = selected;
+              setSelectedId(null);
+              openEditUser(target);
+            }}
+          />
         )}
       </div>
 

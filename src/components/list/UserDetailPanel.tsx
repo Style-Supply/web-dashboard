@@ -18,6 +18,7 @@ const STYLE_MAP: Record<string, string> = {
 interface UserDetailPanelProps {
   user: OnboardingSubmission;
   onClose: () => void;
+  onEdit?: () => void;
 }
 
 function formatDateTime(iso: string): string {
@@ -89,7 +90,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps): React.ReactElement {
+export default function UserDetailPanel({ user, onClose, onEdit }: UserDetailPanelProps): React.ReactElement {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -108,26 +109,51 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
       <aside className="relative z-10 flex h-full w-full max-w-xl flex-col overflow-y-auto bg-white shadow-2xl">
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-neutral-100 bg-white px-6 py-4">
           <div>
-            <h2 className="text-xl font-semibold text-[#2C0505]">{user.full_name}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-[#2C0505]">{user.full_name}</h2>
+              {user.role === 'admin' && (
+                <span className="rounded-full bg-[#7A021D] px-2 py-0.5 text-[10px] font-semibold text-white">
+                  Admin
+                </span>
+              )}
+            </div>
             <div className="mt-0.5 text-xs text-neutral-500">
               Signed up {formatDateTime(user.created_at)}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              href={`/users/${user.id}`}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#7A021D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#6B0019]"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-              Edit
-            </Link>
+            {onEdit ? (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#7A021D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#6B0019] shadow-xs"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                Edit
+              </button>
+            ) : (
+              <Link
+                href={`/users/${user.id}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#7A021D] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#6B0019] shadow-xs"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                Edit
+              </Link>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -149,7 +175,19 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
         <div className="flex flex-col gap-8 px-6 py-6">
           <Section title="Contact">
             <Field label="Email" value={user.email} />
-            <Field label="Phone" value={user.phone_number} />
+            <Field
+              label="Phone"
+              value={
+                <div className="flex items-center gap-2">
+                  <span>{user.phone_number || '—'}</span>
+                  {user.phone_verified && (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      ✓ Verified
+                    </span>
+                  )}
+                </div>
+              }
+            />
             <Field label="Instagram" value={user.instagram_handle} />
             <Field label="Referral Code" value={user.referral_code} />
             <Field
@@ -168,6 +206,14 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
                 </span>
               }
             />
+            {user.invite_code && (
+              <Field
+                label="Invite Code"
+                value={
+                  <span className="font-mono font-semibold text-[#7A021D]">{user.invite_code}</span>
+                }
+              />
+            )}
           </Section>
 
           <Section title="Address">
@@ -193,6 +239,16 @@ export default function UserDetailPanel({ user, onClose }: UserDetailPanelProps)
             <Field label="Bust" value={formatMeasurement(user.bust_size_value, user.bust_size_unit)} />
             <Field label="Waist" value={formatMeasurement(user.waist_size_value, user.waist_size_unit)} />
             <Field label="Hips" value={formatMeasurement(user.hips_size_value, user.hips_size_unit)} />
+            {user.preferred_size && (
+              <Field
+                label="Preferred Size"
+                value={
+                  <span className="inline-block rounded-full bg-[#7A021D] px-2.5 py-0.5 text-xs font-semibold text-white">
+                    {user.preferred_size}
+                  </span>
+                }
+              />
+            )}
           </Section>
 
           {(() => {

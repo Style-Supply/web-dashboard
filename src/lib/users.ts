@@ -187,7 +187,52 @@ export async function getUser(id: string): Promise<OnboardingSubmission> {
 }
 
 export async function createUser(payload: UserPayload): Promise<OnboardingSubmission> {
-  const { role, ...insertFields } = payload as any;
+  try {
+    const res = await request<{ success: boolean; submission: OnboardingSubmission }>(
+      '/api/admin/access-requests',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+    if (res?.submission) return res.submission;
+  } catch (err) {
+    console.warn('[createUser] Backend create failed, falling back to direct Supabase:', err);
+  }
+
+  const {
+    role,
+    top_sizes,
+    bottom_sizes,
+    dress_sizes,
+    dob,
+    dressing_preferences,
+    preferred_size,
+    phone_verified,
+    ...insertFields
+  } = payload as any;
+
+  // Build sizes into routine for fallback
+  const sizeTags: string[] = [
+    ...(Array.isArray(top_sizes) ? top_sizes.map((s: string) => `top:${s}`) : []),
+    ...(Array.isArray(bottom_sizes) ? bottom_sizes.map((s: string) => `bottom:${s}`) : []),
+    ...(Array.isArray(dress_sizes) ? dress_sizes.map((s: string) => `dress:${s}`) : []),
+  ];
+  if (sizeTags.length > 0) {
+    const prefs = Array.isArray(dressing_preferences) && dressing_preferences.length > 0
+      ? dressing_preferences
+      : Array.isArray(insertFields.morning_routine_selections)
+        ? insertFields.morning_routine_selections.filter((s: string) => !s.startsWith('top:') && !s.startsWith('bottom:') && !s.startsWith('dress:'))
+        : [];
+    insertFields.morning_routine_selections = Array.from(new Set([...prefs, ...sizeTags]));
+  }
+
+  if (dob) {
+    const dobTag = `[DOB: ${dob.trim()}]`;
+    const cleanNotes = (insertFields.admin_notes || '').replace(/\[DOB:\s*[^\]]+\]/gi, '').trim();
+    insertFields.admin_notes = [cleanNotes, dobTag].filter(Boolean).join(' ').trim();
+  }
+
   const { data, error } = await supabase
     .from('onboarding_submissions')
     .insert(insertFields)
@@ -211,7 +256,17 @@ export async function updateUser(
     );
     return res.submission;
   } catch (_err) {
-    const { role, ...updateFields } = payload as any;
+    const {
+      role,
+      top_sizes,
+      bottom_sizes,
+      dress_sizes,
+      dob,
+      dressing_preferences,
+      preferred_size,
+      phone_verified,
+      ...updateFields
+    } = payload as any;
 
     const textCols = ['phone_number', 'floor_apartment', 'city', 'zip_code', 'instagram_handle', 'referral_code', 'admin_notes'];
     for (const col of textCols) {

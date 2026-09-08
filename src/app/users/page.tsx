@@ -20,6 +20,7 @@ import UserDetailPanel from '@/components/list/UserDetailPanel';
 import UserBulkActionBar from '@/components/list/UserBulkActionBar';
 import UserForm from '@/components/user-form/UserForm';
 import ManagerDrawer from '@/components/staff/ManagerDrawer';
+import DeleteUserConfirmationModal from '@/components/ui/DeleteUserConfirmationModal';
 
 const PAGE_SIZE = 50;
 
@@ -86,6 +87,16 @@ export default function UsersPage(): React.ReactElement {
   // Popup Drawer State
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [editingUser, setEditingUser] = useState<OnboardingSubmission | null>(null);
+
+  // Delete Confirmation Modal State
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    type: 'single' | 'bulk';
+    targetId?: string;
+    targetName?: string;
+    count?: number;
+  }>({ isOpen: false, type: 'single' });
+  const [isDeletingModal, setIsDeletingModal] = useState(false);
 
   // Manager Staff state
   const [managers, setManagers] = useState<StaffMember[]>([]);
@@ -237,39 +248,54 @@ export default function UsersPage(): React.ReactElement {
     }
   }
 
-  async function handleRowDelete(id: string): Promise<void> {
-    if (!confirm('Delete this user?')) return;
-    setRowBusy(id);
-    setRowAction('deleting');
+  function handleRowDelete(id: string): void {
+    const target = users.find((u) => u.id === id);
+    setDeleteModalState({
+      isOpen: true,
+      type: 'single',
+      targetId: id,
+      targetName: target?.full_name || target?.email || 'this user',
+    });
+  }
+
+  function handleBulkDelete(): void {
+    if (selection.size === 0) return;
+    setDeleteModalState({
+      isOpen: true,
+      type: 'bulk',
+      count: selection.size,
+    });
+  }
+
+  async function handleConfirmDeleteModal(): Promise<void> {
+    setIsDeletingModal(true);
     try {
-      await deleteUser(id);
-      setSelection((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      if (deleteModalState.type === 'single' && deleteModalState.targetId) {
+        const id = deleteModalState.targetId;
+        setRowBusy(id);
+        setRowAction('deleting');
+        await deleteUser(id);
+        setSelection((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        showToast('success', 'User and all associated data deleted');
+      } else if (deleteModalState.type === 'bulk') {
+        setBulkBusy('delete');
+        const count = selection.size;
+        await bulkDeleteUsers(Array.from(selection));
+        setSelection(new Set());
+        showToast('success', `${count} user${count === 1 ? '' : 's'} and all associated data deleted`);
+      }
+      setDeleteModalState({ isOpen: false, type: 'single' });
       await load();
-      showToast('success', 'User deleted');
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Delete failed');
     } finally {
+      setIsDeletingModal(false);
       setRowBusy(null);
       setRowAction(null);
-    }
-  }
-
-  async function handleBulkDelete(): Promise<void> {
-    if (!confirm(`Delete ${selection.size} user${selection.size === 1 ? '' : 's'}?`)) return;
-    setBulkBusy('delete');
-    try {
-      const count = selection.size;
-      await bulkDeleteUsers(Array.from(selection));
-      setSelection(new Set());
-      await load();
-      showToast('success', `${count} user${count === 1 ? '' : 's'} deleted`);
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Bulk delete failed');
-    } finally {
       setBulkBusy(false);
     }
   }
@@ -731,6 +757,16 @@ export default function UsersPage(): React.ReactElement {
           }}
         />
       )}
+
+      {/* ── Delete Confirmation & Box Data Warning Modal ── */}
+      <DeleteUserConfirmationModal
+        isOpen={deleteModalState.isOpen}
+        onClose={() => setDeleteModalState((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmDeleteModal}
+        loading={isDeletingModal}
+        targetName={deleteModalState.targetName}
+        count={deleteModalState.count}
+      />
     </>
   );
 }

@@ -16,6 +16,7 @@ import {
   type UserPayload,
 } from '@/lib/users';
 import type { OnboardingSubmission } from '@/types/user';
+import DeleteUserConfirmationModal from '@/components/ui/DeleteUserConfirmationModal';
 
 type Mode = 'create' | 'edit';
 
@@ -138,6 +139,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
     initial?.approval_status ?? 'pending',
   );
   const [role, setRole] = useState<'user' | 'admin'>(initial?.role === 'admin' ? 'admin' : 'user');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [apartment, setApartment] = useState(initial?.floor_apartment ?? '');
   const [city, setCity] = useState(initial?.city ?? 'Mumbai');
@@ -314,13 +316,18 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
     }
   }
 
-  async function handleDelete(): Promise<void> {
+  function handleDeleteClick(): void {
     if (!initial) return;
-    if (!confirm(`Delete ${initial.full_name}? This cannot be undone.`)) return;
+    setShowDeleteModal(true);
+  }
+
+  async function handleConfirmDelete(): Promise<void> {
+    if (!initial) return;
     setDeleting(true);
     try {
       await deleteUser(initial.id);
-      showToast('success', 'User deleted');
+      showToast('success', 'User and all associated data deleted');
+      setShowDeleteModal(false);
       if (onSuccess) {
         onSuccess();
       } else {
@@ -722,7 +729,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
               {mode === 'edit' && (
                 <button
                   type="button"
-                  onClick={() => void handleDelete()}
+                  onClick={handleDeleteClick}
                   disabled={deleting}
                   className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-900/40 hover:text-red-200 transition-colors disabled:opacity-50"
                 >
@@ -773,6 +780,14 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
             to   { transform: translateX(0);    opacity: 1; }
           }
         ` }} />
+
+        <DeleteUserConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleConfirmDelete}
+          loading={deleting}
+          targetName={initial?.full_name || initial?.email}
+        />
       </>
     );
   }
@@ -797,7 +812,7 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
             <Button
               type="button"
               variant="secondary"
-              onClick={() => void handleDelete()}
+              onClick={handleDeleteClick}
               loading={deleting}
               className="border-red-200 text-red-600 hover:bg-red-50"
             >
@@ -811,6 +826,14 @@ export default function UserForm({ mode, initial, onSuccess, onClose }: UserForm
       </div>
 
       {formFieldsContent}
+
+      <DeleteUserConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleConfirmDelete}
+        loading={deleting}
+        targetName={initial?.full_name || initial?.email}
+      />
     </form>
   );
 }

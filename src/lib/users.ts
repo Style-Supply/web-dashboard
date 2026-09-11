@@ -297,30 +297,14 @@ export async function updateUser(
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  try {
-    await request<void>(`/api/admin/access-requests/${id}`, { method: 'DELETE' });
-  } catch (_err) {
-    await supabase.from('profiles').delete().eq('id', id);
-    const { error } = await supabase.from('onboarding_submissions').delete().eq('id', id);
-    if (error) throw new Error(error.message);
-  }
+  await request<void>(`/api/admin/access-requests/${id}`, { method: 'DELETE' });
 }
 
 export async function bulkDeleteUsers(ids: string[]): Promise<{ deleted: number }> {
-  try {
-    return await request<{ deleted: number }>(`/api/admin/access-requests/bulk-delete`, {
-      method: 'POST',
-      body: JSON.stringify({ ids }),
-    });
-  } catch (_err) {
-    await supabase.from('profiles').delete().in('id', ids);
-    const { error, count } = await supabase
-      .from('onboarding_submissions')
-      .delete({ count: 'exact' })
-      .in('id', ids);
-    if (error) throw new Error(error.message);
-    return { deleted: count ?? 0 };
-  }
+  return await request<{ deleted: number }>(`/api/admin/access-requests/bulk-delete`, {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
 }
 
 export async function bulkUpdateStatus(

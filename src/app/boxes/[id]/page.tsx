@@ -67,7 +67,7 @@ const DECISION_COLORS: Record<string, string> = {
 
 function fmt(date: string | null | undefined) {
   if (!date) return '—';
-  return new Date(date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  return new Date(date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
 }
 
 function sessionRemaining(endsAt: string | null | undefined): string {

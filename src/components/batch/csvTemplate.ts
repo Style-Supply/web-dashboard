@@ -153,7 +153,21 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
     const subSubCat = getVal(r, ['sub_subcategory', 'sub_sub_category', 'sub_subcategory_slug', 'cat3', 'category3', 'sub_sub_cat', 'style']);
     const material = getVal(r, ['material', 'fabric', 'material_slug', 'material_name', 'composition', 'content']);
     const fabricDetails = getVal(r, ['fabric_details', 'fabric_detail', 'fabric_info', 'material_details', 'care', 'care_instructions']);
-    const description = getVal(r, ['description', 'desc', 'details', 'product_description', 'about', 'body']);
+    const description = getVal(r, [
+      'description',
+      'desc',
+      'product_description',
+      'item_description',
+      'long_description',
+      'short_description',
+      'details',
+      'product_details',
+      'notes',
+      'about',
+      'body',
+      'product_story',
+      'story',
+    ]);
 
     const retailMinorStr = getVal(r, ['retail_price_minor', 'retail_minor', 'price_minor']);
     const retailInrStr = getVal(r, ['retail_price_inr', 'retail_price', 'retail', 'mrp', 'price', 'original_price', 'retail_mrp']);
@@ -252,7 +266,9 @@ export function groupRowsIntoProducts(rows: Record<string, string>[]): GroupingR
       if (!existing.sub_subcategory_slug && subSubCat) existing.sub_subcategory_slug = subSubCat;
       if (!existing.material_slug && material) existing.material_slug = material;
       if (!existing.fabric_details && fabricDetails) existing.fabric_details = fabricDetails;
-      if (!existing.description && description) existing.description = description;
+      if (description && (!existing.description || description.length > existing.description.length)) {
+        existing.description = description;
+      }
       if (!existing.retail_price_minor && retailPriceMinor) existing.retail_price_minor = retailPriceMinor;
       if (!existing.rent_price_minor && rentPriceMinor) existing.rent_price_minor = rentPriceMinor;
       if (lookSlugs.length > 0) {

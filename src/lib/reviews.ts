@@ -13,6 +13,7 @@ export interface Review {
   share_publicly: boolean;
   admin_approved_public: boolean;
   created_at: string;
+  photos?: string[] | null;
   products?: { id: string; name: string; brand: string | null };
   profiles?: { full_name: string | null };
 }

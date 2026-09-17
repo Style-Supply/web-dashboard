@@ -61,8 +61,34 @@ function parseRentalFeedback(returnReason?: string | null) {
     }
   }
 
-  const isRental = Boolean(fit || wearAgain || condition);
-  return { isRental, fit, wearAgain, condition, otherTags };
+  return { isRental: Boolean(fit || wearAgain || condition), fit, wearAgain, condition, otherTags };
+}
+
+function parseReviewTextAndPhotos(
+  rawBody?: string | null,
+  directPhotos?: string[] | null
+): { cleanBody: string | null; photos: string[] } {
+  let photos: string[] = Array.isArray(directPhotos) && directPhotos.length > 0 ? [...directPhotos] : [];
+  let cleanBody = (rawBody || '').trim();
+
+  if (cleanBody.includes('__PHOTOS__:')) {
+    const parts = cleanBody.split('__PHOTOS__:');
+    cleanBody = (parts[0] || '').trim();
+    const rawPhotos = (parts[1] || '').trim();
+    if (rawPhotos) {
+      try {
+        const parsed = JSON.parse(rawPhotos);
+        if (Array.isArray(parsed)) {
+          const merged = new Set([...photos, ...parsed]);
+          photos = Array.from(merged);
+        }
+      } catch {
+        // ignore parse error
+      }
+    }
+  }
+
+  return { cleanBody: cleanBody || null, photos };
 }
 
 export default function ReviewsPage(): React.ReactElement {
@@ -318,7 +344,8 @@ export default function ReviewsPage(): React.ReactElement {
       {!loading && filteredReviews.length > 0 && view === 'grid' && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredReviews.map((r) => {
-            const reviewContent = r.body || r.loved_reason || r.disliked_reason || r.return_reason || 'No written review text provided.';
+            const { cleanBody, photos: itemPhotos } = parseReviewTextAndPhotos(r.body, r.photos);
+            const reviewContent = cleanBody || r.loved_reason || r.disliked_reason || r.return_reason || 'No written review text provided.';
             return (
               <div
                 key={r.id}
@@ -364,8 +391,20 @@ export default function ReviewsPage(): React.ReactElement {
                   </div>
 
                   {/* Review Quote Content Box */}
-                  <div className="mt-3 rounded-xl border border-neutral-100 bg-neutral-50/70 p-3 text-xs text-neutral-700 leading-relaxed italic line-clamp-3">
-                    &ldquo;{reviewContent}&rdquo;
+                  <div className="mt-3 rounded-xl border border-neutral-100 bg-neutral-50/70 p-3 text-xs text-neutral-700 leading-relaxed italic">
+                    <p className="line-clamp-3">&ldquo;{reviewContent}&rdquo;</p>
+                    {itemPhotos.length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-neutral-200/60 flex items-center justify-between not-italic">
+                        <span className="text-[11px] font-bold text-[#7A021D] flex items-center gap-1">
+                          📷 {itemPhotos.length} photo{itemPhotos.length > 1 ? 's' : ''}
+                        </span>
+                        <div className="flex gap-1">
+                          {itemPhotos.slice(0, 3).map((url, i) => (
+                            <img key={i} src={url} alt="" className="w-5 h-5 object-cover rounded border border-neutral-200 shadow-2xs" />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -473,9 +512,21 @@ export default function ReviewsPage(): React.ReactElement {
                       <Hearts rating={r.rating} />
                     </td>
                     <td className="px-5 py-4 max-w-xs text-xs text-neutral-600 leading-relaxed italic">
-                      <span className="line-clamp-2">
-                        {r.body || r.loved_reason || r.disliked_reason || r.return_reason || '—'}
-                      </span>
+                      {(() => {
+                        const { cleanBody, photos: itemPhotos } = parseReviewTextAndPhotos(r.body, r.photos);
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <span className="line-clamp-2">
+                              {cleanBody || r.loved_reason || r.disliked_reason || r.return_reason || '—'}
+                            </span>
+                            {itemPhotos.length > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7A021D] not-italic">
+                                📷 {itemPhotos.length} photo{itemPhotos.length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-5 py-4 text-xs font-semibold">
                       {r.share_publicly ? (
@@ -589,6 +640,7 @@ export default function ReviewsPage(): React.ReactElement {
 
             {/* Review Type & Sharing Status */}
             {(() => {
+              const { cleanBody, photos } = parseReviewTextAndPhotos(selectedReview.body, selectedReview.photos);
               const rentalData = parseRentalFeedback(selectedReview.return_reason);
               const originLabel = rentalData.isRental
                 ? 'RENTAL'
@@ -677,13 +729,13 @@ export default function ReviewsPage(): React.ReactElement {
                       )}
 
                       {/* Field 4: Customer Note / Comment */}
-                      {selectedReview.body && (
+                      {cleanBody && (
                         <div>
                           <span className="text-xs font-semibold text-neutral-600 block mb-1.5">
                             4. Customer comments &amp; details:
                           </span>
                           <div className="rounded-xl border border-purple-200/80 bg-white p-3.5 text-xs text-neutral-800 leading-relaxed italic shadow-2xs">
-                            &ldquo;{selectedReview.body}&rdquo;
+                            &ldquo;{cleanBody}&rdquo;
                           </div>
                         </div>
                       )}
@@ -711,16 +763,50 @@ export default function ReviewsPage(): React.ReactElement {
                         </div>
                       )}
 
-                      {selectedReview.body && (
+                      {cleanBody && (
                         <div>
                           <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 block mb-2">
                             Customer Comment / Written Review
                           </label>
                           <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-800 leading-relaxed italic shadow-2xs">
-                            &ldquo;{selectedReview.body}&rdquo;
+                            &ldquo;{cleanBody}&rdquo;
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Customer Uploaded Photos Gallery */}
+                  {photos.length > 0 && (
+                    <div className="mb-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[#7A021D] flex items-center gap-1.5">
+                          <span>📷</span> Customer Uploaded Photos ({photos.length})
+                        </label>
+                        <span className="text-[11px] font-medium text-neutral-400">Click to view full size ↗</span>
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                        {photos.map((url, idx) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative aspect-3/4 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 shadow-2xs hover:border-[#7A021D] hover:shadow-md transition-all block"
+                          >
+                            <img
+                              src={url}
+                              alt={`Customer photo ${idx + 1}`}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 text-[#7A021D] text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                                View ↗
+                              </span>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
 

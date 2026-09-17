@@ -14,6 +14,7 @@ import {
 import { isLikelyHttpUrl } from '@/lib/url-check';
 import Button from '@/components/ui/Button';
 import Textarea from '@/components/ui/Textarea';
+import EditImageModal from './EditImageModal';
 
 export type SectionKind =
   | { type: 'colour'; colour_id: string; name: string; hex: string }
@@ -83,6 +84,7 @@ export default function ImageColourSection({
   const [dragOver, setDragOver] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [openMoveFor, setOpenMoveFor] = useState<string | null>(null);
+  const [editingImage, setEditingImage] = useState<ProductImage | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleImportUrls(): Promise<void> {
@@ -298,11 +300,30 @@ export default function ImageColourSection({
                 <div className="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[10px] font-medium text-white">
                   {index + 1}
                 </div>
-                <div className="relative aspect-square overflow-hidden rounded bg-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingImage(img)}
+                  className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 shadow-sm text-neutral-600 hover:bg-white hover:text-black transition-all"
+                  title="Edit image details"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <div
+                  className="relative aspect-square overflow-hidden rounded bg-neutral-100 cursor-pointer group/thumb"
+                  onClick={() => setEditingImage(img)}
+                  title="Click to edit image"
+                >
                   {img.public_url && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={img.public_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    <img src={img.public_url} alt={img.alt ?? ''} className="absolute inset-0 h-full w-full object-cover transition-transform group-hover/thumb:scale-105" />
                   )}
+                  <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition-colors flex items-center justify-center">
+                    <span className="opacity-0 group-hover/thumb:opacity-100 transition-opacity rounded bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white shadow-xs">
+                      Edit
+                    </span>
+                  </div>
                 </div>
                 {/* Size assignment badges */}
                 <div className="mt-2 border-t border-neutral-100 pt-1.5">
@@ -363,7 +384,17 @@ export default function ImageColourSection({
                     )}
                   </div>
                 </div>
-                <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-500">
+                <div className="mt-2 flex items-center gap-2.5 text-[10px] text-neutral-500">
+                  <button
+                    type="button"
+                    className="font-semibold text-neutral-700 hover:text-black hover:underline flex items-center gap-1"
+                    onClick={() => setEditingImage(img)}
+                  >
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit
+                  </button>
                   <button
                     type="button"
                     className="text-red-600 hover:underline"
@@ -402,6 +433,29 @@ export default function ImageColourSection({
             ))}
           </div>
         </div>
+      )}
+
+      {editingImage && (
+        <EditImageModal
+          productId={productId}
+          image={editingImage}
+          availableSizes={availableSizes}
+          colourOptions={moveTargets.map((m) => ({
+            id: m.tag.colour_id ?? null,
+            name: m.label,
+            hex: null,
+            custom_colour: m.tag.custom_colour ?? null,
+          }))}
+          onClose={() => setEditingImage(null)}
+          onUpdateImage={(id, patch) => {
+            onUpdateImage(id, patch);
+            setEditingImage((prev) => (prev && prev.id === id ? { ...prev, ...patch } : prev));
+          }}
+          onDeleteImage={(id) => {
+            onDeleteImage(id);
+            setEditingImage(null);
+          }}
+        />
       )}
     </section>
   );

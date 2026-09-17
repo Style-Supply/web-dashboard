@@ -237,15 +237,50 @@ export async function reorderImages(productId: string, imageIds: string[]): Prom
   });
 }
 
-export async function retagImage(imageId: string, tag: ColourTag): Promise<ProductImage> {
+export interface UpdateImagePayload {
+  colour_id?: string | null;
+  custom_colour?: string | null;
+  sizes?: string[] | null;
+  alt?: string | null;
+  public_url?: string;
+  storage_path?: string;
+}
+
+export async function updateImage(imageId: string, patch: UpdateImagePayload): Promise<ProductImage> {
   return request<ProductImage>(`/api/admin/products/images/${imageId}`, {
     method: 'PATCH',
-    body: JSON.stringify(tag),
+    body: JSON.stringify(patch),
   });
 }
 
+export async function retagImage(imageId: string, tag: ColourTag): Promise<ProductImage> {
+  return updateImage(imageId, tag);
+}
+
 export async function updateImageSizes(imageId: string, sizes: string[]): Promise<ProductImage> {
-  return retagImage(imageId, { sizes });
+  return updateImage(imageId, { sizes });
+}
+
+export async function replaceImageFile(
+  productId: string,
+  file: File,
+): Promise<{ storage_path: string; public_url: string }> {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw new Error(`Unsupported image type: ${file.type || 'unknown'}`);
+  }
+  const ext = extFromMime(file.type);
+  const storagePath = `${productId}/${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadErr } = await supabase.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .upload(storagePath, file, { contentType: file.type, upsert: false });
+  if (uploadErr) throw new Error(uploadErr.message);
+
+  const { data: pub } = supabase.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .getPublicUrl(storagePath);
+
+  return { storage_path: storagePath, public_url: pub.publicUrl };
 }
 
 // ---------- Batch ----------

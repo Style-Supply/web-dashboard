@@ -7,6 +7,7 @@ import {
   scrapeImagesFromPage,
   uploadImages,
   retagImage,
+  updateImageSizes,
   deleteImage,
   type ColourTag,
 } from '@/lib/api';
@@ -17,7 +18,9 @@ import Textarea from '@/components/ui/Textarea';
 export type SectionKind =
   | { type: 'colour'; colour_id: string; name: string; hex: string }
   | { type: 'custom'; custom_colour: string }
-  | { type: 'unassigned' };
+  | { type: 'unassigned' }
+  | { type: 'size'; size: string }
+  | { type: 'size_all' };
 
 interface MoveTarget {
   label: string;
@@ -29,6 +32,8 @@ interface Props {
   kind: SectionKind;
   /** Images filtered to this section, in the user's drag order. */
   images: ProductImage[];
+  /** Available sizes from variants */
+  availableSizes?: string[];
   /** Move targets (other sections) for the per-image "Move to…" menu. */
   moveTargets: MoveTarget[];
   /** Called after any uploader appends new images. Pass them up to the parent. */
@@ -46,12 +51,16 @@ type Mode = 'url' | 'page' | 'upload';
 function tagForKind(kind: SectionKind): ColourTag {
   if (kind.type === 'colour') return { colour_id: kind.colour_id, custom_colour: null };
   if (kind.type === 'custom') return { colour_id: null, custom_colour: kind.custom_colour };
+  if (kind.type === 'size') return { sizes: [kind.size] };
+  if (kind.type === 'size_all') return { sizes: [] };
   return { colour_id: null, custom_colour: null };
 }
 
 function headerLabel(kind: SectionKind): string {
   if (kind.type === 'colour') return kind.name;
   if (kind.type === 'custom') return `Custom: ${kind.custom_colour}`;
+  if (kind.type === 'size') return `Size: ${kind.size}`;
+  if (kind.type === 'size_all') return 'All Sizes / Shared';
   return 'Unassigned / All colours';
 }
 
@@ -59,6 +68,7 @@ export default function ImageColourSection({
   productId,
   kind,
   images,
+  availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free'],
   moveTargets,
   onAppendImages,
   onReorderSection,
@@ -167,7 +177,12 @@ export default function ImageColourSection({
     <section className="space-y-3 rounded border border-neutral-200 bg-white p-4">
       <header className="flex items-center gap-2">
         {kind.type === 'colour' && (
-          <span className="inline-block h-4 w-4 rounded-full border" style={{ backgroundColor: kind.hex }} />
+          <span className="inline-block h-4 w-4 rounded-full border shadow-xs" style={{ backgroundColor: kind.hex }} />
+        )}
+        {kind.type === 'size' && (
+          <span className="inline-flex h-5 items-center justify-center rounded bg-neutral-900 px-2 text-[11px] font-bold text-white shadow-xs">
+            {kind.size}
+          </span>
         )}
         <h3 className="text-sm font-semibold text-neutral-800">{headerLabel(kind)}</h3>
         <span className="ml-auto text-xs text-neutral-500">{images.length} image{images.length === 1 ? '' : 's'}</span>
@@ -289,7 +304,66 @@ export default function ImageColourSection({
                     <img src={img.public_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
                   )}
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-[10px] text-neutral-500">
+                {/* Size assignment badges */}
+                <div className="mt-2 border-t border-neutral-100 pt-1.5">
+                  <div className="mb-1 flex items-center justify-between text-[10px] text-neutral-500">
+                    <span className="font-semibold text-neutral-700">Sizes:</span>
+                    <span className="text-[9px] text-neutral-400">
+                      {!img.sizes || img.sizes.length === 0 ? 'All sizes' : `${img.sizes.length} selected`}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {availableSizes.map((sz) => {
+                      const isSelected = img.sizes?.includes(sz) ?? false;
+                      return (
+                        <button
+                          key={sz}
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const current = img.sizes ?? [];
+                            const next = isSelected
+                              ? current.filter((x) => x !== sz)
+                              : [...current, sz];
+                            onUpdateImage(img.id, { sizes: next });
+                            try {
+                              await updateImageSizes(img.id, next);
+                            } catch (err) {
+                              console.error('Failed to update image sizes', err);
+                            }
+                          }}
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                            isSelected
+                              ? 'bg-neutral-900 text-white shadow-xs'
+                              : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                          }`}
+                          title={isSelected ? `Remove size ${sz} from image` : `Tag image with size ${sz}`}
+                        >
+                          {sz}
+                        </button>
+                      );
+                    })}
+                    {img.sizes && img.sizes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          onUpdateImage(img.id, { sizes: [] });
+                          try {
+                            await updateImageSizes(img.id, []);
+                          } catch (err) {
+                            console.error('Failed to clear image sizes', err);
+                          }
+                        }}
+                        className="px-1 text-[9px] text-neutral-400 hover:text-neutral-700 underline"
+                        title="Set to apply to all sizes"
+                      >
+                        All
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-500">
                   <button
                     type="button"
                     className="text-red-600 hover:underline"

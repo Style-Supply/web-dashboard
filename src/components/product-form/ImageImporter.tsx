@@ -1,10 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import type { ProductImage, ProductVariant } from '@/types/product';
 import type { ColourTag } from '@/lib/api';
 import { reorderImages } from '@/lib/api';
 import { useTaxonomy } from '@/hooks/useTaxonomy';
 import ImageColourSection, { type SectionKind } from './ImageColourSection';
+
+export const STANDARD_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'Free'] as const;
 
 interface ImageImporterProps {
   productId: string | null;
@@ -21,7 +24,18 @@ interface DerivedSection {
   label: string;
 }
 
-function buildSections(
+function getAvailableSizes(variants: ProductVariant[]): string[] {
+  const sizesSet = new Set<string>();
+  for (const v of variants) {
+    if (v.size?.trim()) sizesSet.add(v.size.trim());
+  }
+  if (sizesSet.size === 0) return [...STANDARD_SIZES];
+  const known = STANDARD_SIZES.filter((s) => sizesSet.has(s));
+  const others = Array.from(sizesSet).filter((s) => !(STANDARD_SIZES as readonly string[]).includes(s)).sort();
+  return [...known, ...others];
+}
+
+function buildColourSections(
   variants: ProductVariant[],
   colours: { id: string; name: string; hex: string }[],
   images: ProductImage[],
@@ -76,6 +90,34 @@ function buildSections(
   return sections;
 }
 
+function buildSizeSections(
+  availableSizes: string[],
+  images: ProductImage[],
+): DerivedSection[] {
+  const sections: DerivedSection[] = [];
+
+  for (const sz of availableSizes) {
+    sections.push({
+      key: `s:${sz}`,
+      kind: { type: 'size', size: sz },
+      match: (img) => (img.sizes ?? []).includes(sz),
+      tag: { sizes: [sz] },
+      label: `Size ${sz}`,
+    });
+  }
+
+  // All sizes / untagged section
+  sections.push({
+    key: 's:all',
+    kind: { type: 'size_all' },
+    match: (img) => !img.sizes || img.sizes.length === 0,
+    tag: { sizes: [] },
+    label: 'All Sizes / Shared',
+  });
+
+  return sections;
+}
+
 export default function ImageImporter({
   productId,
   variants,
@@ -83,6 +125,7 @@ export default function ImageImporter({
   onImagesChange,
 }: ImageImporterProps): React.ReactElement {
   const { colours } = useTaxonomy();
+  const [groupMode, setGroupMode] = useState<'colour' | 'size'>('colour');
 
   if (productId === null) {
     return (
@@ -93,68 +136,107 @@ export default function ImageImporter({
   }
 
   const id = productId;
-  const sections = buildSections(variants, colours, images);
-  const onlyUnassigned = sections.length === 1 && sections[0].kind.type === 'unassigned';
+  const availableSizes = getAvailableSizes(variants);
 
-  // Helper: re-flatten and persist global sort order whenever section composition changes.
+  const sections =
+    groupMode === 'colour'
+      ? buildColourSections(variants, colours, images)
+      : buildSizeSections(availableSizes, images);
+
+  const onlyUnassigned =
+    groupMode === 'colour' && sections.length === 1 && sections[0].kind.type === 'unassigned';
+
+  // Helper: re-flatten and persist global sort order whenever composition changes.
   function commit(reflattened: ProductImage[]): void {
     const reindexed = reflattened.map((img, idx) => ({ ...img, sort_order: idx }));
     onImagesChange(reindexed);
     void reorderImages(id, reindexed.map((i) => i.id));
   }
 
-  // Build per-section image arrays in the user's current order. We derive
-  // section image lists from the global `images` array, sorted by sort_order
-  // ascending (which is how the backend gives them back).
   const sortedGlobal = [...images].sort((a, b) => a.sort_order - b.sort_order);
   const sectionImages = new Map<string, ProductImage[]>();
   for (const s of sections) {
     sectionImages.set(s.key, sortedGlobal.filter(s.match));
   }
 
-  function reflatten(updated: Map<string, ProductImage[]>): ProductImage[] {
-    const out: ProductImage[] = [];
-    for (const s of sections) out.push(...(updated.get(s.key) ?? []));
-    return out;
-  }
-
   function handleAppend(sectionKey: string, added: ProductImage[]): void {
-    const updated = new Map(sectionImages);
-    updated.set(sectionKey, [...(updated.get(sectionKey) ?? []), ...added]);
-    commit(reflatten(updated));
+    const nextGlobal = [...sortedGlobal, ...added];
+    commit(nextGlobal);
   }
 
   function handleReorderSection(sectionKey: string, newOrderIds: string[]): void {
     const current = sectionImages.get(sectionKey) ?? [];
-    const byId = new Map(current.map((i) => [i.id, i]));
-    const reordered = newOrderIds.map((id) => byId.get(id)).filter((i): i is ProductImage => Boolean(i));
-    const updated = new Map(sectionImages);
-    updated.set(sectionKey, reordered);
-    commit(reflatten(updated));
+    const byId = new Map(sortedGlobal.map((i) => [i.id, i]));
+    const sectionIdSet = new Set(current.map((i) => i.id));
+    const reorderedSectionImages = newOrderIds
+      .map((iId) => byId.get(iId))
+      .filter((i): i is ProductImage => Boolean(i));
+
+    let sectionIdx = 0;
+    const nextGlobal = sortedGlobal.map((img) => {
+      if (sectionIdSet.has(img.id)) {
+        const replacement = reorderedSectionImages[sectionIdx++];
+        return replacement ?? img;
+      }
+      return img;
+    });
+    commit(nextGlobal);
   }
 
   function handleUpdateImage(imageId: string, patch: Partial<ProductImage>): void {
-    // Apply patch in the global list; recompute section membership by re-filtering.
     const nextGlobal = sortedGlobal.map((i) => (i.id === imageId ? { ...i, ...patch } : i));
-    const updated = new Map<string, ProductImage[]>();
-    for (const s of sections) updated.set(s.key, nextGlobal.filter(s.match));
-    commit(reflatten(updated));
+    commit(nextGlobal);
   }
 
   function handleDeleteImage(imageId: string): void {
     const nextGlobal = sortedGlobal.filter((i) => i.id !== imageId);
-    const updated = new Map<string, ProductImage[]>();
-    for (const s of sections) updated.set(s.key, nextGlobal.filter(s.match));
-    commit(reflatten(updated));
+    commit(nextGlobal);
   }
 
   return (
     <div className="space-y-4">
+      {/* Top Grouping Mode Switcher */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200 pb-3">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+            Image Organization
+          </span>
+          <p className="text-xs text-neutral-500">
+            Upload & tag images by colour or by size. Multiple sizes can share the same image.
+          </p>
+        </div>
+        <div className="inline-flex rounded-lg bg-neutral-100 p-1 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => setGroupMode('colour')}
+            className={`rounded-md px-3 py-1.5 transition-all ${
+              groupMode === 'colour'
+                ? 'bg-white text-neutral-900 shadow-xs font-semibold'
+                : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+          >
+            Group by Colour
+          </button>
+          <button
+            type="button"
+            onClick={() => setGroupMode('size')}
+            className={`rounded-md px-3 py-1.5 transition-all ${
+              groupMode === 'size'
+                ? 'bg-white text-neutral-900 shadow-xs font-semibold'
+                : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+          >
+            Group by Size
+          </button>
+        </div>
+      </div>
+
       {onlyUnassigned && (
         <div className="rounded border border-dashed border-neutral-300 bg-neutral-50 p-3 text-xs text-neutral-600">
-          Add a variant with a colour to upload images per colour.
+          Add a variant with a colour above to upload images per colour, or switch to “Group by Size”.
         </div>
       )}
+
       {sections.map((s) => {
         const moveTargets = sections
           .filter((other) => other.key !== s.key)
@@ -165,6 +247,7 @@ export default function ImageImporter({
             productId={id}
             kind={s.kind}
             images={sectionImages.get(s.key) ?? []}
+            availableSizes={availableSizes}
             moveTargets={moveTargets}
             onAppendImages={(added) => handleAppend(s.key, added)}
             onReorderSection={(ids) => handleReorderSection(s.key, ids)}

@@ -12,7 +12,9 @@ import { PRODUCT_IMAGES_BUCKET, supabase } from '@/lib/supabase';
 export interface ColourTag {
   colour_id?: string | null;
   custom_colour?: string | null;
+  sizes?: string[] | null;
 }
+export type ImageTag = ColourTag;
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -219,6 +221,7 @@ export async function registerImage(
       public_url: publicUrl,
       ...(colourTag?.colour_id !== undefined ? { colour_id: colourTag.colour_id } : {}),
       ...(colourTag?.custom_colour !== undefined ? { custom_colour: colourTag.custom_colour } : {}),
+      ...(colourTag?.sizes !== undefined ? { sizes: colourTag.sizes } : {}),
     }),
   });
 }
@@ -239,6 +242,10 @@ export async function retagImage(imageId: string, tag: ColourTag): Promise<Produ
     method: 'PATCH',
     body: JSON.stringify(tag),
   });
+}
+
+export async function updateImageSizes(imageId: string, sizes: string[]): Promise<ProductImage> {
+  return retagImage(imageId, { sizes });
 }
 
 // ---------- Batch ----------

@@ -15,6 +15,8 @@ export interface ProductImage {
   sort_order: number;
   colour_id: string | null;
   custom_colour: string | null;
+  sizes?: string[] | null;
+  alt?: string | null;
 }
 
 export interface ProductBrand        { id: string; name: string; slug: string; logo_url: string | null; }

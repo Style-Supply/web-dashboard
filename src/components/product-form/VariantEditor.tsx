@@ -105,10 +105,58 @@ export default function VariantEditor({ value, onChange, productSku }: VariantEd
   if (loading) return <div className="text-sm text-neutral-400">Loading…</div>;
 
   function add() {
-    const nextSku = productSku?.trim() ? `${productSku.trim()}-M` : null;
+    const lastVariant = value[value.length - 1];
+    const initialColourId = lastVariant ? lastVariant.colour_id : (colours[0]?.id ?? null);
+    const initialCustomColour = lastVariant && !lastVariant.colour_id ? lastVariant.custom_colour : null;
+    const initialLocationId = lastVariant?.location_id || defaultLocationId;
+
+    // Find sizes already used with this colour and location
+    const usedSizesForCombo = new Set(
+      value
+        .filter((v) => {
+          const matchColour =
+            (v.colour_id ?? null) === (initialColourId ?? null) &&
+            (v.custom_colour?.trim() ?? null) === (initialCustomColour?.trim() ?? null);
+          const matchLocation = (v.location_id || defaultLocationId) === initialLocationId;
+          return matchColour && matchLocation;
+        })
+        .map((v) => v.size)
+    );
+
+    let chosenSize: ProductVariant['size'] = 'M';
+    if (lastVariant && SIZES.includes(lastVariant.size as ProductVariant['size'])) {
+      const lastIdx = SIZES.indexOf(lastVariant.size as ProductVariant['size']);
+      const sequence = [...SIZES.slice(lastIdx + 1), ...SIZES.slice(0, lastIdx)];
+      chosenSize = sequence.find((s) => !usedSizesForCombo.has(s)) ?? SIZES[0];
+    } else {
+      chosenSize = SIZES.find((s) => !usedSizesForCombo.has(s)) ?? 'M';
+    }
+
+    let nextSku: string | null = null;
+    if (productSku?.trim()) {
+      const base = productSku.trim();
+      const existingSkus = new Set(value.map((v) => v.sku?.trim().toUpperCase()).filter(Boolean));
+      let candidate = `${base}-${chosenSize}`;
+      if (existingSkus.has(candidate.toUpperCase())) {
+        let counter = 2;
+        while (existingSkus.has(`${candidate}-${counter}`.toUpperCase())) {
+          counter++;
+        }
+        candidate = `${candidate}-${counter}`;
+      }
+      nextSku = candidate;
+    }
+
     onChange([
       ...value,
-      { size: 'M', colour_id: null, custom_colour: null, quantity: 1, location_id: defaultLocationId, sku: nextSku },
+      {
+        size: chosenSize,
+        colour_id: initialColourId,
+        custom_colour: initialCustomColour,
+        quantity: 1,
+        location_id: initialLocationId,
+        sku: nextSku,
+      },
     ]);
   }
 

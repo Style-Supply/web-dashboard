@@ -44,7 +44,9 @@ function publishCheck({ v, tree, images }: CheckArgs): string | null {
   if (!(v.retail_price_minor > 0)) return 'Retail price must be greater than ₹0';
   if (v.variants.length === 0) return 'At least one variant is required';
   for (const va of v.variants) {
-    if ((va.colour_id !== null) === (va.custom_colour !== null)) return 'Variant: pick either colour or custom colour (not both/neither)';
+    const hasColour = Boolean(va.colour_id || va.custom_colour?.trim());
+    if (!hasColour) return 'Variant: pick either colour or custom colour';
+    if (va.colour_id && va.custom_colour?.trim()) return 'Variant: pick either standard colour or custom colour (not both)';
     if (!va.location_id) return 'Variant: location is required';
     if (va.quantity < 0) return 'Variant: quantity must be ≥ 0';
   }
@@ -168,6 +170,7 @@ export default function ProductForm({
               disabled={saving || invalid}
               loading={saveAction === 'draft'}
               onClick={() => handleSave('draft')}
+              title={dup ? 'Cannot save: duplicate variants exist' : 'Save draft'}
             >
               {saveAction === 'draft' ? 'Saving draft…' : 'Save draft'}
             </Button>
@@ -181,6 +184,11 @@ export default function ProductForm({
               {saveAction === 'published' ? 'Publishing…' : 'Save & publish'}
             </Button>
           </div>
+          {dup && (
+            <p className="text-xs text-amber-600 font-medium">
+              Please resolve duplicate variants (matching size, colour, and location) before saving.
+            </p>
+          )}
           {!canPublish && <p className="text-xs text-red-600">{publishError}</p>}
         </div>
       </div>

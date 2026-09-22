@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
-import { listMemberships, updateMembership } from '@/lib/memberships';
+import { listMemberships, updateMembership, deleteMembership } from '@/lib/memberships';
 import { listMembershipPlans, type MembershipPlan } from '@/lib/membership-plans';
 import type { Membership, MembershipStatus } from '@/types/membership';
 import ActivateMembershipDrawer from '@/components/membership-form/ActivateMembershipDrawer';
@@ -190,6 +190,20 @@ export default function MembershipsPage(): React.ReactElement {
       void loadMemberships();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Update failed');
+    } finally {
+      setRowBusy(null);
+    }
+  }
+
+  async function handleDeleteMembership(m: Membership): Promise<void> {
+    if (!confirm(`Delete membership record for ${m.profiles?.full_name ?? 'user'}?`)) return;
+    setRowBusy(m.id);
+    try {
+      await deleteMembership(m.id);
+      showToast('success', 'Membership deleted successfully');
+      void loadMemberships();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Delete failed');
     } finally {
       setRowBusy(null);
     }
@@ -520,6 +534,13 @@ export default function MembershipsPage(): React.ReactElement {
                           Cancel
                         </button>
                       )}
+                      <button
+                        onClick={() => void handleDeleteMembership(m)}
+                        disabled={rowBusy === m.id}
+                        className="rounded-lg bg-neutral-100 px-3 py-1.5 font-medium text-neutral-500 hover:bg-red-100 hover:text-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -615,6 +636,13 @@ export default function MembershipsPage(): React.ReactElement {
                                 Cancel
                               </button>
                             )}
+                            <button
+                              onClick={() => void handleDeleteMembership(m)}
+                              disabled={rowBusy === m.id}
+                              className="rounded-lg bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-500 hover:bg-red-100 hover:text-red-700 transition-colors"
+                            >
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       ))

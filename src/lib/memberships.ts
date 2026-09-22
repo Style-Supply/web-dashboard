@@ -35,3 +35,10 @@ export async function createMembership(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export async function deleteMembership(id: string): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>(`/api/admin/memberships/${id}`, {
+    method: 'DELETE',
+  });
+}
+

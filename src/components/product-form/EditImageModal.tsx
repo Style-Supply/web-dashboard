@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import type { ProductImage } from '@/types/product';
+import type { ProductImage, ImageTag } from '@/types/product';
 import { updateImage, replaceImageFile, deleteImage } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -32,6 +32,7 @@ export default function EditImageModal({
   onUpdateImage,
   onDeleteImage,
 }: EditImageModalProps): React.ReactElement {
+  const [selectedTag, setSelectedTag] = useState<ImageTag>(image.image_tag ?? 'BRAND IMAGE');
   const [selectedSizes, setSelectedSizes] = useState<string[]>(image.sizes ?? []);
   const [colourMode, setColourMode] = useState<'none' | 'preset' | 'custom'>(() => {
     if (image.colour_id) return 'preset';
@@ -84,6 +85,7 @@ export default function EditImageModal({
 
       const patch = {
         sizes: selectedSizes,
+        image_tag: selectedTag,
         colour_id,
         custom_colour,
         alt: altText.trim() || null,
@@ -187,6 +189,40 @@ export default function EditImageModal({
               <p className="text-[11px] text-neutral-400 font-mono break-all truncate max-w-sm">
                 Path: {currentStoragePath}
               </p>
+            </div>
+          </div>
+
+          {/* Section 0: Image Tag Selection */}
+          <div className="space-y-2.5">
+            <div>
+              <label className="text-xs font-semibold text-neutral-800 uppercase tracking-wider">
+                Image Tag
+              </label>
+              <p className="text-xs text-neutral-500">
+                Choose the badge/tag for this image (AI IMAGE, BRAND IMAGE, or MEMBER IMAGE).
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2.5 pt-1">
+              {(['BRAND IMAGE', 'AI IMAGE', 'MEMBER IMAGE'] as const).map((tag) => {
+                const active = selectedTag === tag;
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setSelectedTag(tag)}
+                    className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-lg border text-xs font-bold tracking-wider transition-all ${
+                      active
+                        ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm ring-2 ring-neutral-900/20'
+                        : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300'
+                    }`}
+                  >
+                    <span className="text-sm mb-1">
+                      {tag === 'BRAND IMAGE' ? '🏷️' : tag === 'AI IMAGE' ? '✨' : '👤'}
+                    </span>
+                    <span>{tag}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

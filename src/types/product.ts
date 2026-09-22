@@ -8,6 +8,8 @@ export interface ProductVariant {
   sku?: string | null;
 }
 
+export type ImageTag = 'AI IMAGE' | 'BRAND IMAGE' | 'MEMBER IMAGE';
+
 export interface ProductImage {
   id: string;
   public_url: string;
@@ -16,6 +18,7 @@ export interface ProductImage {
   colour_id: string | null;
   custom_colour: string | null;
   sizes?: string[] | null;
+  image_tag?: ImageTag | null;
   alt?: string | null;
 }
 

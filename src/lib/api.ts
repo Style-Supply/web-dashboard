@@ -6,6 +6,7 @@ import type {
   ProductListResponse,
   ProductImage,
   SuggestionField,
+  ImageTag,
 } from '@/types/product';
 import { PRODUCT_IMAGES_BUCKET, supabase } from '@/lib/supabase';
 
@@ -13,8 +14,8 @@ export interface ColourTag {
   colour_id?: string | null;
   custom_colour?: string | null;
   sizes?: string[] | null;
+  image_tag?: ImageTag | null;
 }
-export type ImageTag = ColourTag;
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -222,6 +223,7 @@ export async function registerImage(
       ...(colourTag?.colour_id !== undefined ? { colour_id: colourTag.colour_id } : {}),
       ...(colourTag?.custom_colour !== undefined ? { custom_colour: colourTag.custom_colour } : {}),
       ...(colourTag?.sizes !== undefined ? { sizes: colourTag.sizes } : {}),
+      ...(colourTag?.image_tag !== undefined ? { image_tag: colourTag.image_tag } : {}),
     }),
   });
 }
@@ -241,6 +243,7 @@ export interface UpdateImagePayload {
   colour_id?: string | null;
   custom_colour?: string | null;
   sizes?: string[] | null;
+  image_tag?: ImageTag | null;
   alt?: string | null;
   public_url?: string;
   storage_path?: string;
@@ -259,6 +262,10 @@ export async function retagImage(imageId: string, tag: ColourTag): Promise<Produ
 
 export async function updateImageSizes(imageId: string, sizes: string[]): Promise<ProductImage> {
   return updateImage(imageId, { sizes });
+}
+
+export async function updateImageTag(imageId: string, image_tag: ImageTag): Promise<ProductImage> {
+  return updateImage(imageId, { image_tag });
 }
 
 export async function replaceImageFile(

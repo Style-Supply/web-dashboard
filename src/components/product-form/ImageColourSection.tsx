@@ -1,13 +1,12 @@
-'use client';
-
 import { useRef, useState } from 'react';
-import type { ProductImage } from '@/types/product';
+import type { ProductImage, ImageTag } from '@/types/product';
 import {
   importImagesFromUrls,
   scrapeImagesFromPage,
   uploadImages,
   retagImage,
   updateImageSizes,
+  updateImageTag,
   deleteImage,
   type ColourTag,
 } from '@/lib/api';
@@ -78,6 +77,7 @@ export default function ImageColourSection({
 }: Props): React.ReactElement {
   const tag = tagForKind(kind);
   const [mode, setMode] = useState<Mode>('upload');
+  const [uploadTag, setUploadTag] = useState<ImageTag>('BRAND IMAGE');
   const [urlText, setUrlText] = useState('');
   const [pageUrl, setPageUrl] = useState('');
   const [busy, setBusy] = useState<false | 'url' | 'page' | 'upload'>(false);
@@ -87,6 +87,8 @@ export default function ImageColourSection({
   const [editingImage, setEditingImage] = useState<ProductImage | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const activeUploadTag: ColourTag = { ...tag, image_tag: uploadTag };
+
   async function handleImportUrls(): Promise<void> {
     const urls = urlText
       .split(/\r?\n/)
@@ -95,7 +97,7 @@ export default function ImageColourSection({
     if (urls.length === 0) return;
     setBusy('url');
     try {
-      const result = await importImagesFromUrls(productId, urls, tag);
+      const result = await importImagesFromUrls(productId, urls, activeUploadTag);
       onAppendImages(result.imported);
       setUrlText('');
       if (result.failed.length > 0) {
@@ -113,7 +115,7 @@ export default function ImageColourSection({
     if (!url || !isLikelyHttpUrl(url)) return;
     setBusy('page');
     try {
-      const result = await scrapeImagesFromPage(productId, url, undefined, tag);
+      const result = await scrapeImagesFromPage(productId, url, undefined, activeUploadTag);
       onAppendImages(result.imported);
       setPageUrl('');
       if (result.imported.length === 0) alert('No images found on this page');
@@ -129,7 +131,7 @@ export default function ImageColourSection({
     if (files.length === 0) return;
     setBusy('upload');
     try {
-      const result = await uploadImages(productId, files, tag);
+      const result = await uploadImages(productId, files, activeUploadTag);
       onAppendImages(result.imported);
       if (result.failed.length > 0) {
         alert(`Failed to upload ${result.failed.length} file(s): ${result.failed.map((f) => `${f.url}: ${f.reason}`).join(', ')}`);
@@ -190,28 +192,42 @@ export default function ImageColourSection({
         <span className="ml-auto text-xs text-neutral-500">{images.length} image{images.length === 1 ? '' : 's'}</span>
       </header>
 
-      <div className="flex gap-1 rounded-lg bg-neutral-100 p-1 text-sm">
-        <button
-          type="button"
-          onClick={() => setMode('url')}
-          className={`flex-1 rounded px-3 py-1.5 ${mode === 'url' ? 'bg-white shadow' : 'text-neutral-600'}`}
-        >
-          From URL
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('page')}
-          className={`flex-1 rounded px-3 py-1.5 ${mode === 'page' ? 'bg-white shadow' : 'text-neutral-600'}`}
-        >
-          From page
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('upload')}
-          className={`flex-1 rounded px-3 py-1.5 ${mode === 'upload' ? 'bg-white shadow' : 'text-neutral-600'}`}
-        >
-          Upload
-        </button>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex gap-1 rounded-lg bg-neutral-100 p-1 text-sm flex-1 min-w-[240px]">
+          <button
+            type="button"
+            onClick={() => setMode('url')}
+            className={`flex-1 rounded px-3 py-1.5 ${mode === 'url' ? 'bg-white shadow-xs' : 'text-neutral-600'}`}
+          >
+            From URL
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('page')}
+            className={`flex-1 rounded px-3 py-1.5 ${mode === 'page' ? 'bg-white shadow-xs' : 'text-neutral-600'}`}
+          >
+            From page
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('upload')}
+            className={`flex-1 rounded px-3 py-1.5 ${mode === 'upload' ? 'bg-white shadow-xs' : 'text-neutral-600'}`}
+          >
+            Upload
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5 bg-white border border-neutral-200 rounded-lg px-2.5 py-1 text-xs shadow-xs">
+          <span className="text-neutral-500 font-medium">Tag new as:</span>
+          <select
+            value={uploadTag}
+            onChange={(e) => setUploadTag(e.target.value as ImageTag)}
+            className="bg-transparent font-bold text-neutral-800 outline-hidden cursor-pointer"
+          >
+            <option value="BRAND IMAGE">BRAND IMAGE</option>
+            <option value="AI IMAGE">AI IMAGE</option>
+            <option value="MEMBER IMAGE">MEMBER IMAGE</option>
+          </select>
+        </div>
       </div>
 
       {mode === 'url' ? (
@@ -324,9 +340,38 @@ export default function ImageColourSection({
                       Edit
                     </span>
                   </div>
+                  <div className="absolute left-1 bottom-1 z-10 pointer-events-none">
+                    <span className="rounded bg-black/75 px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase text-white shadow-xs backdrop-blur-xs">
+                      {img.image_tag ?? 'BRAND IMAGE'}
+                    </span>
+                  </div>
+                </div>
+                {/* Image Tag assignment */}
+                <div className="mt-2 border-t border-neutral-100 pt-1.5">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="font-semibold text-neutral-700">Tag:</span>
+                    <select
+                      value={img.image_tag ?? 'BRAND IMAGE'}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={async (e) => {
+                        const nextTag = e.target.value as ImageTag;
+                        onUpdateImage(img.id, { image_tag: nextTag });
+                        try {
+                          await updateImageTag(img.id, nextTag);
+                        } catch (err) {
+                          console.error('Failed to update image tag', err);
+                        }
+                      }}
+                      className="rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-neutral-800 shadow-xs focus:border-neutral-900 focus:outline-hidden cursor-pointer"
+                    >
+                      <option value="BRAND IMAGE">BRAND IMAGE</option>
+                      <option value="AI IMAGE">AI IMAGE</option>
+                      <option value="MEMBER IMAGE">MEMBER IMAGE</option>
+                    </select>
+                  </div>
                 </div>
                 {/* Size assignment badges */}
-                <div className="mt-2 border-t border-neutral-100 pt-1.5">
+                <div className="mt-1.5 border-t border-neutral-100 pt-1.5">
                   <div className="mb-1 flex items-center justify-between text-[10px] text-neutral-500">
                     <span className="font-semibold text-neutral-700">Sizes:</span>
                     <span className="text-[9px] text-neutral-400">

@@ -46,9 +46,12 @@ export async function qcItem(
   itemId: string,
   result: 'passed' | 'failed' | 'pending',
   notes?: string,
-): Promise<{ item_id: string; qc_status: string; box_status: string }> {
+  images?: string[],
+  checkpoint: 'brand' | 'customer' = 'customer',
+  damageType?: 'repairable' | 'unrepairable' | null,
+): Promise<{ item_id: string; qc_status: string; damage_type?: string | null; box_status: string }> {
   return request(`/api/admin/returns/items/${itemId}/qc`, {
     method: 'POST',
-    body: JSON.stringify({ result, notes }),
+    body: JSON.stringify({ result, notes, images, checkpoint, damage_type: damageType }),
   });
 }

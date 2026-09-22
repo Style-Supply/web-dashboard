@@ -82,12 +82,14 @@ function sessionRemaining(endsAt: string | null | undefined): string {
 function parseItemQc(item: any) {
   let brand = {
     status: item?.received_from_brand_qc_status ?? 'pending',
+    damage_type: null as 'repairable' | 'unrepairable' | null,
     notes: item?.received_from_brand_qc_notes ?? '',
     images: Array.isArray(item?.received_from_brand_qc_images) ? (item.received_from_brand_qc_images as string[]) : ([] as string[]),
     at: (item?.received_from_brand_qc_at as string | undefined) ?? (item?.brand_qc_at as string | undefined) ?? undefined,
   };
   let customer = {
     status: item?.qc_status ?? 'pending',
+    damage_type: null as 'repairable' | 'unrepairable' | null,
     notes: item?.qc_notes ?? '',
     images: Array.isArray(item?.qc_images) ? (item.qc_images as string[]) : ([] as string[]),
     at: (item?.qc_at as string | undefined) ?? undefined,
@@ -100,6 +102,7 @@ function parseItemQc(item: any) {
       if (parsed.brand) {
         brand = {
           status: parsed.brand.status ?? brand.status,
+          damage_type: (parsed.brand.damage_type as 'repairable' | 'unrepairable' | null) ?? null,
           notes: parsed.brand.notes ?? brand.notes,
           images: Array.isArray(parsed.brand.images) ? parsed.brand.images : brand.images,
           at: parsed.brand.at ?? brand.at,
@@ -108,6 +111,7 @@ function parseItemQc(item: any) {
       if (parsed.customer) {
         customer = {
           status: parsed.customer.status ?? customer.status,
+          damage_type: (parsed.customer.damage_type as 'repairable' | 'unrepairable' | null) ?? null,
           notes: parsed.customer.notes ?? customer.notes,
           images: Array.isArray(parsed.customer.images) ? parsed.customer.images : customer.images,
           at: parsed.customer.at ?? customer.at,
@@ -1051,7 +1055,11 @@ export default function BoxDetailPage(): React.ReactElement {
                                   isBrandPass ? 'text-emerald-700' : isBrandFail ? 'text-red-700' : 'text-neutral-400'
                                 }`}
                               >
-                                {isBrandPass ? '✓ Passed' : isBrandFail ? '✕ Failed' : 'Pending'}
+                                {isBrandPass
+                                  ? '✓ Passed'
+                                  : isBrandFail
+                                  ? `✕ Failed (${qcData.brand.damage_type === 'unrepairable' ? 'Unrepairable' : 'Repairable'})`
+                                  : 'Pending'}
                               </span>
                               {qcData.brand.at && (
                                 <span className="block text-[9px] text-neutral-400 font-normal">{fmt(qcData.brand.at)}</span>
@@ -1067,7 +1075,11 @@ export default function BoxDetailPage(): React.ReactElement {
                                   isCustPass ? 'text-emerald-700' : isCustFail ? 'text-red-700' : 'text-neutral-400'
                                 }`}
                               >
-                                {isCustPass ? '✓ Passed' : isCustFail ? '✕ Failed' : 'Pending'}
+                                {isCustPass
+                                  ? '✓ Passed'
+                                  : isCustFail
+                                  ? `✕ Failed (${qcData.customer.damage_type === 'unrepairable' ? 'Unrepairable' : 'Repairable'})`
+                                  : 'Pending'}
                               </span>
                               {(qcData.customer.at || item.qc_at) && (
                                 <span className="block text-[9px] text-neutral-400 font-normal">{fmt(qcData.customer.at || item.qc_at)}</span>
@@ -1275,12 +1287,25 @@ export default function BoxDetailPage(): React.ReactElement {
                       </td>
                       <td className="px-4 py-3">
                         {item.qc_status ? (
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 capitalize ${
                             item.qc_status === 'passed' ? 'bg-green-100 text-green-700' :
                             item.qc_status === 'failed' ? 'bg-red-100 text-red-700' :
                             'bg-yellow-100 text-yellow-700'
                           }`}>
-                            {item.qc_status}
+                            {item.qc_status === 'failed' ? (
+                              <>
+                                <span>✕ Failed</span>
+                                {parseItemQc(item).customer.damage_type && (
+                                  <span className="text-[10px] font-medium opacity-85">
+                                    ({parseItemQc(item).customer.damage_type === 'unrepairable' ? 'Unrepairable' : 'Repairable'})
+                                  </span>
+                                )}
+                              </>
+                            ) : item.qc_status === 'passed' ? (
+                              '✓ Passed'
+                            ) : (
+                              item.qc_status
+                            )}
                           </span>
                         ) : '—'}
                       </td>
@@ -1354,12 +1379,13 @@ export default function BoxDetailPage(): React.ReactElement {
                         title="1. Received from Brand"
                         description="Inspection on arrival from brand prior to box packing."
                         status={qcData.brand.status}
+                        damageType={qcData.brand.damage_type}
                         initialNotes={qcData.brand.notes}
                         initialImages={qcData.brand.images}
                         checkpoint="brand"
                         itemId={item.id}
                         isLocked={false}
-                        onUpdate={(result, notes, images) => {
+                        onUpdate={(result, notes, images, damageType) => {
                           const now = new Date().toISOString();
                           setBox((prev) => {
                             if (!prev) return prev;
@@ -1369,7 +1395,7 @@ export default function BoxDetailPage(): React.ReactElement {
                                 if (it.id !== item.id) return it;
                                 const parsed = parseItemQc(it);
                                 const updatedState = {
-                                  brand: { status: result, notes, images, at: now },
+                                  brand: { status: result, damage_type: result === 'failed' ? damageType : null, notes, images, at: now },
                                   customer: parsed.customer,
                                 };
                                 return {
@@ -1393,12 +1419,13 @@ export default function BoxDetailPage(): React.ReactElement {
                         title="2. Picked from Customer"
                         description="Inspection after return or rental period end."
                         status={isCustomerPickupUnlocked ? qcData.customer.status : 'locked'}
+                        damageType={qcData.customer.damage_type}
                         initialNotes={qcData.customer.notes}
                         initialImages={qcData.customer.images}
                         checkpoint="customer"
                         itemId={item.id}
                         isLocked={!isCustomerPickupUnlocked}
-                        onUpdate={(result, notes, images) => {
+                        onUpdate={(result, notes, images, damageType) => {
                           const now = new Date().toISOString();
                           setBox((prev) => {
                             if (!prev) return prev;
@@ -1409,7 +1436,7 @@ export default function BoxDetailPage(): React.ReactElement {
                                 const parsed = parseItemQc(it);
                                 const updatedState = {
                                   brand: parsed.brand,
-                                  customer: { status: result, notes, images, at: now },
+                                  customer: { status: result, damage_type: result === 'failed' ? damageType : null, notes, images, at: now },
                                 };
                                 return {
                                   ...it,
@@ -1439,12 +1466,18 @@ interface QcCheckpointCardProps {
   title: string;
   description: string;
   status: string;
+  damageType?: 'repairable' | 'unrepairable' | null;
   initialNotes: string;
   initialImages: string[];
   checkpoint: 'brand' | 'customer';
   itemId: string;
   isLocked: boolean;
-  onUpdate: (result: 'passed' | 'failed' | 'pending', notes: string, images: string[]) => void;
+  onUpdate: (
+    result: 'passed' | 'failed' | 'pending',
+    notes: string,
+    images: string[],
+    damageType?: 'repairable' | 'unrepairable' | null,
+  ) => void;
   showToast: (type: 'success' | 'error', msg: string) => void;
 }
 
@@ -1452,6 +1485,7 @@ function QcCheckpointCard({
   title,
   description,
   status,
+  damageType,
   initialNotes,
   initialImages,
   checkpoint,
@@ -1461,9 +1495,15 @@ function QcCheckpointCard({
   showToast,
 }: QcCheckpointCardProps) {
   const [currentStatus, setCurrentStatus] = useState(status);
+  const [currentDamageType, setCurrentDamageType] = useState<'repairable' | 'unrepairable' | null>(damageType ?? null);
   const [notes, setNotes] = useState(initialNotes);
   const [images, setImages] = useState<string[]>(initialImages);
   const [submitting, setSubmitting] = useState<string | null>(null);
+
+  // QC Fail Modal states
+  const [failModalOpen, setFailModalOpen] = useState(false);
+  const [selectedDamageOption, setSelectedDamageOption] = useState<'repairable' | 'unrepairable'>('repairable');
+  const [failNotes, setFailNotes] = useState(initialNotes);
 
   // Multiple image upload modal & lightbox states
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
@@ -1475,7 +1515,12 @@ function QcCheckpointCard({
   }, [status]);
 
   useEffect(() => {
+    setCurrentDamageType(damageType ?? null);
+  }, [damageType]);
+
+  useEffect(() => {
     setNotes(initialNotes);
+    setFailNotes(initialNotes);
   }, [initialNotes]);
 
   useEffect(() => {
@@ -1486,15 +1531,21 @@ function QcCheckpointCard({
     result?: 'passed' | 'failed' | 'pending',
     notesToSave?: string,
     imagesToSave?: string[],
+    damageTypeToSave?: 'repairable' | 'unrepairable' | null,
   ) {
     const targetStatus = result ?? (currentStatus === 'passed' ? 'passed' : currentStatus === 'failed' ? 'failed' : 'pending');
     const targetNotes = notesToSave !== undefined ? notesToSave : notes;
     const targetImages = imagesToSave !== undefined ? imagesToSave : images;
+    const targetDamageType = targetStatus === 'failed'
+      ? (damageTypeToSave !== undefined ? damageTypeToSave : currentDamageType ?? 'repairable')
+      : null;
 
     setSubmitting(result ?? 'save');
     const prevStatus = currentStatus;
+    const prevDamageType = currentDamageType;
     if (result) setCurrentStatus(result);
-    onUpdate(targetStatus, targetNotes, targetImages);
+    setCurrentDamageType(targetDamageType);
+    onUpdate(targetStatus, targetNotes, targetImages, targetDamageType);
 
     try {
       await request(`/api/admin/returns/items/${itemId}/qc`, {
@@ -1504,16 +1555,24 @@ function QcCheckpointCard({
           result: targetStatus,
           notes: targetNotes,
           images: targetImages,
+          damage_type: targetDamageType,
         }),
       });
       showToast(
         'success',
         result
-          ? `${title} marked ${result === 'passed' ? 'Pass' : result === 'failed' ? 'Fail' : 'Pending'}`
+          ? `${title} marked ${
+              result === 'passed'
+                ? 'Pass'
+                : result === 'failed'
+                ? `Fail (${targetDamageType === 'unrepairable' ? 'Unrepairable Damage' : 'Repairable Damage'})`
+                : 'Pending'
+            }`
           : `${title} saved successfully`,
       );
     } catch (err) {
       if (result) setCurrentStatus(prevStatus); // rollback on error
+      setCurrentDamageType(prevDamageType);
       showToast('error', err instanceof Error ? err.message : 'QC update failed');
       throw err;
     } finally {
@@ -1522,14 +1581,14 @@ function QcCheckpointCard({
   }
 
   async function handleSave(result?: 'passed' | 'failed' | 'pending') {
-    return handleSaveWith(result, notes, images);
+    return handleSaveWith(result, notes, images, currentDamageType);
   }
 
   async function handleAddPhotos(newUrls: string[]) {
     const updatedImages = [...images, ...newUrls];
     setImages(updatedImages);
     try {
-      await handleSaveWith(undefined, notes, updatedImages);
+      await handleSaveWith(undefined, notes, updatedImages, currentDamageType);
     } catch {
       // Error toast already handled in handleSaveWith
     }
@@ -1539,7 +1598,7 @@ function QcCheckpointCard({
     const updatedImages = images.filter((_, i) => i !== index);
     setImages(updatedImages);
     try {
-      await handleSaveWith(undefined, notes, updatedImages);
+      await handleSaveWith(undefined, notes, updatedImages, currentDamageType);
     } catch {
       // Error toast already handled in handleSaveWith
     }
@@ -1558,13 +1617,19 @@ function QcCheckpointCard({
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-neutral-800">{title}</span>
         <span
-          className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize flex items-center gap-1 ${
             isPassed ? 'bg-green-100 text-green-700' :
+            isFailed && currentDamageType === 'unrepairable' ? 'bg-red-100 text-red-800 border border-red-300' :
+            isFailed && currentDamageType === 'repairable' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
             isFailed ? 'bg-red-100 text-red-700' :
             'bg-amber-100 text-amber-700'
           }`}
         >
-          {currentStatus}
+          {isPassed && '✓ Passed'}
+          {isFailed && currentDamageType === 'unrepairable' && '✕ Failed · Unrepairable Damage'}
+          {isFailed && currentDamageType === 'repairable' && '✕ Failed · Repairable Damage'}
+          {isFailed && !currentDamageType && '✕ Failed'}
+          {!isPassed && !isFailed && currentStatus}
         </span>
       </div>
 
@@ -1681,6 +1746,61 @@ function QcCheckpointCard({
             </div>
           </div>
 
+          {/* Quick Damage Classification Selector when in Failed state */}
+          {isFailed && (
+            <div className="rounded-lg border border-red-200/80 bg-red-50/50 p-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-red-900">Damage Classification:</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white border border-red-200 text-red-800">
+                    {currentDamageType === 'unrepairable' ? '🚫 Unrepairable Damage' : '🔧 Repairable Damage'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFailNotes(notes);
+                    setSelectedDamageOption(currentDamageType || 'repairable');
+                    setFailModalOpen(true);
+                  }}
+                  className="text-[10px] text-red-700 hover:text-red-900 underline font-medium cursor-pointer"
+                >
+                  Edit details
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={submitting !== null}
+                  onClick={() => handleSaveWith('failed', notes, images, 'repairable')}
+                  className={`text-xs py-1.5 px-2.5 rounded-md font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    currentDamageType === 'repairable'
+                      ? 'bg-amber-600 text-white font-semibold shadow-xs ring-2 ring-amber-400'
+                      : 'bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-100'
+                  }`}
+                  title="Mark damage as repairable"
+                >
+                  <span>🔧</span>
+                  <span>Repairable Damage</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={submitting !== null}
+                  onClick={() => handleSaveWith('failed', notes, images, 'unrepairable')}
+                  className={`text-xs py-1.5 px-2.5 rounded-md font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    currentDamageType === 'unrepairable'
+                      ? 'bg-red-700 text-white font-semibold shadow-xs ring-2 ring-red-400'
+                      : 'bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-100'
+                  }`}
+                  title="Mark damage as unrepairable"
+                >
+                  <span>🚫</span>
+                  <span>Unrepairable Damage</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex gap-2 pt-2">
             {hasUnsavedChanges && (
@@ -1696,7 +1816,7 @@ function QcCheckpointCard({
 
             <button
               disabled={submitting !== null}
-              onClick={() => handleSave('passed')}
+              onClick={() => handleSaveWith('passed', notes, images, null)}
               className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded transition-all cursor-pointer ${
                 isPassed
                   ? 'bg-green-700 text-white ring-2 ring-green-500 shadow-xs'
@@ -1707,7 +1827,11 @@ function QcCheckpointCard({
             </button>
             <button
               disabled={submitting !== null}
-              onClick={() => handleSave('failed')}
+              onClick={() => {
+                setFailNotes(notes);
+                setSelectedDamageOption(currentDamageType || 'repairable');
+                setFailModalOpen(true);
+              }}
               className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded transition-all cursor-pointer ${
                 isFailed
                   ? 'bg-red-700 text-white ring-2 ring-red-500 shadow-xs'
@@ -1717,6 +1841,146 @@ function QcCheckpointCard({
               {submitting === 'failed' ? 'Saving…' : '✕ Fail'}
             </button>
           </div>
+
+          {/* QC Fail Damage Classification Modal (Repairable vs Unrepairable) */}
+          {failModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+              <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-neutral-200 overflow-hidden text-left">
+                {/* Header */}
+                <div className="px-5 py-4 bg-gradient-to-r from-red-50 via-amber-50/50 to-white border-b border-neutral-200 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#7A021D] flex items-center gap-1.5">
+                      <span>⚠️</span>
+                      <span>Mark QC as Failed</span>
+                    </h3>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">{title}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFailModalOpen(false)}
+                    className="text-neutral-400 hover:text-neutral-700 text-base p-1 leading-none rounded-md hover:bg-black/5 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-neutral-800 block mb-2">
+                      Select Damage Option:
+                    </label>
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {/* Option 1: Repairable Damage */}
+                      <div
+                        onClick={() => setSelectedDamageOption('repairable')}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                          selectedDamageOption === 'repairable'
+                            ? 'border-amber-600 bg-amber-50/70 shadow-xs ring-1 ring-amber-600/30'
+                            : 'border-neutral-200 hover:border-neutral-300 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <input
+                            type="radio"
+                            name={`damage-option-${itemId}-${checkpoint}`}
+                            checked={selectedDamageOption === 'repairable'}
+                            onChange={() => setSelectedDamageOption('repairable')}
+                            className="mt-0.5 accent-amber-600 h-4 w-4 cursor-pointer"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-neutral-900 flex items-center gap-1.5">
+                                <span>🔧</span>
+                                <span>Repairable Damage</span>
+                              </span>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                Repairable
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-neutral-600 mt-1 leading-relaxed">
+                              Minor stains, loose threads, detached buttons, or fixable zipper/seam damage that can be professionally repaired or cleaned.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Option 2: Unrepairable Damage */}
+                      <div
+                        onClick={() => setSelectedDamageOption('unrepairable')}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                          selectedDamageOption === 'unrepairable'
+                            ? 'border-red-600 bg-red-50/70 shadow-xs ring-1 ring-red-600/30'
+                            : 'border-neutral-200 hover:border-neutral-300 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <input
+                            type="radio"
+                            name={`damage-option-${itemId}-${checkpoint}`}
+                            checked={selectedDamageOption === 'unrepairable'}
+                            onChange={() => setSelectedDamageOption('unrepairable')}
+                            className="mt-0.5 accent-red-600 h-4 w-4 cursor-pointer"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-neutral-900 flex items-center gap-1.5">
+                                <span>🚫</span>
+                                <span>Unrepairable Damage</span>
+                              </span>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800">
+                                Total Loss
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-neutral-600 mt-1 leading-relaxed">
+                              Severe or permanent damage such as burns, large tears in delicate luxury fabric, chemical discoloration, or garment ruined. Item will be retired from circulation.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Defect / Damage Notes */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-neutral-800">
+                      Damage & Condition Notes
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Specify defect location, repair estimate, or defect notes..."
+                      value={failNotes}
+                      onChange={(e) => setFailNotes(e.target.value)}
+                      className="w-full text-xs border border-neutral-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-1 focus:ring-black"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 py-3 bg-neutral-50 border-t border-neutral-200 flex justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setFailModalOpen(false)}
+                    className="text-xs font-semibold px-3.5 py-1.5 rounded-lg border border-neutral-300 text-neutral-700 bg-white hover:bg-neutral-100 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={submitting !== null}
+                    onClick={async () => {
+                      setNotes(failNotes);
+                      await handleSaveWith('failed', failNotes, images, selectedDamageOption);
+                      setFailModalOpen(false);
+                    }}
+                    className="text-xs font-semibold px-4 py-1.5 rounded-lg bg-[#7A021D] hover:bg-[#5e0116] text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {submitting === 'failed' ? 'Saving…' : 'Confirm QC Fail'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Multiple Photo Upload Modal */}
           <QcPhotoModal

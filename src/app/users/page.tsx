@@ -20,6 +20,7 @@ import UserDetailPanel from '@/components/list/UserDetailPanel';
 import UserBulkActionBar from '@/components/list/UserBulkActionBar';
 import UserForm from '@/components/user-form/UserForm';
 import ManagerDrawer from '@/components/staff/ManagerDrawer';
+import AdminDrawer from '@/components/staff/AdminDrawer';
 import DeleteUserConfirmationModal from '@/components/ui/DeleteUserConfirmationModal';
 
 const PAGE_SIZE = 50;
@@ -104,6 +105,10 @@ export default function UsersPage(): React.ReactElement {
   const [managerDrawerMode, setManagerDrawerMode] = useState<'create' | 'edit' | null>(null);
   const [editingManager, setEditingManager] = useState<StaffMember | null>(null);
 
+  // Admin Account state
+  const [adminDrawerMode, setAdminDrawerMode] = useState<'create' | 'edit' | null>(null);
+  const [editingAdmin, setEditingAdmin] = useState<OnboardingSubmission | null>(null);
+
   const loadManagers = useCallback(async () => {
     if (!isAdminUser) return;
     setManagersLoading(true);
@@ -172,10 +177,25 @@ export default function UsersPage(): React.ReactElement {
   );
 
   function openAddUser() {
-    router.push(roleTab === 'admin' ? '/users/new?role=admin' : '/users/new');
+    if (roleTab === 'admin') {
+      setEditingAdmin(null);
+      setAdminDrawerMode('create');
+      return;
+    }
+    if (roleTab === 'managers') {
+      setEditingManager(null);
+      setManagerDrawerMode('create');
+      return;
+    }
+    router.push('/users/new');
   }
 
   function openEditUser(user: OnboardingSubmission) {
+    if (user.role === 'admin' || roleTab === 'admin') {
+      setEditingAdmin(user);
+      setAdminDrawerMode('edit');
+      return;
+    }
     setEditingUser(user);
     setDrawerMode('edit');
   }
@@ -754,6 +774,33 @@ export default function UsersPage(): React.ReactElement {
             setManagerDrawerMode(null);
             setEditingManager(null);
             void loadManagers();
+          }}
+        />
+      )}
+
+      {/* ── Slide-Over Admin Drawer ── */}
+      {adminDrawerMode && (
+        <AdminDrawer
+          mode={adminDrawerMode}
+          initial={editingAdmin ?? undefined}
+          onClose={() => {
+            setAdminDrawerMode(null);
+            setEditingAdmin(null);
+          }}
+          onSuccess={() => {
+            setAdminDrawerMode(null);
+            setEditingAdmin(null);
+            void load();
+          }}
+          onDelete={(id, name) => {
+            setAdminDrawerMode(null);
+            setEditingAdmin(null);
+            setDeleteModalState({
+              isOpen: true,
+              type: 'single',
+              targetId: id,
+              targetName: name,
+            });
           }}
         />
       )}

@@ -144,6 +144,10 @@ export default function UserTable({
                     <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     {BUSY_MESSAGES[rowAction]}
                   </span>
+                ) : u.role === 'admin' ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 border border-purple-200/70 px-2.5 py-0.5 text-xs font-bold text-purple-700">
+                    👑 Admin
+                  </span>
                 ) : (
                   <span
                     className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -180,13 +184,13 @@ export default function UserTable({
                 {menuOpen === u.id && (
                   <>
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-10"
                       onClick={() => setMenuOpen(null)}
                       aria-hidden="true"
                     />
                     <div
-                      className={`absolute right-2 z-50 w-48 rounded-xl border border-neutral-200 bg-white py-1.5 shadow-2xl ${
-                        isBottomRows ? 'bottom-8' : 'top-10'
+                      className={`absolute right-4 z-20 w-44 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg ${
+                        isBottomRows ? 'bottom-full mb-1' : 'top-full mt-1'
                       }`}
                     >
                       <button
@@ -216,7 +220,7 @@ export default function UserTable({
                             d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                           />
                         </svg>
-                        View details
+                        View {u.role === 'admin' ? 'Admin Profile' : 'Details'}
                       </button>
                       <button
                         type="button"
@@ -240,108 +244,114 @@ export default function UserTable({
                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                           />
                         </svg>
-                        Edit User
+                        Edit {u.role === 'admin' ? 'Admin' : 'User'}
                       </button>
-                      <div className="my-1 border-t border-neutral-100" />
-                      {u.approval_status === 'approved' ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMenuOpen(null);
-                            onApprove(u.id);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[#7A021D] hover:bg-[#FDF8F4] cursor-pointer"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1.5}
-                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                            />
-                          </svg>
-                          Resend invite email
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMenuOpen(null);
-                            onApprove(u.id);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 cursor-pointer"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1.5}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          Approve &amp; invite
-                        </button>
+
+                      {u.role !== 'admin' && (
+                        <>
+                          <div className="my-1 border-t border-neutral-100" />
+                          {u.approval_status === 'approved' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuOpen(null);
+                                onApprove(u.id);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[#7A021D] hover:bg-[#FDF8F4] cursor-pointer"
+                            >
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                />
+                              </svg>
+                              Resend invite email
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuOpen(null);
+                                onApprove(u.id);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                            >
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                              Approve &amp; invite
+                            </button>
+                          )}
+                          {u.approval_status !== 'waitlisted' && u.approval_status !== 'approved' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuOpen(null);
+                                onWaitlist(u.id);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-sky-600 hover:bg-sky-50 cursor-pointer"
+                            >
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                              Waitlist
+                            </button>
+                          )}
+                          {u.approval_status !== 'rejected' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuOpen(null);
+                                onReject(u.id);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-amber-600 hover:bg-amber-50 cursor-pointer"
+                            >
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                              Reject
+                            </button>
+                          )}
+                        </>
                       )}
-                      {u.approval_status !== 'waitlisted' && u.approval_status !== 'approved' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMenuOpen(null);
-                            onWaitlist(u.id);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-sky-600 hover:bg-sky-50 cursor-pointer"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1.5}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          Waitlist
-                        </button>
-                      )}
-                      {u.approval_status !== 'rejected' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMenuOpen(null);
-                            onReject(u.id);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-amber-600 hover:bg-amber-50 cursor-pointer"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1.5}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                          Reject
-                        </button>
-                      )}
+
                       <div className="my-1 border-t border-neutral-100" />
                       <button
                         type="button"

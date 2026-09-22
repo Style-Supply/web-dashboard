@@ -318,3 +318,40 @@ export async function bulkUpdateStatus(
   if (error) throw new Error(error.message);
   return { updated: count ?? 0 };
 }
+
+export interface AdminPayload {
+  full_name: string;
+  email: string;
+  phone?: string;
+  password?: string;
+  admin_notes?: string;
+  is_active?: boolean;
+}
+
+export async function createAdmin(payload: AdminPayload): Promise<OnboardingSubmission> {
+  return createUser({
+    full_name: payload.full_name,
+    email: payload.email,
+    phone_number: payload.phone || null,
+    floor_apartment: 'HQ Office',
+    city: 'Mumbai',
+    zip_code: '',
+    role: 'admin',
+    approval_status: 'approved',
+    admin_notes: payload.admin_notes || 'System Administrator Account',
+    password: payload.password,
+  } as any);
+}
+
+export async function updateAdmin(
+  id: string,
+  payload: Partial<AdminPayload>,
+): Promise<OnboardingSubmission> {
+  return updateUser(id, {
+    full_name: payload.full_name,
+    phone_number: payload.phone || null,
+    admin_notes: payload.admin_notes,
+    role: 'admin',
+    approval_status: payload.is_active === false ? 'rejected' : 'approved',
+  } as any);
+}

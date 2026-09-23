@@ -32,7 +32,7 @@ export default function EditImageModal({
   onUpdateImage,
   onDeleteImage,
 }: EditImageModalProps): React.ReactElement {
-  const [selectedTag, setSelectedTag] = useState<ImageTag>(image.image_tag ?? 'BRAND IMAGE');
+  const [selectedTag, setSelectedTag] = useState<ImageTag | null>(image.image_tag ?? null);
   const [selectedSizes, setSelectedSizes] = useState<string[]>(image.sizes ?? []);
   const [colourMode, setColourMode] = useState<'none' | 'preset' | 'custom'>(() => {
     if (image.colour_id) return 'preset';
@@ -202,15 +202,27 @@ export default function EditImageModal({
                 Choose the badge/tag for this image (AI IMAGE, BRAND IMAGE, or MEMBER IMAGE).
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-2.5 pt-1">
+            <div className="grid grid-cols-4 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setSelectedTag(null)}
+                className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-lg border text-xs font-bold tracking-wider transition-all ${
+                  selectedTag === null
+                    ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm ring-2 ring-neutral-900/20'
+                    : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300'
+                }`}
+              >
+                <span className="text-sm mb-1">🚫</span>
+                <span>NO TAG</span>
+              </button>
               {(['BRAND IMAGE', 'AI IMAGE', 'MEMBER IMAGE'] as const).map((tag) => {
                 const active = selectedTag === tag;
                 return (
                   <button
                     key={tag}
                     type="button"
-                    onClick={() => setSelectedTag(tag)}
-                    className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-lg border text-xs font-bold tracking-wider transition-all ${
+                    onClick={() => setSelectedTag(active ? null : tag)}
+                    className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-lg border text-xs font-bold tracking-wider transition-all ${
                       active
                         ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm ring-2 ring-neutral-900/20'
                         : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300'
@@ -219,7 +231,7 @@ export default function EditImageModal({
                     <span className="text-sm mb-1">
                       {tag === 'BRAND IMAGE' ? '🏷️' : tag === 'AI IMAGE' ? '✨' : '👤'}
                     </span>
-                    <span>{tag}</span>
+                    <span className="text-center truncate w-full">{tag}</span>
                   </button>
                 );
               })}

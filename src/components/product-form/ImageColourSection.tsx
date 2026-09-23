@@ -77,7 +77,7 @@ export default function ImageColourSection({
 }: Props): React.ReactElement {
   const tag = tagForKind(kind);
   const [mode, setMode] = useState<Mode>('upload');
-  const [uploadTag, setUploadTag] = useState<ImageTag>('BRAND IMAGE');
+  const [uploadTag, setUploadTag] = useState<ImageTag | null>(null);
   const [urlText, setUrlText] = useState('');
   const [pageUrl, setPageUrl] = useState('');
   const [busy, setBusy] = useState<false | 'url' | 'page' | 'upload'>(false);
@@ -87,7 +87,7 @@ export default function ImageColourSection({
   const [editingImage, setEditingImage] = useState<ProductImage | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const activeUploadTag: ColourTag = { ...tag, image_tag: uploadTag };
+  const activeUploadTag: ColourTag = { ...tag, image_tag: uploadTag ?? null };
 
   async function handleImportUrls(): Promise<void> {
     const urls = urlText
@@ -219,10 +219,11 @@ export default function ImageColourSection({
         <div className="flex items-center gap-1.5 bg-white border border-neutral-200 rounded-lg px-2.5 py-1 text-xs shadow-xs">
           <span className="text-neutral-500 font-medium">Tag new as:</span>
           <select
-            value={uploadTag}
-            onChange={(e) => setUploadTag(e.target.value as ImageTag)}
+            value={uploadTag ?? ''}
+            onChange={(e) => setUploadTag((e.target.value as ImageTag) || null)}
             className="bg-transparent font-bold text-neutral-800 outline-hidden cursor-pointer"
           >
+            <option value="">No tag</option>
             <option value="BRAND IMAGE">BRAND IMAGE</option>
             <option value="AI IMAGE">AI IMAGE</option>
             <option value="MEMBER IMAGE">MEMBER IMAGE</option>
@@ -340,21 +341,23 @@ export default function ImageColourSection({
                       Edit
                     </span>
                   </div>
-                  <div className="absolute left-1 bottom-1 z-10 pointer-events-none">
-                    <span className="rounded bg-black/75 px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase text-white shadow-xs backdrop-blur-xs">
-                      {img.image_tag ?? 'BRAND IMAGE'}
-                    </span>
-                  </div>
+                  {img.image_tag && (
+                    <div className="absolute left-1 bottom-1 z-10 pointer-events-none">
+                      <span className="rounded bg-black/75 px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase text-white shadow-xs backdrop-blur-xs">
+                        {img.image_tag}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {/* Image Tag assignment */}
                 <div className="mt-2 border-t border-neutral-100 pt-1.5">
                   <div className="flex items-center justify-between text-[10px]">
                     <span className="font-semibold text-neutral-700">Tag:</span>
                     <select
-                      value={img.image_tag ?? 'BRAND IMAGE'}
+                      value={img.image_tag || ''}
                       onClick={(e) => e.stopPropagation()}
                       onChange={async (e) => {
-                        const nextTag = e.target.value as ImageTag;
+                        const nextTag = (e.target.value as ImageTag) || null;
                         onUpdateImage(img.id, { image_tag: nextTag });
                         try {
                           await updateImageTag(img.id, nextTag);
@@ -364,6 +367,7 @@ export default function ImageColourSection({
                       }}
                       className="rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-neutral-800 shadow-xs focus:border-neutral-900 focus:outline-hidden cursor-pointer"
                     >
+                      <option value="">No tag</option>
                       <option value="BRAND IMAGE">BRAND IMAGE</option>
                       <option value="AI IMAGE">AI IMAGE</option>
                       <option value="MEMBER IMAGE">MEMBER IMAGE</option>

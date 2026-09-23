@@ -264,7 +264,7 @@ export async function updateImageSizes(imageId: string, sizes: string[]): Promis
   return updateImage(imageId, { sizes });
 }
 
-export async function updateImageTag(imageId: string, image_tag: ImageTag): Promise<ProductImage> {
+export async function updateImageTag(imageId: string, image_tag: ImageTag | null): Promise<ProductImage> {
   return updateImage(imageId, { image_tag });
 }
 

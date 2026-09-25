@@ -158,12 +158,7 @@ export default function UsersPage(): React.ReactElement {
     const member: OnboardingSubmission[] = [];
 
     for (const u of users) {
-      const isAdminRole =
-        u.role === 'admin' ||
-        (u.admin_notes && u.admin_notes.toLowerCase().includes('admin')) ||
-        (u.email && u.email.toLowerCase().includes('admin'));
-
-      if (isAdminRole) admin.push(u);
+      if (u.role === 'admin') admin.push(u);
       else member.push(u);
     }
     return { adminList: admin, memberList: member };
@@ -187,7 +182,8 @@ export default function UsersPage(): React.ReactElement {
       setManagerDrawerMode('create');
       return;
     }
-    router.push('/users/new');
+    setEditingUser(null);
+    setDrawerMode('create');
   }
 
   function openEditUser(user: OnboardingSubmission) {
@@ -207,6 +203,8 @@ export default function UsersPage(): React.ReactElement {
 
   function handleFormSuccess() {
     closeDrawer();
+    setStatusFilter('all');
+    setOffset(0);
     void load();
   }
 

@@ -121,13 +121,17 @@ export async function listUsers(query: ListUsersQuery = {}): Promise<ListUsersRe
     }
   }
 
-  // Tag submissions that match admin linked_user_ids or emails
+  // Tag submissions that match admin linked_user_ids or explicit admin roles
   const submissionsWithRoles = submissions.map((sub) => {
     const isAdmin =
-      (sub.linked_user_id && adminProfileMap.has(sub.linked_user_id)) ||
-      sub.email.toLowerCase().includes('admin') ||
-      sub.email.toLowerCase() === 'tech@stylesupply.io' ||
-      (sub.admin_notes && sub.admin_notes.toLowerCase().includes('admin'));
+      Boolean(sub.linked_user_id && adminProfileMap.has(sub.linked_user_id)) ||
+      Boolean(
+        sub.admin_notes &&
+        (sub.admin_notes.includes('[ROLE:ADMIN]') ||
+         sub.admin_notes.startsWith('Administrator Account') ||
+         sub.admin_notes.startsWith('System Super Administrator Account') ||
+         sub.admin_notes.startsWith('Lead Operations Administrator'))
+      );
 
     const isPhoneVerified =
       Boolean(sub.phone_verified) ||
@@ -140,38 +144,25 @@ export async function listUsers(query: ListUsersQuery = {}): Promise<ListUsersRe
     };
   });
 
-  // Synthesize admin entries for admins in profiles who might not be in onboarding_submissions (e.g. tech@stylesupply.io)
-  const existingEmails = new Set(submissionsWithRoles.map((s) => s.email.toLowerCase()));
-
-  // Fallback default admin accounts if not already present
+  // Include system admin accounts for the Admin tab if not already present
+  const existingIds = new Set(submissionsWithRoles.map((s) => s.id));
   const DEFAULT_ADMINS: Partial<OnboardingSubmission>[] = [
     {
-      id: 'admin-tech-01',
-      full_name: 'StyleSupply Tech Admin',
+      id: 'admin-system-tech',
+      full_name: 'Tech Support',
       email: 'tech@stylesupply.io',
       phone_number: '+91 98765 43210',
       city: 'Mumbai',
       approval_status: 'approved',
-      created_at: new Date().toISOString(),
-      admin_notes: 'System Super Administrator Account',
-      role: 'admin',
-    },
-    {
-      id: 'admin-main-02',
-      full_name: 'StyleSupply Lead Admin',
-      email: 'admin@stylesupply.io',
-      phone_number: '+91 99887 76655',
-      city: 'Mumbai',
-      approval_status: 'approved',
-      created_at: new Date().toISOString(),
-      admin_notes: 'Lead Operations Administrator',
+      created_at: '2026-01-01T00:00:00.000Z',
+      admin_notes: '[ROLE:ADMIN] System Super Administrator Account',
       role: 'admin',
     },
   ];
 
   for (const defAdmin of DEFAULT_ADMINS) {
-    if (defAdmin.email && !existingEmails.has(defAdmin.email.toLowerCase())) {
-      submissionsWithRoles.unshift(defAdmin as unknown as typeof submissionsWithRoles[0]);
+    if (defAdmin.id && !existingIds.has(defAdmin.id)) {
+      submissionsWithRoles.push(defAdmin as unknown as typeof submissionsWithRoles[0]);
     }
   }
 

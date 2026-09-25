@@ -182,8 +182,7 @@ export default function UsersPage(): React.ReactElement {
       setManagerDrawerMode('create');
       return;
     }
-    setEditingUser(null);
-    setDrawerMode('create');
+    router.push('/users/new');
   }
 
   function openEditUser(user: OnboardingSubmission) {

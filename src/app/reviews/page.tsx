@@ -43,26 +43,57 @@ function IconList({ active }: { active: boolean }) {
 
 function parseRentalFeedback(returnReason?: string | null) {
   if (!returnReason) return { isRental: false, fit: null, wearAgain: null, condition: null, otherTags: [] };
-  const parts = returnReason.split(' · ');
+
+  const hasRentalTag =
+    returnReason.startsWith('[RENT]') ||
+    returnReason.startsWith('[Rental]') ||
+    returnReason.startsWith('[RENTAL]') ||
+    returnReason.includes('[RENT]') ||
+    returnReason === '__rent__';
+
+  // Strip leading [RENT], [Rental], or [RENTAL] tag
+  const cleanReason = returnReason.replace(/^\[(?:RENT|RENTAL|Rental)\]\s*/i, '').trim();
+
+  if (cleanReason === '__rent__' || !cleanReason) {
+    return { isRental: hasRentalTag, fit: null, wearAgain: null, condition: null, otherTags: [] };
+  }
+
+  const parts = cleanReason.split(/\s*·\s*/);
   let fit: string | null = null;
   let wearAgain: string | null = null;
   let condition: string | null = null;
   const otherTags: string[] = [];
 
-  for (const part of parts) {
-    if (part.startsWith('Fit:')) {
-      fit = part.replace('Fit:', '').trim();
-    } else if (part.startsWith('Intent:')) {
-      wearAgain = part.replace('Intent:', '').trim();
-    } else if (part.startsWith('Condition:')) {
-      condition = part.replace('Condition:', '').trim();
+  const KNOWN_FITS = ['Perfect', 'Too tight', 'Too loose', 'Length off'];
+  const KNOWN_WEAR_AGAIN = ['Rent it again', 'Make it in my size', 'Once was enough'];
+  const KNOWN_CONDITIONS = ['All good', 'Mark or stain', 'Loose seam or hook'];
+
+  for (const rawPart of parts) {
+    const part = rawPart.replace(/^\[(?:RENT|RENTAL|Rental)\]\s*/i, '').trim();
+    if (!part) continue;
+
+    if (part.toLowerCase().startsWith('fit:')) {
+      fit = part.replace(/^fit:\s*/i, '').trim();
+    } else if (part.toLowerCase().startsWith('intent:')) {
+      wearAgain = part.replace(/^intent:\s*/i, '').trim();
+    } else if (part.toLowerCase().startsWith('condition:')) {
+      condition = part.replace(/^condition:\s*/i, '').trim();
+    } else if (KNOWN_FITS.some((k) => k.toLowerCase() === part.toLowerCase())) {
+      fit = KNOWN_FITS.find((k) => k.toLowerCase() === part.toLowerCase()) || part;
+    } else if (KNOWN_WEAR_AGAIN.some((k) => k.toLowerCase() === part.toLowerCase())) {
+      wearAgain = KNOWN_WEAR_AGAIN.find((k) => k.toLowerCase() === part.toLowerCase()) || part;
+    } else if (KNOWN_CONDITIONS.some((k) => k.toLowerCase() === part.toLowerCase())) {
+      condition = KNOWN_CONDITIONS.find((k) => k.toLowerCase() === part.toLowerCase()) || part;
     } else {
-      otherTags.push(part.trim());
+      otherTags.push(part);
     }
   }
 
-  return { isRental: Boolean(fit || wearAgain || condition), fit, wearAgain, condition, otherTags };
+  const isRental = hasRentalTag || Boolean(fit || wearAgain || condition);
+
+  return { isRental, fit, wearAgain, condition, otherTags };
 }
+
 
 function parseReviewTextAndPhotos(
   rawBody?: string | null,
@@ -373,14 +404,14 @@ export default function ReviewsPage(): React.ReactElement {
 
                     <span
                       className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                        r.return_reason?.includes('Fit:')
+                        parseRentalFeedback(r.return_reason).isRental
                           ? 'bg-purple-50 text-purple-800 border-purple-200'
                           : r.review_type === 'purchased'
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : 'bg-amber-50 text-amber-800 border-amber-200'
                       }`}
                     >
-                      {r.return_reason?.includes('Fit:') ? 'RENTAL' : r.review_type ? r.review_type.toUpperCase() : 'REVIEW'}
+                      {parseRentalFeedback(r.return_reason).isRental ? 'RENTAL' : r.review_type ? r.review_type.toUpperCase() : 'REVIEW'}
                     </span>
                   </div>
 
@@ -498,14 +529,14 @@ export default function ReviewsPage(): React.ReactElement {
                     <td className="px-5 py-4">
                       <span
                         className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                          r.return_reason?.includes('Fit:')
+                          parseRentalFeedback(r.return_reason).isRental
                             ? 'bg-purple-50 text-purple-800 border-purple-200'
                             : r.review_type === 'purchased'
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : 'bg-amber-50 text-amber-800 border-amber-200'
                         }`}
                       >
-                        {r.return_reason?.includes('Fit:') ? 'RENTAL' : r.review_type ? r.review_type.toUpperCase() : 'REVIEW'}
+                        {parseRentalFeedback(r.return_reason).isRental ? 'RENTAL' : r.review_type ? r.review_type.toUpperCase() : 'REVIEW'}
                       </span>
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">
@@ -736,6 +767,25 @@ export default function ReviewsPage(): React.ReactElement {
                           </span>
                           <div className="rounded-xl border border-purple-200/80 bg-white p-3.5 text-xs text-neutral-800 leading-relaxed italic shadow-2xs">
                             &ldquo;{cleanBody}&rdquo;
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Additional Tags if any */}
+                      {rentalData.otherTags.length > 0 && (
+                        <div>
+                          <span className="text-xs font-semibold text-neutral-600 block mb-1.5">
+                            Additional Tags:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {rentalData.otherTags.map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center rounded-xl border border-purple-200 bg-purple-50/60 px-3 py-1 text-xs font-medium text-purple-900 shadow-2xs"
+                              >
+                                🏷️ {tag}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       )}

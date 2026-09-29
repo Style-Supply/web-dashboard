@@ -7,6 +7,7 @@ import { listMembershipPlans, type MembershipPlan } from '@/lib/membership-plans
 import type { Membership, MembershipStatus } from '@/types/membership';
 import ActivateMembershipDrawer from '@/components/membership-form/ActivateMembershipDrawer';
 import MembershipPlanDrawer from '@/components/membership-form/MembershipPlanDrawer';
+import CreditLedgerDrawer from '@/components/membership-form/CreditLedgerDrawer';
 
 const PAGE_SIZE = 50;
 
@@ -112,6 +113,9 @@ export default function MembershipsPage(): React.ReactElement {
   // Activate Drawer State
   const [isActivateDrawerOpen, setIsActivateDrawerOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+
+  // Credit Ledger Drawer State
+  const [selectedMembershipForLedger, setSelectedMembershipForLedger] = useState<Membership | null>(null);
 
   const loadMemberships = useCallback(async () => {
     setLoading(true);
@@ -491,13 +495,21 @@ export default function MembershipsPage(): React.ReactElement {
                             {formatRupees(m.credit_balance_minor)}
                           </p>
                         </div>
-                        <button
-                          onClick={() => void handleAdjustCredit(m)}
-                          disabled={rowBusy === m.id}
-                          className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-[#7A021D] border border-neutral-200 hover:bg-[#FDF8F4] transition-colors shadow-2xs"
-                        >
-                          Edit Credit
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setSelectedMembershipForLedger(m)}
+                            className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200 hover:bg-neutral-50 transition-colors shadow-2xs"
+                          >
+                            Ledger
+                          </button>
+                          <button
+                            onClick={() => void handleAdjustCredit(m)}
+                            disabled={rowBusy === m.id}
+                            className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-[#7A021D] border border-neutral-200 hover:bg-[#FDF8F4] transition-colors shadow-2xs"
+                          >
+                            Edit Credit
+                          </button>
+                        </div>
                       </div>
 
                       <div className="mt-3 space-y-1 text-xs text-neutral-500">
@@ -602,6 +614,12 @@ export default function MembershipsPage(): React.ReactElement {
                             {m.expires_at ? new Date(m.expires_at).toLocaleDateString('en-IN') : '—'}
                           </td>
                           <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
+                            <button
+                              onClick={() => setSelectedMembershipForLedger(m)}
+                              className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
+                            >
+                              Ledger
+                            </button>
                             <button
                               onClick={() => void handleAdjustCredit(m)}
                               disabled={rowBusy === m.id}
@@ -797,6 +815,13 @@ export default function MembershipsPage(): React.ReactElement {
             setIsPlanDrawerOpen(false);
             void loadPlans();
           }}
+        />
+      )}
+
+      {selectedMembershipForLedger && (
+        <CreditLedgerDrawer
+          membership={selectedMembershipForLedger}
+          onClose={() => setSelectedMembershipForLedger(null)}
         />
       )}
     </>

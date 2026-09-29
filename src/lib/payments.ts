@@ -23,7 +23,7 @@ export interface Payment {
   notes: string | null;
   created_at: string;
   user?: { id: string; full_name: string | null };
-  box?: { id: string; status: string };
+  box?: { id: string; status: string; order_number?: string | null };
   membership?: { id: string; plan: string; status: string };
 }
 

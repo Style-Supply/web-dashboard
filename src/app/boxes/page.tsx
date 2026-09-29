@@ -343,6 +343,7 @@ export default function BoxesPage(): React.ReactElement {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-neutral-100 bg-neutral-50/80">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Order #</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Member / Receiver</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Status</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Session</th>
@@ -355,7 +356,7 @@ export default function BoxesPage(): React.ReactElement {
           <tbody className="divide-y divide-neutral-100">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center">
+                <td colSpan={8} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2 text-neutral-400">
                     <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -367,7 +368,7 @@ export default function BoxesPage(): React.ReactElement {
               </tr>
             ) : boxes.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-sm text-neutral-400">
+                <td colSpan={8} className="px-4 py-12 text-center text-sm text-neutral-400">
                   No boxes found
                 </td>
               </tr>
@@ -376,6 +377,13 @@ export default function BoxesPage(): React.ReactElement {
                 key={box.id}
                 className="group transition-colors hover:bg-neutral-50/60"
               >
+                {/* Order # */}
+                <td className="px-4 py-3.5 whitespace-nowrap">
+                  <span className="font-mono text-xs font-bold text-[#7A021D] bg-[#7A021D]/10 px-2.5 py-1 rounded-md border border-[#7A021D]/20">
+                    {box.order_number || `SS-${box.id.substring(0, 6).toUpperCase()}`}
+                  </span>
+                </td>
+
                 {/* Member / Receiver */}
                 <td className="px-4 py-3.5">
                   {(() => {

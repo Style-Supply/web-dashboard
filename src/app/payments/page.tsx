@@ -320,6 +320,11 @@ export default function PaymentsPage(): React.ReactElement {
                         {p.user?.full_name ?? 'Unknown User'}
                       </h3>
                       <p className="text-xs text-neutral-400 capitalize">{p.payment_type} Payment</p>
+                      {p.box?.order_number && (
+                        <span className="font-mono text-[11px] font-bold text-[#7A021D] bg-[#7A021D]/10 px-2 py-0.5 rounded-md inline-block mt-1">
+                          Order #{p.box.order_number}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -415,7 +420,16 @@ export default function PaymentsPage(): React.ReactElement {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 capitalize font-medium text-neutral-700">{p.payment_type}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-col">
+                        <span className="capitalize font-medium text-neutral-700">{p.payment_type}</span>
+                        {p.box?.order_number && (
+                          <span className="font-mono text-[11px] font-bold text-[#7A021D] mt-0.5">
+                            Order #{p.box.order_number}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-5 py-4 text-neutral-600">{rupees(p.amount_minor + p.gst_minor)}</td>
                     <td className="px-5 py-4 text-xs font-semibold text-emerald-700">
                       {p.credit_applied_minor > 0 ? `−${rupees(p.credit_applied_minor)}` : '—'}

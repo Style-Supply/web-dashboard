@@ -42,3 +42,34 @@ export async function deleteMembership(id: string): Promise<{ success: boolean }
   });
 }
 
+export interface CreditLedgerTransaction {
+  id: string;
+  date: string;
+  type: 'grant' | 'deduction' | 'expired';
+  description: string;
+  amount_minor: number;
+  box_id?: string | null;
+  box_number?: number | null;
+  order_number?: string | null;
+  box_label?: string | null;
+  is_current_box?: boolean;
+  box_status?: string | null;
+  item_names?: string[];
+  payment_type?: string | null;
+  status: string;
+  expires_at?: string | null;
+}
+
+export interface CreditLedgerResponse {
+  membership: Membership;
+  available_minor: number;
+  transactions: CreditLedgerTransaction[];
+  current_box?: any;
+  other_boxes?: any[];
+  boxes_summary?: any[];
+}
+
+export async function getMembershipCreditLedger(id: string): Promise<CreditLedgerResponse> {
+  return request<CreditLedgerResponse>(`/api/admin/memberships/${id}/ledger`);
+}
+

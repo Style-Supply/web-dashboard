@@ -765,9 +765,14 @@ export default function BoxDetailPage(): React.ReactElement {
               </svg>
               Back to Boxes
             </Link>
-            <h1 className="text-2xl font-semibold text-[#2C0505]">Box Detail</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-semibold text-[#2C0505]">Box Detail</h1>
+              <span className="font-mono text-sm font-bold text-[#7A021D] bg-[#7A021D]/10 px-3 py-1 rounded-md border border-[#7A021D]/20">
+                Order #{box.order_number || `SS-${box.id.substring(0, 6).toUpperCase()}`}
+              </span>
+            </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 mt-1">
-              <span className="font-mono">{box.id}</span>
+              <span className="font-mono text-[11px] text-neutral-400">ID: {box.id}</span>
               {((box.address as any)?.receiver_name || box.user?.full_name || box.profiles?.full_name) && (
                 <>
                   <span>•</span>

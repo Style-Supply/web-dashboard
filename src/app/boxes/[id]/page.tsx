@@ -88,11 +88,11 @@ function parseItemQc(item: any) {
     at: (item?.received_from_brand_qc_at as string | undefined) ?? (item?.brand_qc_at as string | undefined) ?? undefined,
   };
   let customer = {
-    status: item?.qc_status ?? 'pending',
+    status: 'pending' as string,
     damage_type: null as 'repairable' | 'unrepairable' | null,
-    notes: item?.qc_notes ?? '',
-    images: Array.isArray(item?.qc_images) ? (item.qc_images as string[]) : ([] as string[]),
-    at: (item?.qc_at as string | undefined) ?? undefined,
+    notes: '',
+    images: [] as string[],
+    at: undefined as string | undefined,
   };
 
   const rawNotes = item?.qc_notes;
@@ -110,14 +110,22 @@ function parseItemQc(item: any) {
       }
       if (parsed.customer) {
         customer = {
-          status: parsed.customer.status ?? customer.status,
+          status: parsed.customer.status ?? 'pending',
           damage_type: (parsed.customer.damage_type as 'repairable' | 'unrepairable' | null) ?? null,
-          notes: parsed.customer.notes ?? customer.notes,
-          images: Array.isArray(parsed.customer.images) ? parsed.customer.images : customer.images,
-          at: parsed.customer.at ?? customer.at,
+          notes: parsed.customer.notes ?? '',
+          images: Array.isArray(parsed.customer.images) ? parsed.customer.images : [],
+          at: parsed.customer.at ?? undefined,
         };
       }
     } catch {}
+  } else if (item?.qc_status) {
+    customer = {
+      status: item.qc_status,
+      damage_type: null,
+      notes: item.qc_notes ?? '',
+      images: Array.isArray(item.qc_images) ? item.qc_images : [],
+      at: item.qc_at ?? undefined,
+    };
   }
 
   return { brand, customer };
@@ -1086,8 +1094,8 @@ export default function BoxDetailPage(): React.ReactElement {
                                   ? `✕ Failed (${qcData.customer.damage_type === 'unrepairable' ? 'Unrepairable' : 'Repairable'})`
                                   : 'Pending'}
                               </span>
-                              {(qcData.customer.at || item.qc_at) && (
-                                <span className="block text-[9px] text-neutral-400 font-normal">{fmt(qcData.customer.at || item.qc_at)}</span>
+                              {(isCustPass || isCustFail) && qcData.customer.at && (
+                                <span className="block text-[9px] text-neutral-400 font-normal">{fmt(qcData.customer.at)}</span>
                               )}
                             </div>
                           </div>
@@ -1291,28 +1299,43 @@ export default function BoxDetailPage(): React.ReactElement {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {item.qc_status ? (
-                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 capitalize ${
-                            item.qc_status === 'passed' ? 'bg-green-100 text-green-700' :
-                            item.qc_status === 'failed' ? 'bg-red-100 text-red-700' :
-                            'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {item.qc_status === 'failed' ? (
-                              <>
-                                <span>✕ Failed</span>
-                                {parseItemQc(item).customer.damage_type && (
+                        {(() => {
+                          const qcData = parseItemQc(item);
+                          if (qcData.customer.status === 'passed') {
+                            return (
+                              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 bg-green-100 text-green-700">
+                                ✓ Return Passed
+                              </span>
+                            );
+                          }
+                          if (qcData.customer.status === 'failed') {
+                            return (
+                              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 bg-red-100 text-red-700">
+                                <span>✕ Return Failed</span>
+                                {qcData.customer.damage_type && (
                                   <span className="text-[10px] font-medium opacity-85">
-                                    ({parseItemQc(item).customer.damage_type === 'unrepairable' ? 'Unrepairable' : 'Repairable'})
+                                    ({qcData.customer.damage_type === 'unrepairable' ? 'Unrepairable' : 'Repairable'})
                                   </span>
                                 )}
-                              </>
-                            ) : item.qc_status === 'passed' ? (
-                              '✓ Passed'
-                            ) : (
-                              item.qc_status
-                            )}
-                          </span>
-                        ) : '—'}
+                              </span>
+                            );
+                          }
+                          if (qcData.brand.status === 'passed') {
+                            return (
+                              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                ✓ Inbound Passed
+                              </span>
+                            );
+                          }
+                          if (qcData.brand.status === 'failed') {
+                            return (
+                              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200">
+                                ✕ Inbound Failed
+                              </span>
+                            );
+                          }
+                          return <span className="text-neutral-400 text-xs">—</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
                         ₹{(item.product.retail_price_minor / 100).toLocaleString('en-IN')}
@@ -1410,7 +1433,7 @@ export default function BoxDetailPage(): React.ReactElement {
                                   received_from_brand_qc_images: images,
                                   received_from_brand_qc_at: now,
                                   qc_notes: JSON.stringify(updatedState),
-                                  qc_status: (parsed.customer.status !== 'pending' ? parsed.customer.status : result) as 'pending' | 'passed' | 'failed' | null,
+                                  qc_status: (parsed.customer.status !== 'pending' ? parsed.customer.status : null) as 'pending' | 'passed' | 'failed' | null,
                                 };
                               }),
                             };

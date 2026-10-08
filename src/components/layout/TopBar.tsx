@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { getRazorpayConfig, type RazorpayConfig } from '@/lib/payments';
 
 const PAGE_TITLES: Record<string, string> = {
   '/products': 'Products',
@@ -10,12 +11,31 @@ const PAGE_TITLES: Record<string, string> = {
   '/products/batch': 'Batch Upload',
   '/users': 'Users',
   '/users/new': 'Add User',
+  '/payments': 'Payments & Gateway',
 };
 
 export default function TopBar(): React.ReactElement {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [rzpConfig, setRzpConfig] = useState<RazorpayConfig | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getRazorpayConfig()
+      .then((res) => {
+        if (mounted && res?.config) {
+          setRzpConfig(res.config);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [pathname]);
+
   const title =
     PAGE_TITLES[pathname] ||
     (pathname.startsWith('/products/')
@@ -33,6 +53,25 @@ export default function TopBar(): React.ReactElement {
     <header className="flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-6">
       <h1 className="text-sm font-semibold text-[#2C0505]">{title}</h1>
       <div className="flex items-center gap-3">
+        {rzpConfig && (
+          <button
+            onClick={() => router.push('/payments')}
+            title={`Active Razorpay Key: ${rzpConfig.activeKeyId}. Click to manage.`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+              rzpConfig.environment === 'production'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                rzpConfig.environment === 'production' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+              }`}
+            />
+            <span>{rzpConfig.environment === 'production' ? 'Razorpay Live' : 'Razorpay Test Mode'}</span>
+          </button>
+        )}
+
         <div className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}

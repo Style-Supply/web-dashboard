@@ -21,10 +21,25 @@ export interface Payment {
   user_confirmed_at: string | null;
   admin_confirmed_at: string | null;
   notes: string | null;
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+  razorpay_env?: 'test' | 'production' | null;
   created_at: string;
   user?: { id: string; full_name: string | null };
   box?: { id: string; status: string; order_number?: string | null };
   membership?: { id: string; plan: string; status: string };
+}
+
+export interface RazorpayConfig {
+  environment: 'test' | 'production';
+  testKeyId: string;
+  liveKeyId: string;
+  activeKeyId: string;
+  hasTestSecret: boolean;
+  hasLiveSecret: boolean;
+  isLive: boolean;
+  lastUpdated?: string | null;
+  updatedBy?: string | null;
 }
 
 export interface PaymentListResponse {
@@ -35,6 +50,7 @@ export interface PaymentListResponse {
 export async function listPayments(query: {
   status?: PaymentStatus;
   payment_type?: 'membership' | 'purchase';
+  razorpay_env?: 'test' | 'production';
   limit?: number;
   offset?: number;
 } = {}): Promise<PaymentListResponse> {
@@ -73,5 +89,16 @@ export async function autoVerifyPayment(id: string): Promise<{ success: boolean;
 export async function autoVerifyAllPayments(): Promise<{ success: boolean; totalChecked: number; totalConfirmed: number }> {
   return request<{ success: boolean; totalChecked: number; totalConfirmed: number }>(`/api/admin/payments/auto-verify`, {
     method: 'POST',
+  });
+}
+
+export async function getRazorpayConfig(): Promise<{ success: boolean; config: RazorpayConfig }> {
+  return request<{ success: boolean; config: RazorpayConfig }>(`/api/admin/payments/razorpay/config`);
+}
+
+export async function switchRazorpayEnvironment(environment: 'test' | 'production'): Promise<{ success: boolean; config: RazorpayConfig }> {
+  return request<{ success: boolean; config: RazorpayConfig }>(`/api/admin/payments/razorpay/switch-environment`, {
+    method: 'POST',
+    body: JSON.stringify({ environment }),
   });
 }

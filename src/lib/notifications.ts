@@ -28,9 +28,22 @@ export async function testSendWhatsApp(payload: {
   template_name: string;
   variables: Record<string, string>;
   customer_name?: string;
+  to?: string;
+  template?: string;
+  fullName?: string;
+  orderNumber?: string;
 }): Promise<{ success: boolean; result?: any; error?: string }> {
+  const body = {
+    to: payload.to || payload.phone,
+    phone: payload.phone || payload.to,
+    template: payload.template || payload.template_name,
+    template_name: payload.template_name || payload.template,
+    fullName: payload.fullName || payload.customer_name,
+    variables: payload.variables,
+    orderNumber: payload.orderNumber || payload.variables?.order_id || 'SS-TEST-001',
+  };
   return request<{ success: boolean; result?: any; error?: string }>(`/api/admin/notifications/test-send-whatsapp`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }

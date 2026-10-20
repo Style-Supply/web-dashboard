@@ -138,10 +138,33 @@ export default function ImageImporter({
   const id = productId;
   const availableSizes = getAvailableSizes(variants);
 
-  const sections =
+  const rawSections =
     groupMode === 'colour'
       ? buildColourSections(variants, colours, images)
       : buildSizeSections(availableSizes, images);
+
+  // Detect orphaned images — images that don't match ANY section (e.g. their
+  // colour_id was changed on a variant after images were already uploaded).
+  // We surface them in a clearly-labelled "Other" catch-all so admins can
+  // re-tag or delete them instead of having them silently disappear.
+  const orphanedImages =
+    groupMode === 'colour'
+      ? images.filter((img) => !rawSections.some((s) => s.match(img)))
+      : [];
+
+  const sections: DerivedSection[] =
+    orphanedImages.length > 0
+      ? [
+          ...rawSections,
+          {
+            key: '__orphaned__',
+            kind: { type: 'unassigned' },
+            match: (img) => orphanedImages.some((o) => o.id === img.id),
+            tag: { colour_id: null, custom_colour: null },
+            label: '⚠️ Other (unmatched — colour was changed)',
+          },
+        ]
+      : rawSections;
 
   const onlyUnassigned =
     groupMode === 'colour' && sections.length === 1 && sections[0].kind.type === 'unassigned';
@@ -238,22 +261,34 @@ export default function ImageImporter({
       )}
 
       {sections.map((s) => {
+        const isOrphaned = s.key === '__orphaned__';
         const moveTargets = sections
           .filter((other) => other.key !== s.key)
           .map((other) => ({ label: other.label, tag: other.tag }));
         return (
-          <ImageColourSection
-            key={s.key}
-            productId={id}
-            kind={s.kind}
-            images={sectionImages.get(s.key) ?? []}
-            availableSizes={availableSizes}
-            moveTargets={moveTargets}
-            onAppendImages={(added) => handleAppend(s.key, added)}
-            onReorderSection={(ids) => handleReorderSection(s.key, ids)}
-            onUpdateImage={handleUpdateImage}
-            onDeleteImage={handleDeleteImage}
-          />
+          <div key={s.key}>
+            {isOrphaned && (
+              <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                <span className="mt-0.5 shrink-0 text-base leading-none">⚠️</span>
+                <p>
+                  <strong>These images are unmatched.</strong> Their colour was changed on the
+                  variant after they were uploaded. Use <em>Move to…</em> on each image to
+                  reassign it to the correct colour, or delete it.
+                </p>
+              </div>
+            )}
+            <ImageColourSection
+              productId={id}
+              kind={s.kind}
+              images={sectionImages.get(s.key) ?? []}
+              availableSizes={availableSizes}
+              moveTargets={moveTargets}
+              onAppendImages={(added) => handleAppend(s.key, added)}
+              onReorderSection={(ids) => handleReorderSection(s.key, ids)}
+              onUpdateImage={handleUpdateImage}
+              onDeleteImage={handleDeleteImage}
+            />
+          </div>
         );
       })}
     </div>

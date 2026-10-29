@@ -27,6 +27,7 @@ function sessionRemaining(endsAt: string | null | undefined): string {
 }
 
 const STATUS_LABELS: Record<string, string> = {
+  empty: 'Empty',
   building: 'Building',
   full: 'Full',
   pending_membership_payment: 'Pending Payment',
@@ -44,6 +45,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
+  empty:                       'bg-slate-50 text-slate-600 ring-slate-200',
   building:                    'bg-sky-50 text-sky-700 ring-sky-200',
   full:                        'bg-indigo-50 text-indigo-700 ring-indigo-200',
   pending_membership_payment:  'bg-amber-50 text-amber-700 ring-amber-200',

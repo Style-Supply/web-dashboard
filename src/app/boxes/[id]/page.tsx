@@ -26,6 +26,7 @@ import type { BoxDetail } from '@/types/box';
 import type { ProductListResponse, Product } from '@/types/product';
 
 const STATUS_LABELS: Record<string, string> = {
+  empty: 'Empty',
   building: 'Building',
   full: 'Full',
   pending_membership_payment: 'Awaiting Membership Payment',
@@ -43,6 +44,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
+  empty: 'bg-slate-100 text-slate-700',
   building: 'bg-blue-100 text-blue-700',
   full: 'bg-indigo-100 text-indigo-700',
   pending_membership_payment: 'bg-yellow-100 text-yellow-700',

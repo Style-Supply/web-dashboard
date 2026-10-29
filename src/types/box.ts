@@ -1,4 +1,5 @@
 export type BoxStatus =
+  | 'empty'
   | 'building'
   | 'full'
   | 'pending_membership_payment'
